@@ -1,9 +1,52 @@
-import CheckInForm from './components/CheckInForm'
+import { useState, useEffect } from 'react'
+import { supabase } from './lib/supabase'
+import Auth from './pages/Auth'
 import CoachDashboard from './pages/CoachDashboard'
+import CheckInForm from './components/CheckInForm'
 
 function App() {
-  const path = window.location.pathname
-  if (path === '/coach') return <CoachDashboard />
+  const [session, setSession] = useState(null)
+  const [profile, setProfile] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session)
+      if (session) fetchProfile(session.user.id)
+      else setLoading(false)
+    })
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session)
+      if (session) fetchProfile(session.user.id)
+      else { setProfile(null); setLoading(false) }
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  const fetchProfile = async (userId) => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single()
+    setProfile(data)
+    setLoading(false)
+  }
+
+  if (loading) return (
+    <div style={{ minHeight: '100vh', background: '#0D0D0D', display: 'flex',
+      alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 12,
+        color: '#0F6E56', letterSpacing: '0.1em' }}>LOADING...</div>
+    </div>
+  )
+
+  if (!session) return <Auth />
+
+  if (profile?.role === 'coach') return <CoachDashboard />
+
   return <CheckInForm />
 }
 
