@@ -1,0 +1,82 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  --forest: #0F6E56;
+  --forest-lt: #EAF3DE;
+  --void: #0D0D0D;
+  --panel: #1A1A1A;
+  --bone: #F5F2ED;
+  --gold: #BA7517;
+  --gold-lt: #FAEEDA;
+  --alert: #E24B4A;
+  --alert-lt: #FCEBEB;
+  --blue: #3B82F6;
+  --blue-lt: #E6F1FB;
+  --white: #FFFFFF;
+  --gray-200: #E8E8E8;
+  --gray-400: #AAAAAA;
+  --gray-500: #777777;
+  --gray-600: #555555;
+  --font-sans: 'DM Sans', -apple-system, sans-serif;
+  --font-mono: 'DM Mono', monospace;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-full: 999px;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-sans);
+  background: var(--bone);
+  color: var(--void);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.card { background: var(--white); border-radius: var(--radius-lg); padding: 16px; border: 0.5px solid var(--gray-200); }
+.card-dark { background: var(--void); border-radius: var(--radius-lg); padding: 16px; }
+.card-forest { background: var(--forest); border-radius: var(--radius-lg); padding: 16px; }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; padding: 12px 24px; border-radius: var(--radius-md); font-family: var(--font-sans); font-size: 0.875rem; font-weight: 500; border: none; cursor: pointer; transition: all 0.2s; }
+.btn-primary { background: var(--forest); color: var(--forest-lt); }
+.btn-primary:hover { background: #0D5E49; }
+.btn-full { width: 100%; }
+
+.input { width: 100%; padding: 11px 14px; border-radius: var(--radius-md); border: 1px solid var(--gray-200); background: var(--white); font-family: var(--font-sans); font-size: 0.9375rem; color: var(--void); outline: none; transition: border-color 0.2s; }
+.input:focus { border-color: var(--forest); box-shadow: 0 0 0 3px rgba(15,110,86,0.12); }
+.input::placeholder { color: var(--gray-400); }
+
+.label { display: block; font-size: 0.6875rem; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--forest); margin-bottom: 4px; font-family: var(--font-mono); }
+.field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 16px; }
+
+.tag { display: inline-flex; font-size: 0.6875rem; font-weight: 500; padding: 3px 9px; border-radius: var(--radius-full); font-family: var(--font-mono); }
+.tag-green { background: var(--forest-lt); color: #1A5C0A; }
+.tag-gold { background: var(--gold-lt); color: #633806; }
+.tag-red { background: var(--alert-lt); color: #791F1F; }
+
+.nav-bar { height: 56px; background: var(--void); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; position: sticky; top: 0; z-index: 100; }
+.nav-logo { display: flex; align-items: center; gap: 8px; font-size: 1.125rem; font-weight: 300; letter-spacing: -0.03em; color: var(--bone); text-decoration: none; }
+.nav-logo .dot { color: var(--forest); }
+
+.page { max-width: 390px; margin: 0 auto; min-height: 100vh; background: var(--bone); padding-bottom: 88px; }
+.page-body { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+
+.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.section-title { font-size: 0.9375rem; font-weight: 500; color: var(--void); }
+.section-action { font-size: 0.75rem; color: var(--forest); font-family: var(--font-mono); cursor: pointer; }
+
+.progress-bar { height: 6px; background: var(--gray-200); border-radius: 3px; overflow: hidden; }
+.progress-fill { height: 100%; border-radius: 3px; background: var(--forest); transition: width 0.4s ease; }
+
+.divider { height: 0.5px; background: var(--gray-200); margin: 12px 0; }
+
+.bottom-nav { height: 72px; background: var(--void); display: flex; align-items: center; justify-content: space-around; border-top: 0.5px solid var(--panel); position: fixed; bottom: 0; left: 0; right: 0; z-index: 100; }
+.bnav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 16px; cursor: pointer; text-decoration: none; }
+.bnav-label { font-size: 0.625rem; color: var(--gray-500); font-family: var(--font-mono); }
+.bnav-item.active .bnav-label { color: var(--forest); }
+
+@keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+.fade-up { animation: fadeUp 0.4s ease forwards; }
