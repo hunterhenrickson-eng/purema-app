@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react'
 import { supabase } from './lib/supabase'
 import Auth from './pages/Auth'
 import CoachDashboard from './pages/CoachDashboard'
-import CheckInForm from './components/CheckInForm'
+import ClientHome from './components/ClientHome'
+import AcceptInvite from './components/AcceptInvite'
+import ResetPassword from './components/ResetPassword'
 
-function App() {
+function AuthRoutes() {
   const [session, setSession] = useState(null)
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -44,10 +46,23 @@ function App() {
   )
 
   if (!session) return <Auth />
-
   if (profile?.role === 'coach') return <CoachDashboard />
+  return <ClientHome />
+}
 
-  return <CheckInForm />
+function App() {
+  const path = window.location.pathname
+
+  if (path.startsWith('/invite/')) {
+    const token = path.split('/invite/')[1]
+    return <AcceptInvite token={token} />
+  }
+
+  if (path === '/reset-password') {
+    return <ResetPassword />
+  }
+
+  return <AuthRoutes />
 }
 
 export default App

@@ -217,10 +217,36 @@ const AttentionCard = ({ item, onSelectCheckin }) => {
 
 // ─── Check-in detail modal ────────────────────────────────────────────────────
 
+// ─── Performance badge ───────────────────────────────────────────────────────
+
+const PerfBadge = ({ value }) => {
+  if (value === '' || value === null || value === undefined) return null
+  const v = parseInt(value)
+  const map = { 0: { label: 'Regression', color: '#E24B4A', bg: '#2A1010' }, 1: { label: 'No change', color: '#BA7517', bg: '#2A1A00' }, 2: { label: 'Progression', color: '#0F6E56', bg: '#0A1F16' } }
+  const p = map[v]
+  if (!p) return null
+  return <span style={{ fontSize: 10, background: p.bg, color: p.color, padding: '2px 8px', borderRadius: 999, fontFamily: 'DM Mono, monospace', fontWeight: 500 }}>{p.label}</span>
+}
+
+// ─── Check-in detail modal ────────────────────────────────────────────────────
+
 const CheckInDetail = ({ checkin, onClose, onFeedbackSave }) => {
   const [feedback, setFeedback] = useState(checkin.coach_feedback || '')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+
+  // Parse notes — could be JSON (new format) or plain text (old format)
+  let parsedNotes = null
+  try {
+    if (checkin.notes) parsedNotes = JSON.parse(checkin.notes)
+  } catch (e) {}
+
+  const isNewFormat = parsedNotes && parsedNotes.daily_log
+  const dailyLog = isNewFormat ? parsedNotes.daily_log : null
+  const vitals = isNewFormat ? parsedNotes.vitals : null
+  const reflection = isNewFormat ? parsedNotes.reflection : null
+
+  const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
   const saveFeedback = async () => {
     setSaving(true)
@@ -230,7 +256,7 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave }) => {
   }
 
   const Row = ({ label, value, unit }) => value ? (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '0.5px solid #F0F0F0' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '0.5px solid #F0F0F0' }}>
       <span style={{ fontSize: 13, color: '#888' }}>{label}</span>
       <span style={{ fontSize: 13, fontWeight: 500, color: '#0D0D0D' }}>{value}{unit ? ' ' + unit : ''}</span>
     </div>
@@ -238,51 +264,245 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave }) => {
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
-      <div style={{ background: '#F5F2ED', borderRadius: 16, width: '100%', maxWidth: 560, maxHeight: '88vh', overflowY: 'auto', margin: '0 20px' }} onClick={e => e.stopPropagation()}>
-        <div style={{ position: 'sticky', top: 0, background: '#0D0D0D', padding: '16px 20px', borderRadius: '16px 16px 0 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ background: '#F5F2ED', borderRadius: 16, width: '100%', maxWidth: isNewFormat ? 1100 : 600, maxHeight: '92vh', overflowY: 'auto', margin: '0 20px' }} onClick={e => e.stopPropagation()}>
+
+        {/* Header */}
+        <div style={{ position: 'sticky', top: 0, background: '#0D0D0D', padding: '16px 24px', borderRadius: '16px 16px 0 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 }}>
           <div>
             <div style={{ fontSize: 17, fontWeight: 500, color: '#F5F2ED' }}>{checkin.client_name}</div>
             <div style={{ fontSize: 11, color: '#0F6E56', fontFamily: 'DM Mono, monospace', marginTop: 2 }}>WEEK {checkin.week_number}</div>
           </div>
           <button onClick={onClose} style={{ background: '#1A1A1A', border: 'none', color: '#AAA', width: 32, height: 32, borderRadius: '50%', cursor: 'pointer', fontSize: 16 }}>×</button>
         </div>
-        <div style={{ padding: 20, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <div style={{ background: '#fff', borderRadius: 12, padding: 16, border: '0.5px solid #E8E8E8' }}>
-            <div style={{ ...S.label, marginBottom: 12 }}>Body metrics</div>
-            <Row label="Weight" value={checkin.weight} unit="lbs" />
-            <Row label="Waist" value={checkin.waist} unit="in" />
-            <Row label="Chest" value={checkin.chest} unit="in" />
-            <Row label="Hips" value={checkin.hips} unit="in" />
-            <Row label="Arms" value={checkin.arms} unit="in" />
-            <Row label="Thighs" value={checkin.thighs} unit="in" />
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div style={{ background: '#fff', borderRadius: 12, padding: 16, border: '0.5px solid #E8E8E8' }}>
-              <div style={{ ...S.label, marginBottom: 12 }}>Nutrition</div>
-              <Row label="Calories" value={checkin.calories} unit="kcal" />
-              <Row label="Protein" value={checkin.protein} unit="g" />
-              <Row label="Carbs" value={checkin.carbs} unit="g" />
-              <Row label="Fats" value={checkin.fats} unit="g" />
-            </div>
-            <div style={{ background: '#fff', borderRadius: 12, padding: 16, border: '0.5px solid #E8E8E8' }}>
-              <div style={{ ...S.label, marginBottom: 12 }}>Lifestyle</div>
-              <Row label="Sleep" value={checkin.sleep} unit="hrs" />
-              <Row label="Water" value={checkin.water} unit="L" />
-              <Row label="Steps" value={checkin.steps} />
-              <Row label="Stress" value={checkin.stress ? checkin.stress + ' / 10' : null} />
-              <Row label="Adherence" value={checkin.adherence ? checkin.adherence + ' / 10' : null} />
-            </div>
-          </div>
-          {checkin.notes && (
-            <div style={{ gridColumn: '1 / -1', background: '#fff', borderRadius: 12, padding: 16, border: '0.5px solid #E8E8E8' }}>
-              <div style={{ ...S.label, marginBottom: 8 }}>Client notes</div>
-              <div style={{ fontSize: 14, color: '#333', lineHeight: 1.6 }}>{checkin.notes}</div>
+
+        <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+          {/* ── NEW FORMAT ─────────────────────────────────────── */}
+          {isNewFormat && (
+            <>
+              {/* Weekly averages */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+                {[
+                  { label: 'AVG WEIGHT', value: checkin.weight, unit: 'lbs' },
+                  { label: 'AVG SLEEP', value: checkin.sleep, unit: 'hrs' },
+                  { label: 'AVG STEPS', value: checkin.steps ? checkin.steps.toLocaleString() : null, unit: '' },
+                  { label: 'WEEK', value: checkin.week_number, unit: '' },
+                ].map(({ label, value, unit }) => value ? (
+                  <div key={label} style={{ background: '#0D0D0D', borderRadius: 10, padding: '12px 16px' }}>
+                    <div style={{ fontSize: 20, fontWeight: 300, color: '#F5F2ED' }}>{value}<span style={{ fontSize: 11, color: '#555', marginLeft: 3 }}>{unit}</span></div>
+                    <div style={{ ...S.label, color: '#666', marginTop: 4 }}>{label}</div>
+                  </div>
+                ) : null)}
+              </div>
+
+              {/* Daily log */}
+              <div style={{ background: '#fff', borderRadius: 12, border: '0.5px solid #E8E8E8', padding: 16 }}>
+                <div style={{ ...S.label, marginBottom: 14 }}>Daily log</div>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 800, fontSize: 13 }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid #F0F0F0' }}>
+                        <td style={{ padding: '6px 10px', color: '#888', fontFamily: 'DM Mono, monospace', fontSize: 10, letterSpacing: '0.06em' }}>METRIC</td>
+                        {DAYS.map(d => (
+                          <td key={d} style={{ padding: '6px 10px', textAlign: 'center', fontWeight: 600, color: '#0D0D0D', fontFamily: 'DM Mono, monospace', fontSize: 11, letterSpacing: '0.04em' }}>{d}</td>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[
+                        { key: 'weight', label: 'Weight (lbs)', unit: '' },
+                        { key: 'sleep', label: 'Sleep', unit: 'hrs' },
+                        { key: 'steps', label: 'Steps', unit: '' },
+                        { key: 'water', label: 'Water', unit: 'gal' },
+                        { key: 'training', label: 'Training', unit: '' },
+                        { key: 'performance', label: 'Performance', unit: '' },
+                        { key: 'desire', label: 'Desire (0–5)', unit: '' },
+                        { key: 'on_plan', label: 'On plan?', unit: '' },
+                      ].map(({ key, label, unit }) => (
+                        <tr key={key} style={{ borderBottom: '0.5px solid #F5F5F5' }}>
+                          <td style={{ padding: '8px 10px', color: '#888', fontSize: 12, whiteSpace: 'nowrap' }}>{label}</td>
+                          {dailyLog.map((day, i) => {
+                            let val = day[key]
+                            if (key === 'on_plan') val = val === true ? '✓' : val === false ? '✗' : '—'
+                            else if (key === 'performance') {
+                              const pMap = { 0: '↓', 1: '→', 2: '↑' }
+                              val = val !== '' && val !== null && val !== undefined ? pMap[parseInt(val)] || '—' : '—'
+                            }
+                            else if (key === 'steps') val = val ? parseInt(val).toLocaleString() : '—'
+                            else val = val || '—'
+                            const isOnPlan = key === 'on_plan'
+                            const color = key === 'on_plan' ? (day.on_plan === true ? '#0F6E56' : day.on_plan === false ? '#E24B4A' : '#AAA')
+                              : key === 'performance' ? (day.performance === 2 ? '#0F6E56' : day.performance === 0 ? '#E24B4A' : '#888')
+                              : '#0D0D0D'
+                            return (
+                              <td key={i} style={{ padding: '8px 10px', textAlign: 'center', color, fontWeight: isOnPlan ? 600 : 400 }}>
+                                {val}{val !== '—' && unit ? ` ${unit}` : ''}
+                              </td>
+                            )
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Diet deviations */}
+                {dailyLog.some(d => !d.on_plan && d.diet_notes) && (
+                  <div style={{ marginTop: 14, paddingTop: 14, borderTop: '0.5px solid #F0F0F0' }}>
+                    <div style={{ ...S.label, marginBottom: 8 }}>Diet deviations</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {dailyLog.map((d, i) => !d.on_plan && d.diet_notes ? (
+                        <div key={i} style={{ display: 'flex', gap: 10, fontSize: 13 }}>
+                          <span style={{ color: '#888', fontFamily: 'DM Mono, monospace', fontSize: 11, minWidth: 32 }}>{DAYS[i]}</span>
+                          <span style={{ color: '#333' }}>{d.diet_notes}</span>
+                        </div>
+                      ) : null)}
+                    </div>
+                  </div>
+                )}
+
+                {/* Gut issues */}
+                {dailyLog.some(d => d.digestive_issues && d.digestive_notes) && (
+                  <div style={{ marginTop: 14, paddingTop: 14, borderTop: '0.5px solid #F0F0F0' }}>
+                    <div style={{ ...S.label, marginBottom: 8 }}>Digestive issues</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {dailyLog.map((d, i) => d.digestive_issues && d.digestive_notes ? (
+                        <div key={i} style={{ display: 'flex', gap: 10, fontSize: 13 }}>
+                          <span style={{ color: '#888', fontFamily: 'DM Mono, monospace', fontSize: 11, minWidth: 32 }}>{DAYS[i]}</span>
+                          <span style={{ color: '#333' }}>{d.digestive_notes}</span>
+                        </div>
+                      ) : null)}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Lifts */}
+              {dailyLog.some(d => d.lifts) && (
+                <div style={{ background: '#fff', borderRadius: 12, border: '0.5px solid #E8E8E8', padding: 16 }}>
+                  <div style={{ ...S.label, marginBottom: 14 }}>Lift tracker</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}>
+                    {dailyLog.map((d, i) => d.lifts ? (
+                      <div key={i}>
+                        <div style={{ fontSize: 11, fontWeight: 600, color: '#0D0D0D', fontFamily: 'DM Mono, monospace', letterSpacing: '0.06em', marginBottom: 6 }}>{DAYS[i]}</div>
+                        <div style={{ fontSize: 13, color: '#333', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{d.lifts}</div>
+                      </div>
+                    ) : null)}
+                  </div>
+                </div>
+              )}
+
+              {/* Day notes */}
+              {dailyLog.some(d => d.notes) && (
+                <div style={{ background: '#fff', borderRadius: 12, border: '0.5px solid #E8E8E8', padding: 16 }}>
+                  <div style={{ ...S.label, marginBottom: 14 }}>Day notes</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {dailyLog.map((d, i) => d.notes ? (
+                      <div key={i} style={{ display: 'flex', gap: 12 }}>
+                        <div style={{ fontSize: 11, fontWeight: 600, color: '#888', fontFamily: 'DM Mono, monospace', minWidth: 32, paddingTop: 2 }}>{DAYS[i]}</div>
+                        <div style={{ fontSize: 14, color: '#333', lineHeight: 1.7 }}>{d.notes}</div>
+                      </div>
+                    ) : null)}
+                  </div>
+                </div>
+              )}
+
+              {/* Measurements */}
+              {(checkin.waist || checkin.chest || checkin.hips || checkin.arms || checkin.thighs) && (
+                <div style={{ background: '#fff', borderRadius: 12, border: '0.5px solid #E8E8E8', padding: 16 }}>
+                  <div style={{ ...S.label, marginBottom: 12 }}>Measurements</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10 }}>
+                    {[['Waist', checkin.waist], ['Chest', checkin.chest], ['Hips', checkin.hips], ['Arms', checkin.arms], ['Thighs', checkin.thighs]].map(([label, val]) => val ? (
+                      <div key={label} style={{ background: '#F5F2ED', borderRadius: 8, padding: '10px 12px', textAlign: 'center' }}>
+                        <div style={{ fontSize: 16, fontWeight: 500, color: '#0D0D0D' }}>{val}<span style={{ fontSize: 11, color: '#888', marginLeft: 2 }}>in</span></div>
+                        <div style={{ ...S.label, marginTop: 4 }}>{label}</div>
+                      </div>
+                    ) : null)}
+                  </div>
+                </div>
+              )}
+
+              {/* Vitals */}
+              {vitals && (vitals.resting_hr || vitals.blood_pressure || vitals.blood_glucose) && (
+                <div style={{ background: '#fff', borderRadius: 12, border: '0.5px solid #E8E8E8', padding: 16 }}>
+                  <div style={{ ...S.label, marginBottom: 12 }}>Weekly vitals</div>
+                  <div style={{ display: 'flex', gap: 20 }}>
+                    {vitals.resting_hr && <div><span style={{ fontSize: 13, color: '#888' }}>Resting HR </span><span style={{ fontSize: 13, fontWeight: 500, color: '#0D0D0D' }}>{vitals.resting_hr} bpm</span></div>}
+                    {vitals.blood_pressure && <div><span style={{ fontSize: 13, color: '#888' }}>BP </span><span style={{ fontSize: 13, fontWeight: 500, color: '#0D0D0D' }}>{vitals.blood_pressure}</span></div>}
+                    {vitals.blood_glucose && <div><span style={{ fontSize: 13, color: '#888' }}>Glucose </span><span style={{ fontSize: 13, fontWeight: 500, color: '#0D0D0D' }}>{vitals.blood_glucose} mg/dL</span></div>}
+                  </div>
+                </div>
+              )}
+
+              {/* Reflection */}
+              {reflection && (reflection.win || reflection.improve || reflection.notes) && (
+                <div style={{ background: '#fff', borderRadius: 12, border: '0.5px solid #E8E8E8', padding: 16 }}>
+                  <div style={{ ...S.label, marginBottom: 14 }}>Weekly reflection</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    {reflection.win && (
+                      <div>
+                        <div style={{ fontSize: 11, color: '#0F6E56', fontFamily: 'DM Mono, monospace', letterSpacing: '0.06em', marginBottom: 4 }}>WIN OF THE WEEK</div>
+                        <div style={{ fontSize: 14, color: '#333', lineHeight: 1.7 }}>{reflection.win}</div>
+                      </div>
+                    )}
+                    {reflection.improve && (
+                      <div>
+                        <div style={{ fontSize: 11, color: '#BA7517', fontFamily: 'DM Mono, monospace', letterSpacing: '0.06em', marginBottom: 4 }}>AREAS TO IMPROVE</div>
+                        <div style={{ fontSize: 14, color: '#333', lineHeight: 1.7 }}>{reflection.improve}</div>
+                      </div>
+                    )}
+                    {reflection.notes && (
+                      <div>
+                        <div style={{ fontSize: 11, color: '#888', fontFamily: 'DM Mono, monospace', letterSpacing: '0.06em', marginBottom: 4 }}>ADDITIONAL NOTES</div>
+                        <div style={{ fontSize: 14, color: '#333', lineHeight: 1.7 }}>{reflection.notes}</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* ── OLD FORMAT (backwards compatible) ─────────────── */}
+          {!isNewFormat && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div style={{ background: '#fff', borderRadius: 12, padding: 16, border: '0.5px solid #E8E8E8' }}>
+                <div style={{ ...S.label, marginBottom: 12 }}>Body metrics</div>
+                <Row label="Weight" value={checkin.weight} unit="lbs" />
+                <Row label="Waist" value={checkin.waist} unit="in" />
+                <Row label="Chest" value={checkin.chest} unit="in" />
+                <Row label="Hips" value={checkin.hips} unit="in" />
+                <Row label="Arms" value={checkin.arms} unit="in" />
+                <Row label="Thighs" value={checkin.thighs} unit="in" />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ background: '#fff', borderRadius: 12, padding: 16, border: '0.5px solid #E8E8E8' }}>
+                  <div style={{ ...S.label, marginBottom: 12 }}>Nutrition</div>
+                  <Row label="Calories" value={checkin.calories} unit="kcal" />
+                  <Row label="Protein" value={checkin.protein} unit="g" />
+                  <Row label="Carbs" value={checkin.carbs} unit="g" />
+                  <Row label="Fats" value={checkin.fats} unit="g" />
+                </div>
+                <div style={{ background: '#fff', borderRadius: 12, padding: 16, border: '0.5px solid #E8E8E8' }}>
+                  <div style={{ ...S.label, marginBottom: 12 }}>Lifestyle</div>
+                  <Row label="Sleep" value={checkin.sleep} unit="hrs" />
+                  <Row label="Steps" value={checkin.steps} />
+                </div>
+              </div>
+              {checkin.notes && (
+                <div style={{ gridColumn: '1 / -1', background: '#fff', borderRadius: 12, padding: 16, border: '0.5px solid #E8E8E8' }}>
+                  <div style={{ ...S.label, marginBottom: 8 }}>Client notes</div>
+                  <div style={{ fontSize: 14, color: '#333', lineHeight: 1.6 }}>{checkin.notes}</div>
+                </div>
+              )}
             </div>
           )}
-          <div style={{ gridColumn: '1 / -1', background: '#0D0D0D', borderRadius: 12, padding: 16 }}>
+
+          {/* Coach feedback — always shown */}
+          <div style={{ background: '#0D0D0D', borderRadius: 12, padding: 16 }}>
             <div style={{ ...S.label, color: '#0F6E56', marginBottom: 8 }}>Coach feedback</div>
             <textarea value={feedback} onChange={e => setFeedback(e.target.value)}
-              placeholder="Leave feedback for this client..." rows={4}
+              placeholder="Leave feedback for this client..." rows={5}
               style={{ width: '100%', background: '#1A1A1A', border: '1px solid #2A2A2A', borderRadius: 8,
                 color: '#F5F2ED', padding: '10px 12px', fontSize: 14, fontFamily: 'DM Sans, sans-serif',
                 lineHeight: 1.6, resize: 'none', outline: 'none', boxSizing: 'border-box' }} />
@@ -293,6 +513,7 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave }) => {
               {saving ? 'Saving...' : saved ? 'Saved!' : 'Save feedback'}
             </button>
           </div>
+
         </div>
       </div>
     </div>
