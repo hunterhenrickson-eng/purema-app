@@ -1,13 +1,14 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { supabase } from '../lib/supabase'
+import { color, font, type, labelStyle } from '../lib/theme'
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
 const Mark = ({ size = 24 }) => (
   <svg width={size} height={size * 0.9} viewBox="0 0 52 48">
-    <polyline points="6,10 18,24 6,38" fill="none" stroke="#0F6E56" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    <polyline points="19,10 31,24 19,38" fill="none" stroke="#0F6E56" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
-    <polyline points="32,10 46,24 32,38" fill="none" stroke="#0F6E56" strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <polyline points="6,10 18,24 6,38" fill="none" stroke={color.forest} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <polyline points="19,10 31,24 19,38" fill="none" stroke={color.forest} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <polyline points="32,10 46,24 32,38" fill="none" stroke={color.forest} strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 )
 
@@ -20,9 +21,9 @@ const SearchIcon = () => (
 // ─── Shared styles ────────────────────────────────────────────────────────────
 
 const S = {
-  card: { background: '#fff', borderRadius: 12, border: '0.5px solid #E8E8E8', padding: 20 },
-  label: { fontSize: 10, fontWeight: 500, color: '#888', letterSpacing: '0.1em', textTransform: 'uppercase', fontFamily: 'DM Mono, monospace' },
-  sectionTitle: { fontSize: 10, fontWeight: 500, color: '#888', letterSpacing: '0.1em', textTransform: 'uppercase', fontFamily: 'DM Mono, monospace', marginBottom: 14 },
+  card: { background: color.surfaceLight, borderRadius: 12, border: `0.5px solid ${color.borderLight}`, padding: 20 },
+  label: { ...labelStyle(false), letterSpacing: '0.1em' },
+  sectionTitle: { ...labelStyle(false), letterSpacing: '0.1em', marginBottom: 14 },
 }
 
 // ─── Attention queue logic ────────────────────────────────────────────────────
@@ -45,7 +46,7 @@ function buildAttentionQueue(clients, checkins) {
           type: 'feedback_needed', priority: 1, client, checkin: latest,
           label: 'Feedback needed',
           sublabel: `Submitted ${Math.floor(hoursAgo)}h ago · Week ${latest.week_number}`,
-          color: '#BA7517', bg: '#FAEEDA', textColor: '#633806',
+          color: color.gold, bg: '#FAEEDA', textColor: '#633806',
         })
         return
       }
@@ -60,7 +61,7 @@ function buildAttentionQueue(clients, checkins) {
           sublabel: latest
             ? `Last seen ${Math.floor((now - new Date(latest.submitted_at)) / (1000 * 60 * 60 * 24))} days ago`
             : 'No check-ins yet',
-          color: '#888', bg: '#F0EDE8', textColor: '#555',
+          color: color.textOnLight.secondary, bg: '#F0EDE8', textColor: color.textOnLight.secondary,
         })
       }
     }
@@ -99,20 +100,20 @@ const SearchBar = ({ clients, checkins, onSelectCheckin, onSelectClient }) => {
   return (
     <div ref={ref} style={{ position: 'relative', width: 260 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8,
-        background: '#1A1A1A', borderRadius: 8, padding: '7px 12px',
-        border: '1px solid #2A2A2A' }}>
-        <span style={{ color: '#666' }}><SearchIcon /></span>
+        background: color.surfaceDarkRaised, borderRadius: 8, padding: '7px 12px',
+        border: `1px solid ${color.borderDark}` }}>
+        <span style={{ color: color.textOnDark.secondary }}><SearchIcon /></span>
         <input
           value={query}
           onChange={e => { setQuery(e.target.value); setOpen(true) }}
           onFocus={() => setOpen(true)}
           placeholder="Search clients or check-ins..."
           style={{ background: 'transparent', border: 'none', outline: 'none',
-            color: '#F5F2ED', fontSize: 13, fontFamily: 'DM Sans', width: '100%' }}
+            color: color.textOnDark.primary, fontSize: type.body, fontFamily: font.sans, width: '100%' }}
         />
         {query && (
           <button onClick={() => { setQuery(''); setOpen(false) }}
-            style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', fontSize: 16, lineHeight: 1 }}>
+            style={{ background: 'none', border: 'none', color: color.textOnDark.secondary, cursor: 'pointer', fontSize: 16, lineHeight: 1 }}>
             ×
           </button>
         )}
@@ -120,30 +121,30 @@ const SearchBar = ({ clients, checkins, onSelectCheckin, onSelectClient }) => {
 
       {showDropdown && (
         <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0,
-          background: '#fff', borderRadius: 10, border: '0.5px solid #E8E8E8',
+          background: color.surfaceLight, borderRadius: 10, border: `0.5px solid ${color.borderLight}`,
           boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 300, overflow: 'hidden' }}>
           {!hasResults && (
-            <div style={{ padding: '14px 16px', fontSize: 13, color: '#888', fontFamily: 'DM Sans' }}>
+            <div style={{ padding: '14px 16px', fontSize: type.body, color: color.textOnLight.secondary, fontFamily: font.sans }}>
               No results for "{query}"
             </div>
           )}
           {matchedClients.length > 0 && (
             <>
-              <div style={{ padding: '8px 16px 4px', ...S.label, fontSize: 9 }}>Clients</div>
+              <div style={{ padding: '8px 16px 4px', ...S.label }}>Clients</div>
               {matchedClients.map(client => (
                 <div key={client.id}
                   onClick={() => { onSelectClient(client); setQuery(''); setOpen(false) }}
                   style={{ padding: '10px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#F5F2ED'}
+                  onMouseEnter={e => e.currentTarget.style.background = color.bone}
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                  <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#EAF3DE',
+                  <div style={{ width: 28, height: 28, borderRadius: '50%', background: color.sage,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 12, fontWeight: 500, color: '#0F6E56', flexShrink: 0 }}>
+                    fontSize: type.label, fontWeight: 500, color: color.forest, flexShrink: 0 }}>
                     {(client.full_name || client.email || '?').charAt(0).toUpperCase()}
                   </div>
                   <div>
-                    <div style={{ fontSize: 13, fontWeight: 500, color: '#0D0D0D' }}>{client.full_name || '—'}</div>
-                    <div style={{ fontSize: 11, color: '#888' }}>{client.email}</div>
+                    <div style={{ fontSize: type.body, fontWeight: 500, color: color.textOnLight.primary }}>{client.full_name || '—'}</div>
+                    <div style={{ fontSize: type.label, color: color.textOnLight.secondary }}>{client.email}</div>
                   </div>
                 </div>
               ))}
@@ -151,25 +152,25 @@ const SearchBar = ({ clients, checkins, onSelectCheckin, onSelectClient }) => {
           )}
           {matchedCheckins.length > 0 && (
             <>
-              <div style={{ padding: '8px 16px 4px', ...S.label, fontSize: 9, borderTop: matchedClients.length > 0 ? '0.5px solid #F0F0F0' : 'none' }}>Check-ins</div>
+              <div style={{ padding: '8px 16px 4px', ...S.label, borderTop: matchedClients.length > 0 ? '0.5px solid #F0F0F0' : 'none' }}>Check-ins</div>
               {matchedCheckins.map(checkin => (
                 <div key={checkin.id}
                   onClick={() => { onSelectCheckin(checkin); setQuery(''); setOpen(false) }}
                   style={{ padding: '10px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#F5F2ED'}
+                  onMouseEnter={e => e.currentTarget.style.background = color.bone}
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                   <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#FAEEDA',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 12, fontWeight: 500, color: '#BA7517', flexShrink: 0 }}>
+                    fontSize: type.label, fontWeight: 500, color: color.gold, flexShrink: 0 }}>
                     {checkin.client_name.charAt(0).toUpperCase()}
                   </div>
                   <div>
-                    <div style={{ fontSize: 13, fontWeight: 500, color: '#0D0D0D' }}>{checkin.client_name}</div>
-                    <div style={{ fontSize: 11, color: '#888' }}>Week {checkin.week_number} · {new Date(checkin.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+                    <div style={{ fontSize: type.body, fontWeight: 500, color: color.textOnLight.primary }}>{checkin.client_name}</div>
+                    <div style={{ fontSize: type.label, color: color.textOnLight.secondary }}>Week {checkin.week_number} · {new Date(checkin.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
                   </div>
-                  <span style={{ marginLeft: 'auto', fontSize: 10, background: checkin.coach_feedback ? '#EAF3DE' : '#FAEEDA',
+                  <span style={{ marginLeft: 'auto', fontSize: type.label, background: checkin.coach_feedback ? color.sage : '#FAEEDA',
                     color: checkin.coach_feedback ? '#1A5C0A' : '#633806',
-                    padding: '2px 8px', borderRadius: 999, fontFamily: 'DM Mono, monospace' }}>
+                    padding: '2px 8px', borderRadius: 999, fontFamily: font.mono }}>
                     {checkin.coach_feedback ? 'Done' : 'Pending'}
                   </span>
                 </div>
@@ -200,17 +201,17 @@ const AttentionCard = ({ item, onSelectCheckin }) => {
         {initials}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 14, fontWeight: 500, color: '#0D0D0D' }}>
+        <div style={{ fontSize: type.body, fontWeight: 500, color: color.textOnLight.primary }}>
           {item.client.full_name || item.client.email}
         </div>
-        <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>{item.sublabel}</div>
+        <div style={{ fontSize: type.label, color: color.textOnLight.secondary, marginTop: 2 }}>{item.sublabel}</div>
       </div>
-      <span style={{ fontSize: 10, background: item.bg, color: item.textColor,
-        padding: '3px 10px', borderRadius: 999, fontFamily: 'DM Mono, monospace',
+      <span style={{ fontSize: type.label, background: item.bg, color: item.textColor,
+        padding: '3px 10px', borderRadius: 999, fontFamily: font.mono,
         fontWeight: 500, whiteSpace: 'nowrap', flexShrink: 0 }}>
         {item.label}
       </span>
-      {item.checkin && <span style={{ color: '#CCC', fontSize: 18, flexShrink: 0 }}>›</span>}
+      {item.checkin && <span style={{ color: color.textOnLight.faint, fontSize: 18, flexShrink: 0 }}>›</span>}
     </div>
   )
 }
@@ -222,10 +223,10 @@ const AttentionCard = ({ item, onSelectCheckin }) => {
 const PerfBadge = ({ value }) => {
   if (value === '' || value === null || value === undefined) return null
   const v = parseInt(value)
-  const map = { 0: { label: 'Regression', color: '#E24B4A', bg: '#2A1010' }, 1: { label: 'No change', color: '#BA7517', bg: '#2A1A00' }, 2: { label: 'Progression', color: '#0F6E56', bg: '#0A1F16' } }
+  const map = { 0: { label: 'Regression', color: color.alert, bg: '#2A1010' }, 1: { label: 'No change', color: color.gold, bg: '#2A1A00' }, 2: { label: 'Progression', color: color.forest, bg: '#0A1F16' } }
   const p = map[v]
   if (!p) return null
-  return <span style={{ fontSize: 10, background: p.bg, color: p.color, padding: '2px 8px', borderRadius: 999, fontFamily: 'DM Mono, monospace', fontWeight: 500 }}>{p.label}</span>
+  return <span style={{ fontSize: type.label, background: p.bg, color: p.color, padding: '2px 8px', borderRadius: 999, fontFamily: font.mono, fontWeight: 500 }}>{p.label}</span>
 }
 
 // ─── Check-in detail modal ────────────────────────────────────────────────────
@@ -257,22 +258,22 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave }) => {
 
   const Row = ({ label, value, unit }) => value ? (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '0.5px solid #F0F0F0' }}>
-      <span style={{ fontSize: 13, color: '#888' }}>{label}</span>
-      <span style={{ fontSize: 13, fontWeight: 500, color: '#0D0D0D' }}>{value}{unit ? ' ' + unit : ''}</span>
+      <span style={{ fontSize: type.body, color: color.textOnLight.secondary }}>{label}</span>
+      <span style={{ fontSize: type.body, fontWeight: 500, color: color.textOnLight.primary }}>{value}{unit ? ' ' + unit : ''}</span>
     </div>
   ) : null
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
-      <div style={{ background: '#F5F2ED', borderRadius: 16, width: '100%', maxWidth: isNewFormat ? 1100 : 600, maxHeight: '92vh', overflowY: 'auto', margin: '0 20px' }} onClick={e => e.stopPropagation()}>
+      <div style={{ background: color.bone, borderRadius: 16, width: '100%', maxWidth: isNewFormat ? 1100 : 600, maxHeight: '92vh', overflowY: 'auto', margin: '0 20px' }} onClick={e => e.stopPropagation()}>
 
         {/* Header */}
-        <div style={{ position: 'sticky', top: 0, background: '#0D0D0D', padding: '16px 24px', borderRadius: '16px 16px 0 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 }}>
+        <div style={{ position: 'sticky', top: 0, background: color.void, padding: '16px 24px', borderRadius: '16px 16px 0 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 }}>
           <div>
-            <div style={{ fontSize: 17, fontWeight: 500, color: '#F5F2ED' }}>{checkin.client_name}</div>
-            <div style={{ fontSize: 11, color: '#0F6E56', fontFamily: 'DM Mono, monospace', marginTop: 2 }}>WEEK {checkin.week_number}</div>
+            <div style={{ fontSize: 17, fontWeight: 500, color: color.textOnDark.primary }}>{checkin.client_name}</div>
+            <div style={{ fontSize: type.label, color: color.forest, fontFamily: font.mono, marginTop: 2 }}>WEEK {checkin.week_number}</div>
           </div>
-          <button onClick={onClose} style={{ background: '#1A1A1A', border: 'none', color: '#AAA', width: 32, height: 32, borderRadius: '50%', cursor: 'pointer', fontSize: 16 }}>×</button>
+          <button onClick={onClose} style={{ background: color.surfaceDarkRaised, border: 'none', color: color.textOnDark.secondary, width: 32, height: 32, borderRadius: '50%', cursor: 'pointer', fontSize: 16 }}>×</button>
         </div>
 
         <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -288,23 +289,23 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave }) => {
                   { label: 'AVG STEPS', value: checkin.steps ? checkin.steps.toLocaleString() : null, unit: '' },
                   { label: 'WEEK', value: checkin.week_number, unit: '' },
                 ].map(({ label, value, unit }) => value ? (
-                  <div key={label} style={{ background: '#0D0D0D', borderRadius: 10, padding: '12px 16px' }}>
-                    <div style={{ fontSize: 20, fontWeight: 300, color: '#F5F2ED' }}>{value}<span style={{ fontSize: 11, color: '#555', marginLeft: 3 }}>{unit}</span></div>
-                    <div style={{ ...S.label, color: '#666', marginTop: 4 }}>{label}</div>
+                  <div key={label} style={{ background: color.void, borderRadius: 10, padding: '12px 16px' }}>
+                    <div style={{ fontSize: 20, fontWeight: 300, color: color.textOnDark.primary }}>{value}<span style={{ fontSize: type.label, color: color.textOnDark.faint, marginLeft: 3 }}>{unit}</span></div>
+                    <div style={{ ...S.label, color: color.textOnDark.label, marginTop: 4 }}>{label}</div>
                   </div>
                 ) : null)}
               </div>
 
               {/* Daily log */}
-              <div style={{ background: '#fff', borderRadius: 12, border: '0.5px solid #E8E8E8', padding: 16 }}>
+              <div style={{ background: color.surfaceLight, borderRadius: 12, border: `0.5px solid ${color.borderLight}`, padding: 16 }}>
                 <div style={{ ...S.label, marginBottom: 14 }}>Daily log</div>
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 800, fontSize: 13 }}>
                     <thead>
                       <tr style={{ borderBottom: '1px solid #F0F0F0' }}>
-                        <td style={{ padding: '6px 10px', color: '#888', fontFamily: 'DM Mono, monospace', fontSize: 10, letterSpacing: '0.06em' }}>METRIC</td>
+                        <td style={{ padding: '6px 10px', color: color.textOnLight.secondary, fontFamily: font.mono, fontSize: type.label, letterSpacing: '0.06em' }}>METRIC</td>
                         {DAYS.map(d => (
-                          <td key={d} style={{ padding: '6px 10px', textAlign: 'center', fontWeight: 600, color: '#0D0D0D', fontFamily: 'DM Mono, monospace', fontSize: 11, letterSpacing: '0.04em' }}>{d}</td>
+                          <td key={d} style={{ padding: '6px 10px', textAlign: 'center', fontWeight: 600, color: color.textOnLight.primary, fontFamily: font.mono, fontSize: type.label, letterSpacing: '0.04em' }}>{d}</td>
                         ))}
                       </tr>
                     </thead>
@@ -320,7 +321,7 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave }) => {
                         { key: 'on_plan', label: 'On plan?', unit: '' },
                       ].map(({ key, label, unit }) => (
                         <tr key={key} style={{ borderBottom: '0.5px solid #F5F5F5' }}>
-                          <td style={{ padding: '8px 10px', color: '#888', fontSize: 12, whiteSpace: 'nowrap' }}>{label}</td>
+                          <td style={{ padding: '8px 10px', color: color.textOnLight.secondary, fontSize: 12, whiteSpace: 'nowrap' }}>{label}</td>
                           {dailyLog.map((day, i) => {
                             let val = day[key]
                             if (key === 'on_plan') val = val === true ? '✓' : val === false ? '✗' : '—'
@@ -331,11 +332,11 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave }) => {
                             else if (key === 'steps') val = val ? parseInt(val).toLocaleString() : '—'
                             else val = val || '—'
                             const isOnPlan = key === 'on_plan'
-                            const color = key === 'on_plan' ? (day.on_plan === true ? '#0F6E56' : day.on_plan === false ? '#E24B4A' : '#AAA')
-                              : key === 'performance' ? (day.performance === 2 ? '#0F6E56' : day.performance === 0 ? '#E24B4A' : '#888')
-                              : '#0D0D0D'
+                            const cellColor = key === 'on_plan' ? (day.on_plan === true ? color.forest : day.on_plan === false ? color.alert : color.textOnLight.faint)
+                              : key === 'performance' ? (day.performance === 2 ? color.forest : day.performance === 0 ? color.alert : color.textOnLight.secondary)
+                              : color.textOnLight.primary
                             return (
-                              <td key={i} style={{ padding: '8px 10px', textAlign: 'center', color, fontWeight: isOnPlan ? 600 : 400 }}>
+                              <td key={i} style={{ padding: '8px 10px', textAlign: 'center', color: cellColor, fontWeight: isOnPlan ? 600 : 400 }}>
                                 {val}{val !== '—' && unit ? ` ${unit}` : ''}
                               </td>
                             )
@@ -353,8 +354,8 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave }) => {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                       {dailyLog.map((d, i) => !d.on_plan && d.diet_notes ? (
                         <div key={i} style={{ display: 'flex', gap: 10, fontSize: 13 }}>
-                          <span style={{ color: '#888', fontFamily: 'DM Mono, monospace', fontSize: 11, minWidth: 32 }}>{DAYS[i]}</span>
-                          <span style={{ color: '#333' }}>{d.diet_notes}</span>
+                          <span style={{ color: color.textOnLight.secondary, fontFamily: font.mono, fontSize: type.label, minWidth: 32 }}>{DAYS[i]}</span>
+                          <span style={{ color: color.textOnLight.primary }}>{d.diet_notes}</span>
                         </div>
                       ) : null)}
                     </div>
@@ -368,8 +369,8 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave }) => {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                       {dailyLog.map((d, i) => d.digestive_issues && d.digestive_notes ? (
                         <div key={i} style={{ display: 'flex', gap: 10, fontSize: 13 }}>
-                          <span style={{ color: '#888', fontFamily: 'DM Mono, monospace', fontSize: 11, minWidth: 32 }}>{DAYS[i]}</span>
-                          <span style={{ color: '#333' }}>{d.digestive_notes}</span>
+                          <span style={{ color: color.textOnLight.secondary, fontFamily: font.mono, fontSize: type.label, minWidth: 32 }}>{DAYS[i]}</span>
+                          <span style={{ color: color.textOnLight.primary }}>{d.digestive_notes}</span>
                         </div>
                       ) : null)}
                     </div>
@@ -379,13 +380,13 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave }) => {
 
               {/* Lifts */}
               {dailyLog.some(d => d.lifts) && (
-                <div style={{ background: '#fff', borderRadius: 12, border: '0.5px solid #E8E8E8', padding: 16 }}>
+                <div style={{ background: color.surfaceLight, borderRadius: 12, border: `0.5px solid ${color.borderLight}`, padding: 16 }}>
                   <div style={{ ...S.label, marginBottom: 14 }}>Lift tracker</div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}>
                     {dailyLog.map((d, i) => d.lifts ? (
                       <div key={i}>
-                        <div style={{ fontSize: 11, fontWeight: 600, color: '#0D0D0D', fontFamily: 'DM Mono, monospace', letterSpacing: '0.06em', marginBottom: 6 }}>{DAYS[i]}</div>
-                        <div style={{ fontSize: 13, color: '#333', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{d.lifts}</div>
+                        <div style={{ fontSize: type.label, fontWeight: 600, color: color.textOnLight.primary, fontFamily: font.mono, letterSpacing: '0.06em', marginBottom: 6 }}>{DAYS[i]}</div>
+                        <div style={{ fontSize: 13, color: color.textOnLight.primary, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{d.lifts}</div>
                       </div>
                     ) : null)}
                   </div>
@@ -394,13 +395,13 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave }) => {
 
               {/* Day notes */}
               {dailyLog.some(d => d.notes) && (
-                <div style={{ background: '#fff', borderRadius: 12, border: '0.5px solid #E8E8E8', padding: 16 }}>
+                <div style={{ background: color.surfaceLight, borderRadius: 12, border: `0.5px solid ${color.borderLight}`, padding: 16 }}>
                   <div style={{ ...S.label, marginBottom: 14 }}>Day notes</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                     {dailyLog.map((d, i) => d.notes ? (
                       <div key={i} style={{ display: 'flex', gap: 12 }}>
-                        <div style={{ fontSize: 11, fontWeight: 600, color: '#888', fontFamily: 'DM Mono, monospace', minWidth: 32, paddingTop: 2 }}>{DAYS[i]}</div>
-                        <div style={{ fontSize: 14, color: '#333', lineHeight: 1.7 }}>{d.notes}</div>
+                        <div style={{ fontSize: type.label, fontWeight: 600, color: color.textOnLight.secondary, fontFamily: font.mono, minWidth: 32, paddingTop: 2 }}>{DAYS[i]}</div>
+                        <div style={{ fontSize: 14, color: color.textOnLight.primary, lineHeight: 1.7 }}>{d.notes}</div>
                       </div>
                     ) : null)}
                   </div>
@@ -409,12 +410,12 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave }) => {
 
               {/* Measurements */}
               {(checkin.waist || checkin.chest || checkin.hips || checkin.arms || checkin.thighs) && (
-                <div style={{ background: '#fff', borderRadius: 12, border: '0.5px solid #E8E8E8', padding: 16 }}>
+                <div style={{ background: color.surfaceLight, borderRadius: 12, border: `0.5px solid ${color.borderLight}`, padding: 16 }}>
                   <div style={{ ...S.label, marginBottom: 12 }}>Measurements</div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10 }}>
                     {[['Waist', checkin.waist], ['Chest', checkin.chest], ['Hips', checkin.hips], ['Arms', checkin.arms], ['Thighs', checkin.thighs]].map(([label, val]) => val ? (
-                      <div key={label} style={{ background: '#F5F2ED', borderRadius: 8, padding: '10px 12px', textAlign: 'center' }}>
-                        <div style={{ fontSize: 16, fontWeight: 500, color: '#0D0D0D' }}>{val}<span style={{ fontSize: 11, color: '#888', marginLeft: 2 }}>in</span></div>
+                      <div key={label} style={{ background: color.bone, borderRadius: 8, padding: '10px 12px', textAlign: 'center' }}>
+                        <div style={{ fontSize: 16, fontWeight: 500, color: color.textOnLight.primary }}>{val}<span style={{ fontSize: type.label, color: color.textOnLight.faint, marginLeft: 2 }}>in</span></div>
                         <div style={{ ...S.label, marginTop: 4 }}>{label}</div>
                       </div>
                     ) : null)}
@@ -424,37 +425,37 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave }) => {
 
               {/* Vitals */}
               {vitals && (vitals.resting_hr || vitals.blood_pressure || vitals.blood_glucose) && (
-                <div style={{ background: '#fff', borderRadius: 12, border: '0.5px solid #E8E8E8', padding: 16 }}>
+                <div style={{ background: color.surfaceLight, borderRadius: 12, border: `0.5px solid ${color.borderLight}`, padding: 16 }}>
                   <div style={{ ...S.label, marginBottom: 12 }}>Weekly vitals</div>
                   <div style={{ display: 'flex', gap: 20 }}>
-                    {vitals.resting_hr && <div><span style={{ fontSize: 13, color: '#888' }}>Resting HR </span><span style={{ fontSize: 13, fontWeight: 500, color: '#0D0D0D' }}>{vitals.resting_hr} bpm</span></div>}
-                    {vitals.blood_pressure && <div><span style={{ fontSize: 13, color: '#888' }}>BP </span><span style={{ fontSize: 13, fontWeight: 500, color: '#0D0D0D' }}>{vitals.blood_pressure}</span></div>}
-                    {vitals.blood_glucose && <div><span style={{ fontSize: 13, color: '#888' }}>Glucose </span><span style={{ fontSize: 13, fontWeight: 500, color: '#0D0D0D' }}>{vitals.blood_glucose} mg/dL</span></div>}
+                    {vitals.resting_hr && <div><span style={{ fontSize: type.body, color: color.textOnLight.secondary }}>Resting HR </span><span style={{ fontSize: type.body, fontWeight: 500, color: color.textOnLight.primary }}>{vitals.resting_hr} bpm</span></div>}
+                    {vitals.blood_pressure && <div><span style={{ fontSize: type.body, color: color.textOnLight.secondary }}>BP </span><span style={{ fontSize: type.body, fontWeight: 500, color: color.textOnLight.primary }}>{vitals.blood_pressure}</span></div>}
+                    {vitals.blood_glucose && <div><span style={{ fontSize: type.body, color: color.textOnLight.secondary }}>Glucose </span><span style={{ fontSize: type.body, fontWeight: 500, color: color.textOnLight.primary }}>{vitals.blood_glucose} mg/dL</span></div>}
                   </div>
                 </div>
               )}
 
               {/* Reflection */}
               {reflection && (reflection.win || reflection.improve || reflection.notes) && (
-                <div style={{ background: '#fff', borderRadius: 12, border: '0.5px solid #E8E8E8', padding: 16 }}>
+                <div style={{ background: color.surfaceLight, borderRadius: 12, border: `0.5px solid ${color.borderLight}`, padding: 16 }}>
                   <div style={{ ...S.label, marginBottom: 14 }}>Weekly reflection</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                     {reflection.win && (
                       <div>
-                        <div style={{ fontSize: 11, color: '#0F6E56', fontFamily: 'DM Mono, monospace', letterSpacing: '0.06em', marginBottom: 4 }}>WIN OF THE WEEK</div>
-                        <div style={{ fontSize: 14, color: '#333', lineHeight: 1.7 }}>{reflection.win}</div>
+                        <div style={{ fontSize: type.label, color: color.forest, fontFamily: font.mono, letterSpacing: '0.06em', marginBottom: 4 }}>WIN OF THE WEEK</div>
+                        <div style={{ fontSize: 14, color: color.textOnLight.primary, lineHeight: 1.7 }}>{reflection.win}</div>
                       </div>
                     )}
                     {reflection.improve && (
                       <div>
-                        <div style={{ fontSize: 11, color: '#BA7517', fontFamily: 'DM Mono, monospace', letterSpacing: '0.06em', marginBottom: 4 }}>AREAS TO IMPROVE</div>
-                        <div style={{ fontSize: 14, color: '#333', lineHeight: 1.7 }}>{reflection.improve}</div>
+                        <div style={{ fontSize: type.label, color: color.gold, fontFamily: font.mono, letterSpacing: '0.06em', marginBottom: 4 }}>AREAS TO IMPROVE</div>
+                        <div style={{ fontSize: 14, color: color.textOnLight.primary, lineHeight: 1.7 }}>{reflection.improve}</div>
                       </div>
                     )}
                     {reflection.notes && (
                       <div>
-                        <div style={{ fontSize: 11, color: '#888', fontFamily: 'DM Mono, monospace', letterSpacing: '0.06em', marginBottom: 4 }}>ADDITIONAL NOTES</div>
-                        <div style={{ fontSize: 14, color: '#333', lineHeight: 1.7 }}>{reflection.notes}</div>
+                        <div style={{ fontSize: type.label, color: color.textOnLight.secondary, fontFamily: font.mono, letterSpacing: '0.06em', marginBottom: 4 }}>ADDITIONAL NOTES</div>
+                        <div style={{ fontSize: 14, color: color.textOnLight.primary, lineHeight: 1.7 }}>{reflection.notes}</div>
                       </div>
                     )}
                   </div>
@@ -466,7 +467,7 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave }) => {
           {/* ── OLD FORMAT (backwards compatible) ─────────────── */}
           {!isNewFormat && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <div style={{ background: '#fff', borderRadius: 12, padding: 16, border: '0.5px solid #E8E8E8' }}>
+              <div style={{ background: color.surfaceLight, borderRadius: 12, padding: 16, border: `0.5px solid ${color.borderLight}` }}>
                 <div style={{ ...S.label, marginBottom: 12 }}>Body metrics</div>
                 <Row label="Weight" value={checkin.weight} unit="lbs" />
                 <Row label="Waist" value={checkin.waist} unit="in" />
@@ -476,40 +477,40 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave }) => {
                 <Row label="Thighs" value={checkin.thighs} unit="in" />
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <div style={{ background: '#fff', borderRadius: 12, padding: 16, border: '0.5px solid #E8E8E8' }}>
+                <div style={{ background: color.surfaceLight, borderRadius: 12, padding: 16, border: `0.5px solid ${color.borderLight}` }}>
                   <div style={{ ...S.label, marginBottom: 12 }}>Nutrition</div>
                   <Row label="Calories" value={checkin.calories} unit="kcal" />
                   <Row label="Protein" value={checkin.protein} unit="g" />
                   <Row label="Carbs" value={checkin.carbs} unit="g" />
                   <Row label="Fats" value={checkin.fats} unit="g" />
                 </div>
-                <div style={{ background: '#fff', borderRadius: 12, padding: 16, border: '0.5px solid #E8E8E8' }}>
+                <div style={{ background: color.surfaceLight, borderRadius: 12, padding: 16, border: `0.5px solid ${color.borderLight}` }}>
                   <div style={{ ...S.label, marginBottom: 12 }}>Lifestyle</div>
                   <Row label="Sleep" value={checkin.sleep} unit="hrs" />
                   <Row label="Steps" value={checkin.steps} />
                 </div>
               </div>
               {checkin.notes && (
-                <div style={{ gridColumn: '1 / -1', background: '#fff', borderRadius: 12, padding: 16, border: '0.5px solid #E8E8E8' }}>
+                <div style={{ gridColumn: '1 / -1', background: color.surfaceLight, borderRadius: 12, padding: 16, border: `0.5px solid ${color.borderLight}` }}>
                   <div style={{ ...S.label, marginBottom: 8 }}>Client notes</div>
-                  <div style={{ fontSize: 14, color: '#333', lineHeight: 1.6 }}>{checkin.notes}</div>
+                  <div style={{ fontSize: 14, color: color.textOnLight.primary, lineHeight: 1.6 }}>{checkin.notes}</div>
                 </div>
               )}
             </div>
           )}
 
           {/* Coach feedback — always shown */}
-          <div style={{ background: '#0D0D0D', borderRadius: 12, padding: 16 }}>
-            <div style={{ ...S.label, color: '#0F6E56', marginBottom: 8 }}>Coach feedback</div>
+          <div style={{ background: color.void, borderRadius: 12, padding: 16 }}>
+            <div style={{ ...S.label, color: color.forest, marginBottom: 8 }}>Coach feedback</div>
             <textarea value={feedback} onChange={e => setFeedback(e.target.value)}
               placeholder="Leave feedback for this client..." rows={5}
-              style={{ width: '100%', background: '#1A1A1A', border: '1px solid #2A2A2A', borderRadius: 8,
-                color: '#F5F2ED', padding: '10px 12px', fontSize: 14, fontFamily: 'DM Sans, sans-serif',
+              style={{ width: '100%', background: color.surfaceDarkRaised, border: `1px solid ${color.borderDark}`, borderRadius: 8,
+                color: color.textOnDark.primary, padding: '10px 12px', fontSize: type.body, fontFamily: font.sans,
                 lineHeight: 1.6, resize: 'none', outline: 'none', boxSizing: 'border-box' }} />
             <button onClick={saveFeedback} disabled={saving}
-              style={{ marginTop: 8, width: '100%', height: 44, background: saved ? '#0D5E49' : '#0F6E56',
-                border: 'none', borderRadius: 8, color: '#EAF3DE', fontSize: 13, fontWeight: 500,
-                cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
+              style={{ marginTop: 8, width: '100%', height: 44, background: saved ? '#0D5E49' : color.forest,
+                border: 'none', borderRadius: 8, color: color.sage, fontSize: type.body, fontWeight: 500,
+                cursor: 'pointer', fontFamily: font.sans }}>
               {saving ? 'Saving...' : saved ? 'Saved!' : 'Save feedback'}
             </button>
           </div>
@@ -539,14 +540,14 @@ const TabDashboard = ({ checkins, clients, onSelectCheckin }) => {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
         {[
-          { label: 'Active clients', value: activeClients.length, color: '#F5F2ED' },
-          { label: 'This week', value: `${weeklyRate}%`, color: weeklyRate >= 80 ? '#0F6E56' : weeklyRate >= 50 ? '#BA7517' : activeClients.length === 0 ? '#AAA' : '#E24B4A' },
-          { label: 'Pending', value: checkins.filter(c => !c.coach_feedback).length, color: checkins.filter(c => !c.coach_feedback).length > 0 ? '#BA7517' : '#AAA' },
-          { label: 'Needs attention', value: attentionItems.length, color: attentionItems.length > 0 ? '#E24B4A' : '#AAA' },
-        ].map(({ label, value, color }) => (
-          <div key={label} style={{ background: '#0D0D0D', borderRadius: 12, padding: '18px 20px' }}>
-            <div style={{ fontSize: 28, fontWeight: 300, color, letterSpacing: '-0.02em' }}>{value}</div>
-            <div style={{ ...S.label, color: '#888', marginTop: 6 }}>{label}</div>
+          { label: 'Active clients', value: activeClients.length, color: color.textOnDark.primary },
+          { label: 'This week', value: `${weeklyRate}%`, color: weeklyRate >= 80 ? color.forest : weeklyRate >= 50 ? color.gold : activeClients.length === 0 ? color.textOnDark.secondary : color.alert },
+          { label: 'Pending', value: checkins.filter(c => !c.coach_feedback).length, color: checkins.filter(c => !c.coach_feedback).length > 0 ? color.gold : color.textOnDark.secondary },
+          { label: 'Needs attention', value: attentionItems.length, color: attentionItems.length > 0 ? color.alert : color.textOnDark.secondary },
+        ].map(({ label, value, color: statColor }) => (
+          <div key={label} style={{ background: color.void, borderRadius: 12, padding: '18px 20px' }}>
+            <div style={{ fontSize: 28, fontWeight: 300, color: statColor, letterSpacing: '-0.02em' }}>{value}</div>
+            <div style={{ ...S.label, color: color.textOnDark.label, marginTop: 6 }}>{label}</div>
           </div>
         ))}
       </div>
@@ -561,18 +562,18 @@ const TabDashboard = ({ checkins, clients, onSelectCheckin }) => {
           </div>
         </div>
       ) : activeClients.length > 0 ? (
-        <div style={{ ...S.card, display: 'flex', alignItems: 'center', gap: 14, background: '#EAF3DE', border: '0.5px solid #C5DFB0' }}>
+        <div style={{ ...S.card, display: 'flex', alignItems: 'center', gap: 14, background: color.sage, border: '0.5px solid #C5DFB0' }}>
           <div style={{ fontSize: 24 }}>✓</div>
           <div>
-            <div style={{ fontSize: 14, fontWeight: 500, color: '#0D3D1F' }}>All caught up</div>
-            <div style={{ fontSize: 12, color: '#3A7A4A', marginTop: 2 }}>No clients need your attention right now.</div>
+            <div style={{ fontSize: type.body, fontWeight: 500, color: '#0D3D1F' }}>All caught up</div>
+            <div style={{ fontSize: type.label, color: '#3A7A4A', marginTop: 2 }}>No clients need your attention right now.</div>
           </div>
         </div>
       ) : (
         <div style={{ textAlign: 'center', padding: '60px 0' }}>
           <div style={{ fontSize: 36, marginBottom: 12 }}>📋</div>
-          <div style={{ fontSize: 16, fontWeight: 500, color: '#0D0D0D', marginBottom: 6 }}>No clients yet</div>
-          <div style={{ fontSize: 13, color: '#888' }}>Head to the Clients tab to send your first invite.</div>
+          <div style={{ fontSize: type.bodyLg, fontWeight: 500, color: color.textOnLight.primary, marginBottom: 6 }}>No clients yet</div>
+          <div style={{ fontSize: type.body, color: color.textOnLight.secondary }}>Head to the Clients tab to send your first invite.</div>
         </div>
       )}
     </div>
@@ -607,54 +608,54 @@ const TabClients = ({ clients, onInvite, onStatusChange }) => {
   const ClientRow = ({ client }) => (
     <div style={{ ...S.card, display: 'flex', alignItems: 'center', gap: 14 }}>
       <div style={{ width: 40, height: 40, borderRadius: '50%',
-        background: client.status === 'paused' ? '#F0EDE8' : client.status === 'archived' ? '#F0EDE8' : '#EAF3DE',
+        background: client.status === 'paused' ? '#F0EDE8' : client.status === 'archived' ? '#F0EDE8' : color.sage,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         fontSize: 14, fontWeight: 500,
-        color: client.status === 'paused' ? '#888' : client.status === 'archived' ? '#CCC' : '#0F6E56',
+        color: client.status === 'paused' ? color.textOnLight.secondary : client.status === 'archived' ? color.textOnLight.faint : color.forest,
         flexShrink: 0 }}>
         {(client.full_name || client.email || '?').charAt(0).toUpperCase()}
       </div>
       <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 14, fontWeight: 500, color: client.status === 'archived' ? '#AAA' : '#0D0D0D' }}>
+        <div style={{ fontSize: type.body, fontWeight: 500, color: client.status === 'archived' ? color.textOnLight.faint : color.textOnLight.primary }}>
           {client.full_name || '—'}
         </div>
-        <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>
+        <div style={{ fontSize: type.label, color: color.textOnLight.secondary, marginTop: 2 }}>
           {client.email} · Joined {new Date(client.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
         </div>
       </div>
       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
         {(!client.status || client.status === 'active') && (
           <button onClick={() => onStatusChange(client.id, 'paused')}
-            style={{ fontSize: 11, padding: '4px 10px', borderRadius: 6, border: '1px solid #E8E8E8',
-              background: 'transparent', color: '#888', cursor: 'pointer', fontFamily: 'DM Mono, monospace' }}>
+            style={{ fontSize: type.label, padding: '4px 10px', borderRadius: 6, border: `1px solid ${color.borderLight}`,
+              background: 'transparent', color: color.textOnLight.secondary, cursor: 'pointer', fontFamily: font.mono }}>
             Pause
           </button>
         )}
         {client.status === 'paused' && (
           <>
             <button onClick={() => onStatusChange(client.id, 'active')}
-              style={{ fontSize: 11, padding: '4px 10px', borderRadius: 6, border: '1px solid #0F6E56',
-                background: 'transparent', color: '#0F6E56', cursor: 'pointer', fontFamily: 'DM Mono, monospace' }}>
+              style={{ fontSize: type.label, padding: '4px 10px', borderRadius: 6, border: `1px solid ${color.forest}`,
+                background: 'transparent', color: color.forest, cursor: 'pointer', fontFamily: font.mono }}>
               Reactivate
             </button>
             <button onClick={() => onStatusChange(client.id, 'archived')}
-              style={{ fontSize: 11, padding: '4px 10px', borderRadius: 6, border: '1px solid #E24B4A',
-                background: 'transparent', color: '#E24B4A', cursor: 'pointer', fontFamily: 'DM Mono, monospace' }}>
+              style={{ fontSize: type.label, padding: '4px 10px', borderRadius: 6, border: `1px solid ${color.alert}`,
+                background: 'transparent', color: color.alert, cursor: 'pointer', fontFamily: font.mono }}>
               Archive
             </button>
           </>
         )}
         {client.status !== 'archived' && (
-          <span style={{ fontSize: 10,
-            background: client.status === 'paused' ? '#F0EDE8' : '#EAF3DE',
-            color: client.status === 'paused' ? '#888' : '#1A5C0A',
-            padding: '3px 10px', borderRadius: 999, fontFamily: 'DM Mono, monospace' }}>
+          <span style={{ fontSize: type.label,
+            background: client.status === 'paused' ? '#F0EDE8' : color.sage,
+            color: client.status === 'paused' ? color.textOnLight.secondary : '#1A5C0A',
+            padding: '3px 10px', borderRadius: 999, fontFamily: font.mono }}>
             {client.status === 'paused' ? 'Paused' : 'Active'}
           </span>
         )}
         {client.status === 'archived' && (
-          <span style={{ fontSize: 10, background: '#F0EDE8', color: '#CCC',
-            padding: '3px 10px', borderRadius: 999, fontFamily: 'DM Mono, monospace' }}>
+          <span style={{ fontSize: type.label, background: '#F0EDE8', color: color.textOnLight.faint,
+            padding: '3px 10px', borderRadius: 999, fontFamily: font.mono }}>
             Archived
           </span>
         )}
@@ -669,23 +670,23 @@ const TabClients = ({ clients, onInvite, onStatusChange }) => {
         <form onSubmit={handleInvite} style={{ display: 'flex', gap: 8 }}>
           <input type="email" required placeholder="client@email.com" value={email}
             onChange={e => setEmail(e.target.value)}
-            style={{ flex: 1, padding: '10px 12px', borderRadius: 8, border: '1px solid #E8E8E8',
-              fontFamily: 'DM Sans', fontSize: 14, outline: 'none', color: '#0D0D0D' }} />
+            style={{ flex: 1, padding: '10px 12px', borderRadius: 8, border: `1px solid ${color.borderLight}`,
+              fontFamily: font.sans, fontSize: type.body, outline: 'none', color: color.textOnLight.primary }} />
           <button type="submit" disabled={loading}
-            style={{ padding: '10px 18px', borderRadius: 8, border: 'none', background: '#0F6E56',
-              color: '#F5F2ED', fontFamily: 'DM Sans', fontWeight: 500, cursor: 'pointer', fontSize: 14 }}>
+            style={{ padding: '10px 18px', borderRadius: 8, border: 'none', background: color.forest,
+              color: color.textOnDark.primary, fontFamily: font.sans, fontWeight: 500, cursor: 'pointer', fontSize: type.body }}>
             {loading ? 'Generating...' : 'Send Invite'}
           </button>
         </form>
-        {inviteError && <p style={{ color: '#E24B4A', marginTop: 8, fontSize: 13 }}>{inviteError}</p>}
+        {inviteError && <p style={{ color: color.alert, marginTop: 8, fontSize: type.body }}>{inviteError}</p>}
         {link && (
-          <div style={{ marginTop: 12, padding: 12, background: '#EAF3DE', borderRadius: 8 }}>
-            <div style={{ fontSize: 12, color: '#555', marginBottom: 6 }}>Share this link with your client:</div>
+          <div style={{ marginTop: 12, padding: 12, background: color.sage, borderRadius: 8 }}>
+            <div style={{ fontSize: type.label, color: color.textOnLight.secondary, marginBottom: 6 }}>Share this link with your client:</div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <code style={{ fontSize: 12, wordBreak: 'break-all', flex: 1, color: '#0D0D0D' }}>{link}</code>
+              <code style={{ fontSize: type.label, wordBreak: 'break-all', flex: 1, color: color.textOnLight.primary }}>{link}</code>
               <button onClick={() => { navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 2000) }}
-                style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #0F6E56',
-                  background: 'transparent', color: '#0F6E56', fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                style={{ padding: '6px 12px', borderRadius: 6, border: `1px solid ${color.forest}`,
+                  background: 'transparent', color: color.forest, fontSize: type.label, cursor: 'pointer', whiteSpace: 'nowrap' }}>
                 {copied ? 'Copied!' : 'Copy'}
               </button>
             </div>
@@ -721,7 +722,7 @@ const TabClients = ({ clients, onInvite, onStatusChange }) => {
       )}
 
       {clients.length === 0 && (
-        <div style={{ ...S.card, textAlign: 'center', padding: '40px 20px', color: '#888', fontSize: 13 }}>
+        <div style={{ ...S.card, textAlign: 'center', padding: '40px 20px', color: color.textOnLight.secondary, fontSize: type.body }}>
           No clients yet. Invite one above to get started.
         </div>
       )}
@@ -743,9 +744,9 @@ const TabCheckIns = ({ checkins, onSelectCheckin }) => {
   const FilterBtn = ({ value, label, count }) => (
     <button onClick={() => setFilter(value)}
       style={{ padding: '6px 14px', borderRadius: 6, border: 'none', cursor: 'pointer',
-        fontFamily: 'DM Mono, monospace', fontSize: 10, letterSpacing: '0.06em',
-        background: filter === value ? '#0D0D0D' : 'transparent',
-        color: filter === value ? '#F5F2ED' : '#888' }}>
+        fontFamily: font.mono, fontSize: type.label, letterSpacing: '0.06em',
+        background: filter === value ? color.void : 'transparent',
+        color: filter === value ? color.textOnDark.primary : color.textOnLight.secondary }}>
       {label}{count > 0 ? ` · ${count}` : ''}
     </button>
   )
@@ -758,7 +759,7 @@ const TabCheckIns = ({ checkins, onSelectCheckin }) => {
         <FilterBtn value="reviewed" label="REVIEWED" count={checkins.filter(c => c.coach_feedback).length} />
       </div>
       {filtered.length === 0 ? (
-        <div style={{ ...S.card, textAlign: 'center', padding: '40px 20px', color: '#888', fontSize: 13 }}>
+        <div style={{ ...S.card, textAlign: 'center', padding: '40px 20px', color: color.textOnLight.secondary, fontSize: type.body }}>
           No check-ins in this view.
         </div>
       ) : (
@@ -771,24 +772,24 @@ const TabCheckIns = ({ checkins, onSelectCheckin }) => {
                 onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.08)'; e.currentTarget.style.opacity = '1' }}
                 onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.opacity = isPending ? '1' : '0.7' }}>
                 <div style={{ width: 40, height: 40, borderRadius: '50%',
-                  background: isPending ? '#FAEEDA' : '#EAF3DE',
+                  background: isPending ? '#FAEEDA' : color.sage,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 14, fontWeight: 500, color: isPending ? '#BA7517' : '#0F6E56', flexShrink: 0 }}>
+                  fontSize: 14, fontWeight: 500, color: isPending ? color.gold : color.forest, flexShrink: 0 }}>
                   {checkin.client_name.charAt(0).toUpperCase()}
                 </div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 14, fontWeight: 500, color: '#0D0D0D' }}>{checkin.client_name}</div>
-                  <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>
+                  <div style={{ fontSize: type.body, fontWeight: 500, color: color.textOnLight.primary }}>{checkin.client_name}</div>
+                  <div style={{ fontSize: type.label, color: color.textOnLight.secondary, marginTop: 2 }}>
                     Week {checkin.week_number} · {formatDate(checkin.submitted_at)}
                     {checkin.weight ? ' · ' + checkin.weight + ' lbs' : ''}
                   </div>
                 </div>
-                <span style={{ fontSize: 10, background: isPending ? '#FAEEDA' : '#EAF3DE',
+                <span style={{ fontSize: type.label, background: isPending ? '#FAEEDA' : color.sage,
                   color: isPending ? '#633806' : '#1A5C0A',
-                  padding: '3px 10px', borderRadius: 999, fontFamily: 'DM Mono, monospace', fontWeight: 500 }}>
+                  padding: '3px 10px', borderRadius: 999, fontFamily: font.mono, fontWeight: 500 }}>
                   {isPending ? 'Pending' : 'Done'}
                 </span>
-                <span style={{ color: '#CCC', fontSize: 18 }}>›</span>
+                <span style={{ color: color.textOnLight.faint, fontSize: 18 }}>›</span>
               </div>
             )
           })}
@@ -817,11 +818,11 @@ const TabOverview = ({ clients, checkins }) => {
     ).length / activeClients.length) * 100
   )
 
-  const StatCard = ({ label, value, sub, color = '#0D0D0D' }) => (
-    <div style={{ background: '#0D0D0D', borderRadius: 12, padding: '18px 20px' }}>
-      <div style={{ fontSize: 28, fontWeight: 300, color: color || '#F5F2ED', letterSpacing: '-0.02em' }}>{value}</div>
-      <div style={{ ...S.label, color: '#888', marginTop: 6 }}>{label}</div>
-      {sub && <div style={{ fontSize: 11, color: '#555', marginTop: 4 }}>{sub}</div>}
+  const StatCard = ({ label, value, sub, color: accentColor = color.textOnDark.primary }) => (
+    <div style={{ background: color.void, borderRadius: 12, padding: '18px 20px' }}>
+      <div style={{ fontSize: 28, fontWeight: 300, color: accentColor, letterSpacing: '-0.02em' }}>{value}</div>
+      <div style={{ ...S.label, color: color.textOnDark.label, marginTop: 6 }}>{label}</div>
+      {sub && <div style={{ fontSize: type.label, color: color.textOnDark.faint, marginTop: 4 }}>{sub}</div>}
     </div>
   )
 
@@ -832,9 +833,9 @@ const TabOverview = ({ clients, checkins }) => {
       <div>
         <div style={S.sectionTitle}>Business</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-          <StatCard label="Active clients" value={activeClients.length} color="#F5F2ED" />
-          <StatCard label="Paused" value={pausedClients.length} color={pausedClients.length > 0 ? '#BA7517' : '#AAA'} />
-          <StatCard label="Archived" value={archivedClients.length} color="#AAA" />
+          <StatCard label="Active clients" value={activeClients.length} color={color.textOnDark.primary} />
+          <StatCard label="Paused" value={pausedClients.length} color={pausedClients.length > 0 ? color.gold : color.textOnDark.secondary} />
+          <StatCard label="Archived" value={archivedClients.length} color={color.textOnDark.secondary} />
         </div>
       </div>
 
@@ -842,20 +843,20 @@ const TabOverview = ({ clients, checkins }) => {
       <div>
         <div style={S.sectionTitle}>Revenue</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-          <div style={{ background: '#0D0D0D', borderRadius: 12, padding: '18px 20px' }}>
-            <div style={{ fontSize: 28, fontWeight: 300, color: '#AAA', letterSpacing: '-0.02em' }}>—</div>
-            <div style={{ ...S.label, color: '#888', marginTop: 6 }}>MRR</div>
-            <div style={{ fontSize: 11, color: '#444', marginTop: 4 }}>Connect Stripe to unlock</div>
+          <div style={{ background: color.void, borderRadius: 12, padding: '18px 20px' }}>
+            <div style={{ fontSize: 28, fontWeight: 300, color: color.textOnDark.secondary, letterSpacing: '-0.02em' }}>—</div>
+            <div style={{ ...S.label, color: color.textOnDark.label, marginTop: 6 }}>MRR</div>
+            <div style={{ fontSize: type.label, color: color.textOnDark.faint, marginTop: 4 }}>Connect Stripe to unlock</div>
           </div>
-          <div style={{ background: '#0D0D0D', borderRadius: 12, padding: '18px 20px' }}>
-            <div style={{ fontSize: 28, fontWeight: 300, color: '#AAA', letterSpacing: '-0.02em' }}>—</div>
-            <div style={{ ...S.label, color: '#888', marginTop: 6 }}>Avg. per client</div>
-            <div style={{ fontSize: 11, color: '#444', marginTop: 4 }}>Connect Stripe to unlock</div>
+          <div style={{ background: color.void, borderRadius: 12, padding: '18px 20px' }}>
+            <div style={{ fontSize: 28, fontWeight: 300, color: color.textOnDark.secondary, letterSpacing: '-0.02em' }}>—</div>
+            <div style={{ ...S.label, color: color.textOnDark.label, marginTop: 6 }}>Avg. per client</div>
+            <div style={{ fontSize: type.label, color: color.textOnDark.faint, marginTop: 4 }}>Connect Stripe to unlock</div>
           </div>
-          <div style={{ background: '#0D0D0D', borderRadius: 12, padding: '18px 20px' }}>
-            <div style={{ fontSize: 28, fontWeight: 300, color: '#AAA', letterSpacing: '-0.02em' }}>—</div>
-            <div style={{ ...S.label, color: '#888', marginTop: 6 }}>Churn this month</div>
-            <div style={{ fontSize: 11, color: '#444', marginTop: 4 }}>Connect Stripe to unlock</div>
+          <div style={{ background: color.void, borderRadius: 12, padding: '18px 20px' }}>
+            <div style={{ fontSize: 28, fontWeight: 300, color: color.textOnDark.secondary, letterSpacing: '-0.02em' }}>—</div>
+            <div style={{ ...S.label, color: color.textOnDark.label, marginTop: 6 }}>Churn this month</div>
+            <div style={{ fontSize: type.label, color: color.textOnDark.faint, marginTop: 4 }}>Connect Stripe to unlock</div>
           </div>
         </div>
       </div>
@@ -865,10 +866,10 @@ const TabOverview = ({ clients, checkins }) => {
         <div style={S.sectionTitle}>Engagement</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
           <StatCard label="Weekly check-in rate" value={`${weeklyRate}%`}
-            color={weeklyRate >= 80 ? '#0F6E56' : weeklyRate >= 50 ? '#BA7517' : activeClients.length === 0 ? '#AAA' : '#E24B4A'} />
+            color={weeklyRate >= 80 ? color.forest : weeklyRate >= 50 ? color.gold : activeClients.length === 0 ? color.textOnDark.secondary : color.alert} />
           <StatCard label="Feedback response rate" value={`${responseRate}%`}
-            color={responseRate >= 80 ? '#0F6E56' : responseRate >= 50 ? '#BA7517' : totalCheckins === 0 ? '#AAA' : '#E24B4A'} />
-          <StatCard label="Total check-ins" value={totalCheckins} color="#F5F2ED" />
+            color={responseRate >= 80 ? color.forest : responseRate >= 50 ? color.gold : totalCheckins === 0 ? color.textOnDark.secondary : color.alert} />
+          <StatCard label="Total check-ins" value={totalCheckins} color={color.textOnDark.primary} />
         </div>
       </div>
 
@@ -877,21 +878,21 @@ const TabOverview = ({ clients, checkins }) => {
         <div style={S.sectionTitle}>Capacity</div>
         <div style={{ ...S.card }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <div style={{ fontSize: 14, fontWeight: 500, color: '#0D0D0D' }}>Client slots</div>
-            <span style={{ fontSize: 11, background: '#EAF3DE', color: '#1A5C0A',
-              padding: '3px 10px', borderRadius: 999, fontFamily: 'DM Mono, monospace' }}>
+            <div style={{ fontSize: type.body, fontWeight: 500, color: color.textOnLight.primary }}>Client slots</div>
+            <span style={{ fontSize: type.label, background: color.sage, color: '#1A5C0A',
+              padding: '3px 10px', borderRadius: 999, fontFamily: font.mono }}>
               Free plan · 3 max
             </span>
           </div>
           <div style={{ background: '#F0EDE8', borderRadius: 999, height: 6, overflow: 'hidden' }}>
-            <div style={{ height: '100%', borderRadius: 999, background: '#0F6E56',
+            <div style={{ height: '100%', borderRadius: 999, background: color.forest,
               width: `${Math.min((activeClients.length / 3) * 100, 100)}%`,
               transition: 'width 0.3s ease' }} />
           </div>
-          <div style={{ fontSize: 12, color: '#888', marginTop: 8 }}>
+          <div style={{ fontSize: type.label, color: color.textOnLight.secondary, marginTop: 8 }}>
             {activeClients.length} of 3 slots used
             {activeClients.length >= 3 && (
-              <span style={{ color: '#E24B4A', marginLeft: 8 }}>· Upgrade to add more clients</span>
+              <span style={{ color: color.alert, marginLeft: 8 }}>· Upgrade to add more clients</span>
             )}
           </div>
         </div>
@@ -906,8 +907,8 @@ const TabOverview = ({ clients, checkins }) => {
 const TabCalendar = () => (
   <div style={{ ...S.card, textAlign: 'center', padding: '60px 20px' }}>
     <div style={{ fontSize: 32, marginBottom: 12 }}>📅</div>
-    <div style={{ fontSize: 16, fontWeight: 500, color: '#0D0D0D', marginBottom: 6 }}>Calendar</div>
-    <div style={{ fontSize: 13, color: '#888' }}>Shared calendar with check-in dates, peak weeks, and show days. Coming soon.</div>
+    <div style={{ fontSize: type.bodyLg, fontWeight: 500, color: color.textOnLight.primary, marginBottom: 6 }}>Calendar</div>
+    <div style={{ fontSize: type.body, color: color.textOnLight.secondary }}>Shared calendar with check-in dates, peak weeks, and show days. Coming soon.</div>
   </div>
 )
 
@@ -916,8 +917,8 @@ const TabCalendar = () => (
 const TabMessages = () => (
   <div style={{ ...S.card, textAlign: 'center', padding: '60px 20px' }}>
     <div style={{ fontSize: 32, marginBottom: 12 }}>💬</div>
-    <div style={{ fontSize: 16, fontWeight: 500, color: '#0D0D0D', marginBottom: 6 }}>Messages</div>
-    <div style={{ fontSize: 13, color: '#888' }}>Direct messaging with clients. Coming soon.</div>
+    <div style={{ fontSize: type.bodyLg, fontWeight: 500, color: color.textOnLight.primary, marginBottom: 6 }}>Messages</div>
+    <div style={{ fontSize: type.body, color: color.textOnLight.secondary }}>Direct messaging with clients. Coming soon.</div>
   </div>
 )
 
@@ -977,10 +978,10 @@ export default function CoachDashboard() {
   const attentionCount = useMemo(() => buildAttentionQueue(clients, checkins).length, [clients, checkins])
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F5F2ED', fontFamily: 'DM Sans, sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: color.bone, fontFamily: font.sans }}>
 
       {/* Top nav */}
-      <div style={{ background: '#0D0D0D', position: 'sticky', top: 0, zIndex: 100 }}>
+      <div style={{ background: color.void, position: 'sticky', top: 0, zIndex: 100 }}>
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 32px',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 56 }}>
 
@@ -988,8 +989,8 @@ export default function CoachDashboard() {
           <div onClick={() => setActiveTab('dashboard')}
             style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
             <Mark size={20} />
-            <span style={{ fontSize: 18, fontWeight: 300, letterSpacing: '-0.03em', color: '#F5F2ED' }}>
-              purema<span style={{ color: '#0F6E56' }}>.</span>
+            <span style={{ fontSize: 18, fontWeight: 300, letterSpacing: '-0.03em', color: color.textOnDark.primary }}>
+              purema<span style={{ color: color.forest }}>.</span>
             </span>
           </div>
 
@@ -1004,15 +1005,15 @@ export default function CoachDashboard() {
             {attentionCount > 0 && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
                 onClick={() => setActiveTab('dashboard')}>
-                <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#E24B4A' }} />
-                <span style={{ fontSize: 11, color: '#E24B4A', fontFamily: 'DM Mono, monospace', whiteSpace: 'nowrap' }}>
+                <div style={{ width: 7, height: 7, borderRadius: '50%', background: color.alert }} />
+                <span style={{ fontSize: type.label, color: color.alert, fontFamily: font.mono, whiteSpace: 'nowrap' }}>
                   {attentionCount} need{attentionCount === 1 ? 's' : ''} attention
                 </span>
               </div>
             )}
             <button onClick={() => supabase.auth.signOut()}
-              style={{ fontSize: 11, color: '#AAA', fontFamily: 'DM Mono, monospace', letterSpacing: '0.1em',
-                background: 'transparent', border: '1px solid #333', cursor: 'pointer',
+              style={{ fontSize: type.label, color: color.textOnDark.secondary, fontFamily: font.mono, letterSpacing: '0.1em',
+                background: 'transparent', border: `1px solid ${color.borderDark}`, cursor: 'pointer',
                 padding: '5px 12px', borderRadius: 6, whiteSpace: 'nowrap' }}>
               SIGN OUT
             </button>
@@ -1024,16 +1025,16 @@ export default function CoachDashboard() {
           {TABS.map(tab => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
               style={{ padding: '10px 18px', border: 'none', background: 'transparent', cursor: 'pointer',
-                fontFamily: 'DM Sans, sans-serif', fontSize: 13,
+                fontFamily: font.sans, fontSize: type.body,
                 fontWeight: activeTab === tab.id ? 500 : 400,
-                color: activeTab === tab.id ? '#F5F2ED' : '#AAA',
-                borderBottom: activeTab === tab.id ? '2px solid #0F6E56' : '2px solid transparent',
+                color: activeTab === tab.id ? color.textOnDark.primary : color.textOnDark.secondary,
+                borderBottom: activeTab === tab.id ? `2px solid ${color.forest}` : '2px solid transparent',
                 transition: 'color 0.15s ease, border-bottom 0.15s ease' }}>
               {tab.label}
               {tab.id === 'checkins' && pendingCount > 0 && (
-                <span style={{ marginLeft: 6, background: '#BA7517', color: '#fff',
-                  fontSize: 10, borderRadius: 999, padding: '1px 6px',
-                  fontFamily: 'DM Mono, monospace', verticalAlign: 'middle' }}>
+                <span style={{ marginLeft: 6, background: color.gold, color: '#fff',
+                  fontSize: type.label, borderRadius: 999, padding: '1px 6px',
+                  fontFamily: font.mono, verticalAlign: 'middle' }}>
                   {pendingCount}
                 </span>
               )}
@@ -1045,8 +1046,8 @@ export default function CoachDashboard() {
       {/* Page content */}
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 32px 80px' }}>
         {loading ? (
-          <div style={{ textAlign: 'center', padding: 80, color: '#888',
-            fontSize: 12, fontFamily: 'DM Mono, monospace', letterSpacing: '0.1em' }}>LOADING...</div>
+          <div style={{ textAlign: 'center', padding: 80, color: color.textOnLight.secondary,
+            fontSize: type.label, fontFamily: font.mono, letterSpacing: '0.1em' }}>LOADING...</div>
         ) : (
           <>
             {activeTab === 'dashboard' && <TabDashboard checkins={checkins} clients={clients} onSelectCheckin={setSelected} />}
