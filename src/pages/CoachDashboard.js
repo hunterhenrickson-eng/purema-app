@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { color, font, type, labelStyle } from '../lib/theme'
 import '../styles/purema-responsive.css'
+import InviteClient from '../components/InviteClient'
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
@@ -570,25 +571,7 @@ const TabDashboard = ({ checkins, clients, onSelectCheckin }) => {
 
 // ─── Tab: Clients ─────────────────────────────────────────────────────────────
 
-const TabClients = ({ clients, onInvite, onStatusChange }) => {
-  const [email, setEmail] = useState('')
-  const [link, setLink] = useState(null)
-  const [inviteError, setInviteError] = useState(null)
-  const [loading, setLoading] = useState(false)
-  const [copied, setCopied] = useState(false)
-
-  const handleInvite = async (e) => {
-    e.preventDefault()
-    setInviteError(null); setLink(null); setLoading(true)
-    const { data: { user } } = await supabase.auth.getUser()
-    const { data, error } = await supabase.from('invites').insert({ coach_id: user.id, email }).select('token').single()
-    setLoading(false)
-    if (error) { setInviteError(error.message); return }
-    setLink(`${window.location.origin}/invite/${data.token}`)
-    setEmail('')
-    if (onInvite) onInvite()
-  }
-
+const TabClients = ({ clients, onStatusChange }) => {
   const activeClients = clients.filter(c => !c.status || c.status === 'active')
   const pausedClients = clients.filter(c => c.status === 'paused')
   const archivedClients = clients.filter(c => c.status === 'archived')
@@ -654,32 +637,7 @@ const TabClients = ({ clients, onInvite, onStatusChange }) => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <div style={S.card}>
-        <div style={{ ...S.label, marginBottom: 14 }}>Invite a client</div>
-        <form onSubmit={handleInvite} style={{ display: 'flex', gap: 8 }}>
-          <input type="email" required placeholder="client@email.com" value={email}
-            onChange={e => setEmail(e.target.value)}
-            style={{ flex: 1, padding: '10px 12px', borderRadius: 8, border: `1px solid ${color.borderLight}`,
-              fontFamily: font.sans, fontSize: type.body, outline: 'none', color: color.textOnLight.primary }} />
-          <button type="submit" disabled={loading}
-            style={{ padding: '10px 18px', borderRadius: 8, border: 'none', background: color.forest,
-              color: color.textOnDark.primary, fontFamily: font.sans, fontWeight: 500, cursor: 'pointer', fontSize: type.body }}>
-            {loading ? 'Generating...' : 'Send Invite'}
-          </button>
-        </form>
-        {inviteError && <p style={{ color: color.alert, marginTop: 8, fontSize: type.body }}>{inviteError}</p>}
-        {link && (
-          <div style={{ marginTop: 12, padding: 12, background: color.sage, borderRadius: 8 }}>
-            <div style={{ fontSize: type.label, color: color.textOnLight.secondary, marginBottom: 6 }}>Share this link with your client:</div>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <code style={{ fontSize: type.label, wordBreak: 'break-all', flex: 1, color: color.textOnLight.primary }}>{link}</code>
-              <button onClick={() => { navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 2000) }}
-                style={{ padding: '6px 12px', borderRadius: 6, border: `1px solid ${color.forest}`,
-                  background: 'transparent', color: color.forest, fontSize: type.label, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                {copied ? 'Copied!' : 'Copy'}
-              </button>
-            </div>
-          </div>
-        )}
+        <InviteClient />
       </div>
 
       {activeClients.length > 0 && (
@@ -929,11 +887,9 @@ export default function CoachDashboard() {
   const [clients, setClients] = useState([])
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState(null)
-  const [coachId, setCoachId] = useState(null)
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
-      setCoachId(user.id)
       fetchAll(user.id)
     })
   }, [])
@@ -1077,7 +1033,7 @@ export default function CoachDashboard() {
           ) : (
             <>
               {activeTab === 'dashboard' && <TabDashboard checkins={checkins} clients={clients} onSelectCheckin={setSelected} />}
-              {activeTab === 'clients' && <TabClients clients={clients} onInvite={() => fetchAll(coachId)} onStatusChange={handleStatusChange} />}
+              {activeTab === 'clients' && <TabClients clients={clients} onStatusChange={handleStatusChange} />}
               {activeTab === 'checkins' && <TabCheckIns checkins={checkins} onSelectCheckin={setSelected} />}
               {activeTab === 'calendar' && <TabCalendar />}
               {activeTab === 'messages' && <TabMessages />}

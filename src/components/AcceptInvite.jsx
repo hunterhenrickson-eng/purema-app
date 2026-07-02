@@ -46,13 +46,16 @@ export default function AcceptInvite({ token }) {
     }
 
     const newUserId = signUpData.user.id;
+    const role = invite.role === 'coach' ? 'coach' : 'client';
 
     const { error: profileError } = await supabase.from('profiles').insert({
       id: newUserId,
-      role: 'client',
+      role,
       full_name: fullName,
       email: invite.email,
-      coach_id: invite.coach_id,
+      // coach_id links a client to the coach who invited them — a new coach
+      // isn't anyone's client, so this stays null for coach invites.
+      coach_id: role === 'client' ? invite.coach_id : null,
     });
 
     if (profileError) {
@@ -76,7 +79,7 @@ export default function AcceptInvite({ token }) {
     <div style={{ maxWidth: 400, margin: '60px auto', fontFamily: font.sans }}>
       <h2 style={{ fontWeight: 500 }}>Welcome to Purema</h2>
       <p style={{ marginBottom: 24, color: color.textOnLight.secondary }}>
-        You've been invited to join as a client. Set a password to finish
+        You've been invited to join as a {invite.role === 'coach' ? 'coach' : 'client'}. Set a password to finish
         creating your account for <strong>{invite.email}</strong>.
       </p>
 
