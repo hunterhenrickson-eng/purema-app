@@ -1,0 +1,74 @@
+/* Purema responsive layout rules.
+   Import this once in any screen that needs desktop/mobile behavior.
+   Approach: build the desktop-correct layout as the base, add a
+   max-width breakpoint (900px) to fall back to the mobile shell —
+   this matches "default to desktop-correct, degrade for mobile"
+   rather than the other way around. */
+
+/* ---- Auth / ResetPassword card ---- */
+.purema-card {
+  width: 100%;
+  max-width: 460px; /* desktop default — roomier than the old fixed 420px */
+}
+
+/* ---- ClientHome app shell ---- */
+/* Desktop default: fixed left nav + generous content column, no bottom tab bar */
+.purema-shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 232px minmax(0, 1fr);
+}
+
+.purema-nav-desktop {
+  display: flex;
+}
+
+.purema-tabbar-mobile {
+  display: none;
+}
+
+/* Mobile-only top bar (logo + sign out) — desktop uses the sidebar instead,
+   so this stays hidden by default and only appears at the mobile breakpoint. */
+.purema-header-mobile {
+  display: none;
+}
+
+.purema-content {
+  max-width: 720px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.purema-content-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+/* Mobile fallback: single column, bottom tab bar, no side nav */
+@media (max-width: 899px) {
+  .purema-shell {
+    display: block;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+  .purema-nav-desktop {
+    display: none;
+  }
+  .purema-tabbar-mobile {
+    display: flex;
+  }
+  .purema-header-mobile {
+    display: flex;
+  }
+  .purema-content {
+    max-width: none;
+  }
+  .purema-content-grid {
+    display: block;
+  }
+  .purema-content-grid > * + * {
+    margin-top: 16px;
+  }
+}

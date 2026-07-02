@@ -2,14 +2,16 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import CheckInForm from './CheckInForm'
 import ClientSettings from './ClientSettings'
+import { color, font, type, labelStyle } from '../lib/theme'
+import '../styles/purema-responsive.css'
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
 const Mark = ({ size = 24 }) => (
   <svg width={size} height={size * 0.9} viewBox="0 0 52 48">
-    <polyline points="6,10 18,24 6,38" fill="none" stroke="#0F6E56" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    <polyline points="19,10 31,24 19,38" fill="none" stroke="#0F6E56" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
-    <polyline points="32,10 46,24 32,38" fill="none" stroke="#0F6E56" strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <polyline points="6,10 18,24 6,38" fill="none" stroke={color.forest} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <polyline points="19,10 31,24 19,38" fill="none" stroke={color.forest} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <polyline points="32,10 46,24 32,38" fill="none" stroke={color.forest} strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 )
 
@@ -46,18 +48,14 @@ function daysAgo(ts) {
 
 const S = {
   card: {
-    background: '#fff',
+    background: color.surfaceLight,
     borderRadius: 14,
-    border: '0.5px solid #E8E8E8',
+    border: `0.5px solid ${color.borderLight}`,
     padding: 20,
   },
   label: {
-    fontSize: 10,
-    fontWeight: 500,
-    color: '#888',
+    ...labelStyle(false),
     letterSpacing: '0.1em',
-    textTransform: 'uppercase',
-    fontFamily: 'DM Mono, monospace',
   },
 }
 
@@ -66,9 +64,9 @@ const S = {
 const StatPill = ({ label, value, unit }) => {
   if (!value) return null
   return (
-    <div style={{ background: '#F5F2ED', borderRadius: 10, padding: '12px 16px', flex: 1, minWidth: 0 }}>
-      <div style={{ fontSize: 20, fontWeight: 500, color: '#0D0D0D', letterSpacing: '-0.01em' }}>
-        {value}<span style={{ fontSize: 12, color: '#888', marginLeft: 3 }}>{unit}</span>
+    <div style={{ background: color.bone, borderRadius: 10, padding: '12px 16px', flex: 1, minWidth: 0 }}>
+      <div style={{ fontSize: 20, fontWeight: 500, color: color.textOnLight.primary, letterSpacing: '-0.01em' }}>
+        {value}<span style={{ fontSize: type.label, color: color.textOnLight.faint, marginLeft: 3 }}>{unit}</span>
       </div>
       <div style={{ ...S.label, marginTop: 4 }}>{label}</div>
     </div>
@@ -76,17 +74,23 @@ const StatPill = ({ label, value, unit }) => {
 }
 
 // ─── Macro bar ────────────────────────────────────────────────────────────────
+// `target` is the client's coach-set goal for this metric (e.g. a daily calorie
+// target). Without one there's nothing to measure compliance against, so the
+// bar renders empty/neutral rather than always claiming 100% — a full green
+// bar with no target behind it would misleadingly read as "goal met".
 
-const MacroBar = ({ label, value, unit, color }) => {
+const MacroBar = ({ label, value, unit, color: barColor, target }) => {
   if (!value) return null
+  const hasTarget = typeof target === 'number' && target > 0
+  const pct = hasTarget ? Math.max(0, Math.min(100, (value / target) * 100)) : 0
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-      <div style={{ width: 52, fontSize: 11, color: '#888', fontFamily: 'DM Mono, monospace',
+      <div style={{ width: 52, fontSize: type.label, color: color.textOnLight.label, fontFamily: font.mono,
         letterSpacing: '0.04em', flexShrink: 0 }}>{label}</div>
       <div style={{ flex: 1, height: 6, background: '#F0EDE8', borderRadius: 999, overflow: 'hidden' }}>
-        <div style={{ height: '100%', width: '100%', background: color, borderRadius: 999, opacity: 0.85 }} />
+        <div style={{ height: '100%', width: `${pct}%`, background: barColor, borderRadius: 999, opacity: 0.85 }} />
       </div>
-      <div style={{ fontSize: 13, fontWeight: 500, color: '#0D0D0D', minWidth: 52, textAlign: 'right' }}>
+      <div style={{ fontSize: type.body, fontWeight: 500, color: color.textOnLight.primary, minWidth: 52, textAlign: 'right' }}>
         {value}{unit}
       </div>
     </div>
@@ -107,10 +111,10 @@ const TabHome = ({ profile, checkins, onGoToCheckin }) => {
       {/* Greeting + CTA row */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
         <div>
-          <div style={{ fontSize: 28, fontWeight: 300, color: '#0D0D0D', letterSpacing: '-0.02em' }}>
+          <div style={{ fontSize: type.display, fontWeight: 300, color: color.textOnLight.primary, letterSpacing: '-0.02em' }}>
             {greeting(profile?.full_name)}
           </div>
-          <div style={{ fontSize: 14, color: '#888', marginTop: 4 }}>
+          <div style={{ fontSize: type.body, color: color.textOnLight.secondary, marginTop: 4 }}>
             {latest
               ? `Last check-in was ${daysAgo(latest.submitted_at)}`
               : 'Welcome — submit your first check-in to get started.'}
@@ -119,21 +123,21 @@ const TabHome = ({ profile, checkins, onGoToCheckin }) => {
 
         {!hasCheckedInThisWeek ? (
           <button onClick={onGoToCheckin}
-            style={{ height: 44, padding: '0 24px', background: '#0F6E56', border: 'none',
-              borderRadius: 10, color: '#EAF3DE', fontSize: 14, fontWeight: 500,
-              cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', whiteSpace: 'nowrap',
+            style={{ height: 44, padding: '0 24px', background: color.forest, border: 'none',
+              borderRadius: 10, color: color.sage, fontSize: type.body, fontWeight: 500,
+              cursor: 'pointer', fontFamily: font.sans, whiteSpace: 'nowrap',
               display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
             Submit Week {nextWeek} Check-in <span>→</span>
           </button>
         ) : (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#EAF3DE',
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: color.sage,
             padding: '10px 16px', borderRadius: 10 }}>
             <span style={{ fontSize: 16 }}>✓</span>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 500, color: '#0D3D1F' }}>
+              <div style={{ fontSize: type.body, fontWeight: 500, color: '#0D3D1F' }}>
                 Week {latest.week_number} submitted
               </div>
-              <div style={{ fontSize: 11, color: '#3A7A4A' }}>Waiting for feedback</div>
+              <div style={{ fontSize: type.label, color: '#3A7A4A' }}>Waiting for feedback</div>
             </div>
           </div>
         )}
@@ -156,10 +160,10 @@ const TabHome = ({ profile, checkins, onGoToCheckin }) => {
             {(latest.calories || latest.protein || latest.carbs || latest.fats) && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <div style={{ ...S.label, marginBottom: 2 }}>Nutrition this week</div>
-                <MacroBar label="KCAL" value={latest.calories} unit="" color="#0F6E56" />
-                <MacroBar label="PRO" value={latest.protein} unit="g" color="#0F6E56" />
-                <MacroBar label="CARB" value={latest.carbs} unit="g" color="#BA7517" />
-                <MacroBar label="FAT" value={latest.fats} unit="g" color="#888" />
+                <MacroBar label="KCAL" value={latest.calories} unit="" color={color.forest} target={latest.target_calories} />
+                <MacroBar label="PRO" value={latest.protein} unit="g" color={color.forest} target={latest.target_protein} />
+                <MacroBar label="CARB" value={latest.carbs} unit="g" color={color.gold} target={latest.target_carbs} />
+                <MacroBar label="FAT" value={latest.fats} unit="g" color={color.textOnLight.faint} target={latest.target_fats} />
               </div>
             )}
           </div>
@@ -167,23 +171,23 @@ const TabHome = ({ profile, checkins, onGoToCheckin }) => {
 
         {/* Coach feedback */}
         {latest?.coach_feedback ? (
-          <div style={{ ...S.card, background: '#0D0D0D', border: 'none' }}>
-            <div style={{ ...S.label, color: '#0F6E56', marginBottom: 12 }}>
+          <div style={{ ...S.card, background: color.void, border: 'none' }}>
+            <div style={{ ...labelStyle(true), color: color.forest, marginBottom: 12 }}>
               Coach feedback — Week {latest.week_number}
             </div>
-            <div style={{ fontSize: 14, color: '#F5F2ED', lineHeight: 1.8 }}>
+            <div style={{ fontSize: type.body, color: color.textOnDark.primary, lineHeight: 1.8 }}>
               {latest.coach_feedback}
             </div>
           </div>
         ) : latest && (
-          <div style={{ ...S.card, background: '#1A1A1A', border: 'none',
+          <div style={{ ...S.card, background: color.surfaceDarkRaised, border: 'none',
             display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#BA7517', flexShrink: 0 }} />
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: color.gold, flexShrink: 0 }} />
             <div>
-              <div style={{ fontSize: 14, fontWeight: 500, color: '#F5F2ED' }}>
+              <div style={{ fontSize: type.body, fontWeight: 500, color: color.textOnDark.primary }}>
                 Feedback pending
               </div>
-              <div style={{ fontSize: 12, color: '#666', marginTop: 2 }}>
+              <div style={{ fontSize: type.label, color: color.textOnDark.secondary, marginTop: 2 }}>
                 Your coach hasn't reviewed Week {latest.week_number} yet.
               </div>
             </div>
@@ -200,18 +204,18 @@ const TabHome = ({ profile, checkins, onGoToCheckin }) => {
               <div key={c.id} style={{ ...S.card, display: 'flex', alignItems: 'center',
                 justifyContent: 'space-between', padding: '14px 16px' }}>
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 500, color: '#0D0D0D' }}>
+                  <div style={{ fontSize: type.body, fontWeight: 500, color: color.textOnLight.primary }}>
                     Week {c.week_number}
                   </div>
-                  <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>
+                  <div style={{ fontSize: type.label, color: color.textOnLight.faint, marginTop: 2 }}>
                     {formatDate(c.submitted_at)}{c.weight ? ` · ${c.weight} lbs` : ''}
                   </div>
                 </div>
-                <span style={{ fontSize: 10,
-                  background: c.coach_feedback ? '#EAF3DE' : '#F0EDE8',
-                  color: c.coach_feedback ? '#1A5C0A' : '#888',
+                <span style={{ fontSize: type.label,
+                  background: c.coach_feedback ? color.sage : '#F0EDE8',
+                  color: c.coach_feedback ? '#1A5C0A' : color.textOnLight.faint,
                   padding: '3px 10px', borderRadius: 999,
-                  fontFamily: 'DM Mono, monospace', fontWeight: 500 }}>
+                  fontFamily: font.mono, fontWeight: 500 }}>
                   {c.coach_feedback ? 'Reviewed' : 'Pending'}
                 </span>
               </div>
@@ -224,16 +228,16 @@ const TabHome = ({ profile, checkins, onGoToCheckin }) => {
       {checkins.length === 0 && (
         <div style={{ ...S.card, textAlign: 'center', padding: '60px 20px' }}>
           <div style={{ fontSize: 36, marginBottom: 12 }}>📋</div>
-          <div style={{ fontSize: 16, fontWeight: 500, color: '#0D0D0D', marginBottom: 6 }}>
+          <div style={{ fontSize: type.bodyLg, fontWeight: 500, color: color.textOnLight.primary, marginBottom: 6 }}>
             No check-ins yet
           </div>
-          <div style={{ fontSize: 13, color: '#888', marginBottom: 24 }}>
+          <div style={{ fontSize: type.body, color: color.textOnLight.secondary, marginBottom: 24 }}>
             Submit your first check-in to get started.
           </div>
           <button onClick={onGoToCheckin}
-            style={{ height: 44, padding: '0 24px', background: '#0F6E56', border: 'none',
-              borderRadius: 10, color: '#EAF3DE', fontSize: 14, fontWeight: 500,
-              cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
+            style={{ height: 44, padding: '0 24px', background: color.forest, border: 'none',
+              borderRadius: 10, color: color.sage, fontSize: type.body, fontWeight: 500,
+              cursor: 'pointer', fontFamily: font.sans }}>
             Submit Week 1 Check-in
           </button>
         </div>
@@ -296,11 +300,11 @@ const TabProgress = ({ profile, checkins }) => {
     .sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at))
 
   // ── Mini line chart helper ────────────────────────────────────────────────
-  const MiniChart = ({ data, valueKey, label, unit, color = '#0F6E56' }) => {
+  const MiniChart = ({ data, valueKey, label, unit, color: lineColor = color.forest }) => {
     const pts = data.filter(c => c[valueKey])
     if (pts.length < 2) return (
       <div style={{ ...S.card, textAlign: 'center', padding: '32px 20px' }}>
-        <div style={{ fontSize: 13, color: '#888' }}>
+        <div style={{ fontSize: type.body, color: color.textOnLight.secondary }}>
           Not enough {label.toLowerCase()} data yet. Keep checking in.
         </div>
       </div>
@@ -323,24 +327,24 @@ const TabProgress = ({ profile, checkins }) => {
 
     const change = vals[vals.length - 1] - vals[0]
     const changeColor = label === 'Weight'
-      ? (change < 0 ? '#0F6E56' : change > 0 ? '#E24B4A' : '#888')
-      : '#0F6E56'
+      ? (change < 0 ? color.forest : change > 0 ? color.alert : color.textOnLight.secondary)
+      : color.forest
 
     return (
       <div style={S.card}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
           <div>
             <div style={{ ...S.label, marginBottom: 4 }}>{label}</div>
-            <div style={{ fontSize: 24, fontWeight: 300, color: '#0D0D0D', letterSpacing: '-0.02em' }}>
-              {vals[vals.length - 1]}<span style={{ fontSize: 13, color: '#888', marginLeft: 3 }}>{unit}</span>
+            <div style={{ fontSize: 24, fontWeight: 300, color: color.textOnLight.primary, letterSpacing: '-0.02em' }}>
+              {vals[vals.length - 1]}<span style={{ fontSize: type.body, color: color.textOnLight.secondary, marginLeft: 3 }}>{unit}</span>
             </div>
           </div>
           <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 12, color: '#888', marginBottom: 2 }}>
+            <div style={{ fontSize: type.label, color: color.textOnLight.secondary, marginBottom: 2 }}>
               {pts.length} check-ins
             </div>
             {change !== 0 && (
-              <div style={{ fontSize: 13, fontWeight: 500, color: changeColor }}>
+              <div style={{ fontSize: type.body, fontWeight: 500, color: changeColor }}>
                 {change > 0 ? '+' : ''}{change.toFixed(1)} {unit}
               </div>
             )}
@@ -349,18 +353,18 @@ const TabProgress = ({ profile, checkins }) => {
         <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', overflow: 'visible' }}>
           <defs>
             <linearGradient id={`grad-${valueKey}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={color} stopOpacity="0.15" />
-              <stop offset="100%" stopColor={color} stopOpacity="0" />
+              <stop offset="0%" stopColor={lineColor} stopOpacity="0.15" />
+              <stop offset="100%" stopColor={lineColor} stopOpacity="0" />
             </linearGradient>
           </defs>
           <path d={areaD} fill={`url(#grad-${valueKey})`} />
-          <path d={pathD} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <path d={pathD} fill="none" stroke={lineColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           {points.map((p, i) => (
             <g key={i}>
-              <circle cx={p.x} cy={p.y} r="4" fill={color} />
+              <circle cx={p.x} cy={p.y} r="4" fill={lineColor} />
               {i === points.length - 1 && (
                 <text x={p.x} y={p.y - 10} textAnchor="middle"
-                  style={{ fontSize: 10, fill: color, fontFamily: 'DM Mono, monospace' }}>
+                  style={{ fontSize: type.label, fill: lineColor, fontFamily: font.mono }}>
                   {p.value}{unit}
                 </text>
               )}
@@ -368,10 +372,10 @@ const TabProgress = ({ profile, checkins }) => {
           ))}
         </svg>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
-          <span style={{ fontSize: 10, color: '#AAA', fontFamily: 'DM Mono, monospace' }}>
+          <span style={{ fontSize: type.label, color: color.textOnLight.faint, fontFamily: font.mono }}>
             WK {pts[0].week_number}
           </span>
-          <span style={{ fontSize: 10, color: '#AAA', fontFamily: 'DM Mono, monospace' }}>
+          <span style={{ fontSize: type.label, color: color.textOnLight.faint, fontFamily: font.mono }}>
             WK {pts[pts.length - 1].week_number}
           </span>
         </div>
@@ -394,9 +398,9 @@ const TabProgress = ({ profile, checkins }) => {
         {sections.map(s => (
           <button key={s.id} onClick={() => setActiveSection(s.id)}
             style={{ padding: '6px 16px', borderRadius: 6, border: 'none', cursor: 'pointer',
-              fontFamily: 'DM Sans', fontSize: 13, fontWeight: activeSection === s.id ? 500 : 400,
-              background: activeSection === s.id ? '#0D0D0D' : 'transparent',
-              color: activeSection === s.id ? '#F5F2ED' : '#888',
+              fontFamily: font.sans, fontSize: type.body, fontWeight: activeSection === s.id ? 500 : 400,
+              background: activeSection === s.id ? color.void : 'transparent',
+              color: activeSection === s.id ? color.textOnDark.primary : color.textOnLight.secondary,
               transition: 'all 0.15s ease' }}>
             {s.label}
           </button>
@@ -409,15 +413,15 @@ const TabProgress = ({ profile, checkins }) => {
 
           {/* Countdown */}
           {daysOut !== null && daysOut > 0 && (
-            <div style={{ background: '#0D0D0D', borderRadius: 14, padding: 24,
+            <div style={{ background: color.void, borderRadius: 14, padding: 24,
               display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
-                <div style={{ ...S.label, color: '#0F6E56', marginBottom: 6 }}>Show day countdown</div>
-                <div style={{ fontSize: 42, fontWeight: 300, color: '#F5F2ED', letterSpacing: '-0.03em', lineHeight: 1 }}>
+                <div style={{ ...S.label, color: color.forest, marginBottom: 6 }}>Show day countdown</div>
+                <div style={{ fontSize: 42, fontWeight: 300, color: color.textOnDark.primary, letterSpacing: '-0.03em', lineHeight: 1 }}>
                   {daysOut}
-                  <span style={{ fontSize: 16, color: '#555', marginLeft: 8, fontWeight: 400 }}>days out</span>
+                  <span style={{ fontSize: 16, color: color.textOnDark.faint, marginLeft: 8, fontWeight: 400 }}>days out</span>
                 </div>
-                <div style={{ fontSize: 12, color: '#555', marginTop: 6 }}>
+                <div style={{ fontSize: type.label, color: color.textOnDark.faint, marginTop: 6 }}>
                   {new Date(profile.show_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
                 </div>
               </div>
@@ -428,41 +432,41 @@ const TabProgress = ({ profile, checkins }) => {
           {/* Stats row */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
             {/* Streak */}
-            <div style={{ background: '#0D0D0D', borderRadius: 12, padding: '16px 20px' }}>
-              <div style={{ fontSize: 28, fontWeight: 300, color: streak >= 4 ? '#0F6E56' : '#F5F2ED',
+            <div style={{ background: color.void, borderRadius: 12, padding: '16px 20px' }}>
+              <div style={{ fontSize: 28, fontWeight: 300, color: streak >= 4 ? color.forest : color.textOnDark.primary,
                 letterSpacing: '-0.02em' }}>{streak}</div>
-              <div style={{ ...S.label, color: '#888', marginTop: 4 }}>Week streak</div>
+              <div style={{ ...S.label, color: color.textOnDark.label, marginTop: 4 }}>Week streak</div>
               {streak >= 4 && (
-                <div style={{ fontSize: 10, color: '#0F6E56', marginTop: 4 }}>🔥 On a roll</div>
+                <div style={{ fontSize: type.label, color: color.forest, marginTop: 4 }}>🔥 On a roll</div>
               )}
             </div>
 
             {/* Total check-ins */}
-            <div style={{ background: '#0D0D0D', borderRadius: 12, padding: '16px 20px' }}>
-              <div style={{ fontSize: 28, fontWeight: 300, color: '#F5F2ED', letterSpacing: '-0.02em' }}>
+            <div style={{ background: color.void, borderRadius: 12, padding: '16px 20px' }}>
+              <div style={{ fontSize: 28, fontWeight: 300, color: color.textOnDark.primary, letterSpacing: '-0.02em' }}>
                 {checkins.length}
               </div>
-              <div style={{ ...S.label, color: '#888', marginTop: 4 }}>Check-ins total</div>
+              <div style={{ ...S.label, color: color.textOnDark.label, marginTop: 4 }}>Check-ins total</div>
             </div>
 
             {/* Weight change */}
             {weightChange !== null && (
-              <div style={{ background: '#0D0D0D', borderRadius: 12, padding: '16px 20px' }}>
+              <div style={{ background: color.void, borderRadius: 12, padding: '16px 20px' }}>
                 <div style={{ fontSize: 28, fontWeight: 300, letterSpacing: '-0.02em',
-                  color: parseFloat(weightChange) < 0 ? '#0F6E56' : parseFloat(weightChange) > 0 ? '#E24B4A' : '#AAA' }}>
+                  color: parseFloat(weightChange) < 0 ? color.forest : parseFloat(weightChange) > 0 ? color.alert : color.textOnDark.secondary }}>
                   {parseFloat(weightChange) > 0 ? '+' : ''}{weightChange}
                   <span style={{ fontSize: 13, marginLeft: 3 }}>lbs</span>
                 </div>
-                <div style={{ ...S.label, color: '#888', marginTop: 4 }}>Total change</div>
+                <div style={{ ...S.label, color: color.textOnDark.label, marginTop: 4 }}>Total change</div>
               </div>
             )}
 
             {/* Feedback received */}
-            <div style={{ background: '#0D0D0D', borderRadius: 12, padding: '16px 20px' }}>
-              <div style={{ fontSize: 28, fontWeight: 300, color: '#F5F2ED', letterSpacing: '-0.02em' }}>
+            <div style={{ background: color.void, borderRadius: 12, padding: '16px 20px' }}>
+              <div style={{ fontSize: 28, fontWeight: 300, color: color.textOnDark.primary, letterSpacing: '-0.02em' }}>
                 {feedbackHistory.length}
               </div>
-              <div style={{ ...S.label, color: '#888', marginTop: 4 }}>Feedback received</div>
+              <div style={{ ...S.label, color: color.textOnDark.label, marginTop: 4 }}>Feedback received</div>
             </div>
           </div>
 
@@ -477,10 +481,10 @@ const TabProgress = ({ profile, checkins }) => {
           {checkins.length === 0 && (
             <div style={{ ...S.card, textAlign: 'center', padding: '60px 20px' }}>
               <div style={{ fontSize: 36, marginBottom: 12 }}>📈</div>
-              <div style={{ fontSize: 16, fontWeight: 500, color: '#0D0D0D', marginBottom: 6 }}>
+              <div style={{ fontSize: type.bodyLg, fontWeight: 500, color: color.textOnLight.primary, marginBottom: 6 }}>
                 No progress data yet
               </div>
-              <div style={{ fontSize: 13, color: '#888' }}>
+              <div style={{ fontSize: type.body, color: color.textOnLight.secondary }}>
                 Your charts will build up as you submit weekly check-ins.
               </div>
             </div>
@@ -491,9 +495,9 @@ const TabProgress = ({ profile, checkins }) => {
       {/* ── Weight ── */}
       {activeSection === 'weight' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <MiniChart data={sorted} valueKey="weight" label="Weight" unit="lbs" color="#0F6E56" />
+          <MiniChart data={sorted} valueKey="weight" label="Weight" unit="lbs" color={color.forest} />
           <MiniChart data={sorted} valueKey="sleep" label="Avg sleep" unit="hrs" color="#7C6AF5" />
-          <MiniChart data={sorted} valueKey="steps" label="Avg steps" unit="" color="#BA7517" />
+          <MiniChart data={sorted} valueKey="steps" label="Avg steps" unit="" color={color.gold} />
         </div>
       )}
 
@@ -512,22 +516,22 @@ const TabProgress = ({ profile, checkins }) => {
                     { key: 'arms', label: 'Arms' },
                     { key: 'thighs', label: 'Thighs' },
                   ].map(({ key, label }) => latestMeasure[key] ? (
-                    <div key={key} style={{ background: '#F5F2ED', borderRadius: 10, padding: '12px 14px' }}>
-                      <div style={{ fontSize: 20, fontWeight: 500, color: '#0D0D0D' }}>
-                        {latestMeasure[key]}<span style={{ fontSize: 11, color: '#888', marginLeft: 2 }}>in</span>
+                    <div key={key} style={{ background: color.bone, borderRadius: 10, padding: '12px 14px' }}>
+                      <div style={{ fontSize: 20, fontWeight: 500, color: color.textOnLight.primary }}>
+                        {latestMeasure[key]}<span style={{ fontSize: type.label, color: color.textOnLight.faint, marginLeft: 2 }}>in</span>
                       </div>
                       <div style={{ ...S.label, marginTop: 4 }}>{label}</div>
                     </div>
                   ) : null)}
                 </div>
-                <div style={{ fontSize: 11, color: '#AAA', marginTop: 12 }}>
+                <div style={{ fontSize: type.label, color: color.textOnLight.faint, marginTop: 12 }}>
                   Week {latestMeasure.week_number} · {new Date(latestMeasure.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                 </div>
               </div>
-              <MiniChart data={sorted} valueKey="waist" label="Waist" unit="in" color="#0F6E56" />
+              <MiniChart data={sorted} valueKey="waist" label="Waist" unit="in" color={color.forest} />
             </>
           ) : (
-            <div style={{ ...S.card, textAlign: 'center', padding: '40px 20px', color: '#888', fontSize: 13 }}>
+            <div style={{ ...S.card, textAlign: 'center', padding: '40px 20px', color: color.textOnLight.secondary, fontSize: type.body }}>
               No measurement data yet. Measurements are recorded every 4 weeks.
             </div>
           )}
@@ -538,20 +542,20 @@ const TabProgress = ({ profile, checkins }) => {
       {activeSection === 'feedback' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {feedbackHistory.length === 0 ? (
-            <div style={{ ...S.card, textAlign: 'center', padding: '40px 20px', color: '#888', fontSize: 13 }}>
+            <div style={{ ...S.card, textAlign: 'center', padding: '40px 20px', color: color.textOnLight.secondary, fontSize: type.body }}>
               No feedback yet. Your coach's responses will appear here.
             </div>
           ) : feedbackHistory.map(c => (
-            <div key={c.id} style={{ background: '#0D0D0D', borderRadius: 12, padding: 20 }}>
+            <div key={c.id} style={{ background: color.void, borderRadius: 12, padding: 20 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <span style={{ fontSize: 11, color: '#0F6E56', fontFamily: 'DM Mono, monospace', letterSpacing: '0.06em' }}>
+                <span style={{ fontSize: type.label, color: color.forest, fontFamily: font.mono, letterSpacing: '0.06em' }}>
                   WEEK {c.week_number}
                 </span>
-                <span style={{ fontSize: 11, color: '#555', fontFamily: 'DM Mono, monospace' }}>
+                <span style={{ fontSize: type.label, color: color.textOnDark.faint, fontFamily: font.mono }}>
                   {new Date(c.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                 </span>
               </div>
-              <div style={{ fontSize: 14, color: '#F5F2ED', lineHeight: 1.8 }}>
+              <div style={{ fontSize: type.body, color: color.textOnDark.primary, lineHeight: 1.8 }}>
                 {c.coach_feedback}
               </div>
             </div>
@@ -622,86 +626,126 @@ export default function ClientHome() {
   }
 
   if (loading) return (
-    <div style={{ minHeight: '100vh', background: '#0D0D0D', display: 'flex',
+    <div style={{ minHeight: '100vh', background: color.void, display: 'flex',
       alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 12,
-        color: '#0F6E56', letterSpacing: '0.1em' }}>LOADING...</div>
+      <div style={{ fontFamily: font.mono, fontSize: type.label,
+        color: color.forest, letterSpacing: '0.1em' }}>LOADING...</div>
     </div>
   )
 
-  return (
-    <div style={{ minHeight: '100vh', background: '#F5F2ED', fontFamily: 'DM Sans, sans-serif' }}>
+  // Nav items shown in both the desktop sidebar and the mobile bottom tab bar —
+  // generalized over TABS so adding/removing a tab doesn't require touching either.
+  const navItems = [...TABS, { id: 'settings', label: 'Settings' }]
 
-      {/* Top nav */}
-      <div style={{ background: '#0D0D0D', position: 'sticky', top: 0, zIndex: 100 }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 32px',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 56 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+  return (
+    <div className="purema-shell" style={{ background: color.bone, fontFamily: font.sans }}>
+
+      {/* Desktop sidebar nav (900px+) */}
+      <div className="purema-nav-desktop" style={{ flexDirection: 'column', justifyContent: 'space-between',
+        background: color.void, padding: '28px 20px', position: 'sticky', top: 0, height: '100vh',
+        boxSizing: 'border-box' }}>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 4px', marginBottom: 36 }}>
             <Mark size={20} />
-            <span style={{ fontSize: 18, fontWeight: 300, letterSpacing: '-0.03em', color: '#F5F2ED' }}>
-              purema<span style={{ color: '#0F6E56' }}>.</span>
+            <span style={{ fontSize: 18, fontWeight: 300, letterSpacing: '-0.03em', color: color.textOnDark.primary }}>
+              purema<span style={{ color: color.forest }}>.</span>
             </span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <nav style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {navItems.map(item => (
+              <button key={item.id} onClick={() => setActiveTab(item.id)}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
+                  border: 'none', borderRadius: 8, textAlign: 'left', cursor: 'pointer',
+                  fontFamily: font.sans, fontSize: type.body,
+                  fontWeight: activeTab === item.id ? 500 : 400,
+                  background: activeTab === item.id ? color.surfaceDarkRaised : 'transparent',
+                  color: activeTab === item.id ? color.textOnDark.primary : color.textOnDark.secondary,
+                  transition: 'all 0.15s ease' }}>
+                {item.id === 'settings' && <GearIcon />}
+                {item.label}
+              </button>
+            ))}
+          </nav>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {profile?.full_name && (
+            <span style={{ fontSize: type.label, color: color.textOnDark.secondary, fontFamily: font.sans,
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {profile.full_name}
+            </span>
+          )}
+          <button onClick={() => supabase.auth.signOut()}
+            style={{ fontSize: type.label, color: color.textOnDark.secondary, fontFamily: font.mono,
+              letterSpacing: '0.1em', background: 'transparent', border: `1px solid ${color.borderDark}`,
+              cursor: 'pointer', padding: '8px 12px', borderRadius: 6 }}>
+            SIGN OUT
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile header + page content + mobile bottom tab bar */}
+      <div>
+        <div className="purema-header-mobile" style={{ background: color.void, position: 'sticky', top: 0,
+          zIndex: 100, alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', height: 56 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Mark size={20} />
+            <span style={{ fontSize: 18, fontWeight: 300, letterSpacing: '-0.03em', color: color.textOnDark.primary }}>
+              purema<span style={{ color: color.forest }}>.</span>
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             {profile?.full_name && (
-              <span style={{ fontSize: 13, color: '#AAA', fontFamily: 'DM Sans' }}>
+              <span style={{ fontSize: type.label, color: color.textOnDark.secondary, fontFamily: font.sans,
+                maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {profile.full_name}
               </span>
             )}
             <button onClick={() => supabase.auth.signOut()}
-              style={{ fontSize: 11, color: '#AAA', fontFamily: 'DM Mono, monospace',
-                letterSpacing: '0.1em', background: 'transparent', border: '1px solid #333',
+              style={{ fontSize: type.label, color: color.textOnDark.secondary, fontFamily: font.mono,
+                letterSpacing: '0.1em', background: 'transparent', border: `1px solid ${color.borderDark}`,
                 cursor: 'pointer', padding: '5px 12px', borderRadius: 6 }}>
               SIGN OUT
             </button>
           </div>
         </div>
 
-        {/* Tab bar */}
-        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex' }}>
-            {TABS.map(tab => (
-              <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                style={{ padding: '10px 18px', border: 'none', background: 'transparent',
-                  cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontSize: 13,
-                  fontWeight: activeTab === tab.id ? 500 : 400,
-                  color: activeTab === tab.id ? '#F5F2ED' : '#AAA',
-                  borderBottom: activeTab === tab.id ? '2px solid #0F6E56' : '2px solid transparent',
-                  transition: 'color 0.15s ease, border-bottom 0.15s ease' }}>
-                {tab.label}
-              </button>
-            ))}
-          </div>
-          <button onClick={() => setActiveTab('settings')}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px',
-              border: 'none', background: activeTab === 'settings' ? '#1A1A1A' : 'transparent',
-              color: activeTab === 'settings' ? '#F5F2ED' : '#666',
-              borderRadius: 8, cursor: 'pointer', transition: 'all 0.15s ease',
-              marginBottom: 2 }}>
-            <GearIcon />
-            <span style={{ fontSize: 12, fontFamily: 'DM Sans' }}>Settings</span>
-          </button>
+        {/* Page content */}
+        <div className="purema-content" style={{ padding: '32px 32px 100px', boxSizing: 'border-box' }}>
+          {activeTab === 'home' && (
+            <TabHome
+              profile={profile}
+              checkins={checkins}
+              onGoToCheckin={() => setActiveTab('checkin')}
+            />
+          )}
+          {activeTab === 'progress' && (
+            <TabProgress profile={profile} checkins={checkins} />
+          )}
+          {activeTab === 'checkin' && (
+            <TabCheckIn onSuccess={handleCheckInSuccess} />
+          )}
+          {activeTab === 'settings' && (
+            <ClientSettings profile={profile} onProfileUpdate={handleProfileUpdate} />
+          )}
         </div>
-      </div>
 
-      {/* Page content */}
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 32px 80px' }}>
-        {activeTab === 'home' && (
-          <TabHome
-            profile={profile}
-            checkins={checkins}
-            onGoToCheckin={() => setActiveTab('checkin')}
-          />
-        )}
-        {activeTab === 'progress' && (
-          <TabProgress profile={profile} checkins={checkins} />
-        )}
-        {activeTab === 'checkin' && (
-          <TabCheckIn onSuccess={handleCheckInSuccess} />
-        )}
-        {activeTab === 'settings' && (
-          <ClientSettings profile={profile} onProfileUpdate={handleProfileUpdate} />
-        )}
+        {/* Mobile bottom tab bar (below 900px) */}
+        <div className="purema-tabbar-mobile" style={{ position: 'fixed', bottom: 0, left: 0, right: 0,
+          background: color.void, borderTop: `1px solid ${color.borderDark}`, zIndex: 100,
+          justifyContent: 'space-around' }}>
+          {navItems.map(item => (
+            <button key={item.id} onClick={() => setActiveTab(item.id)}
+              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+                background: 'transparent', cursor: 'pointer', padding: '8px 10px 6px',
+                border: 'none', borderTop: activeTab === item.id ? `2px solid ${color.forest}` : '2px solid transparent',
+                fontFamily: font.sans, fontSize: type.label,
+                fontWeight: activeTab === item.id ? 500 : 400,
+                color: activeTab === item.id ? color.textOnDark.primary : color.textOnDark.secondary }}>
+              {item.id === 'settings' && <GearIcon />}
+              {item.label}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   )
