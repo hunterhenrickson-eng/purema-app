@@ -242,6 +242,327 @@ const TabHome = ({ profile, checkins, onGoToCheckin }) => {
   )
 }
 
+
+// ─── Tab: Progress ────────────────────────────────────────────────────────────
+
+const TabProgress = ({ profile, checkins }) => {
+  const [activeSection, setActiveSection] = useState('overview')
+
+  // Sort check-ins chronologically for charts
+  const sorted = [...checkins]
+    .filter(c => c.week_number)
+    .sort((a, b) => a.week_number - b.week_number)
+
+  // ── Countdown timer ──────────────────────────────────────────────────────
+  const showDate = profile?.show_date ? new Date(profile.show_date) : null
+  const daysOut = showDate
+    ? Math.ceil((showDate - new Date()) / (1000 * 60 * 60 * 24))
+    : null
+
+  // ── Check-in streak ──────────────────────────────────────────────────────
+  const streak = (() => {
+    if (checkins.length === 0) return 0
+    const byWeek = [...checkins].sort((a, b) =>
+      new Date(b.submitted_at) - new Date(a.submitted_at)
+    )
+    let count = 1
+    for (let i = 1; i < byWeek.length; i++) {
+      const diff = (new Date(byWeek[i-1].submitted_at) - new Date(byWeek[i].submitted_at))
+        / (1000 * 60 * 60 * 24)
+      if (diff <= 10) count++
+      else break
+    }
+    return count
+  })()
+
+  // ── Weight data ──────────────────────────────────────────────────────────
+  const weightData = sorted.filter(c => c.weight)
+  const weightMin = weightData.length ? Math.min(...weightData.map(c => c.weight)) : 0
+  const weightMax = weightData.length ? Math.max(...weightData.map(c => c.weight)) : 0
+  const weightRange = weightMax - weightMin || 1
+  const weightChange = weightData.length >= 2
+    ? (weightData[weightData.length - 1].weight - weightData[0].weight).toFixed(1)
+    : null
+
+  // ── Measurement data ─────────────────────────────────────────────────────
+  const measureKeys = ['waist', 'chest', 'hips', 'arms', 'thighs']
+  const latestMeasure = [...checkins]
+    .sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at))
+    .find(c => measureKeys.some(k => c[k]))
+
+  // ── Feedback history ─────────────────────────────────────────────────────
+  const feedbackHistory = [...checkins]
+    .filter(c => c.coach_feedback)
+    .sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at))
+
+  // ── Mini line chart helper ────────────────────────────────────────────────
+  const MiniChart = ({ data, valueKey, label, unit, color = '#0F6E56' }) => {
+    const pts = data.filter(c => c[valueKey])
+    if (pts.length < 2) return (
+      <div style={{ ...S.card, textAlign: 'center', padding: '32px 20px' }}>
+        <div style={{ fontSize: 13, color: '#888' }}>
+          Not enough {label.toLowerCase()} data yet. Keep checking in.
+        </div>
+      </div>
+    )
+
+    const vals = pts.map(c => parseFloat(c[valueKey]))
+    const min = Math.min(...vals)
+    const max = Math.max(...vals)
+    const range = max - min || 1
+    const W = 600, H = 120, PAD = 16
+
+    const points = pts.map((c, i) => {
+      const x = PAD + (i / (pts.length - 1)) * (W - PAD * 2)
+      const y = PAD + ((max - parseFloat(c[valueKey])) / range) * (H - PAD * 2)
+      return { x, y, value: parseFloat(c[valueKey]), week: c.week_number }
+    })
+
+    const pathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')
+    const areaD = `${pathD} L ${points[points.length-1].x} ${H} L ${points[0].x} ${H} Z`
+
+    const change = vals[vals.length - 1] - vals[0]
+    const changeColor = label === 'Weight'
+      ? (change < 0 ? '#0F6E56' : change > 0 ? '#E24B4A' : '#888')
+      : '#0F6E56'
+
+    return (
+      <div style={S.card}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+          <div>
+            <div style={{ ...S.label, marginBottom: 4 }}>{label}</div>
+            <div style={{ fontSize: 24, fontWeight: 300, color: '#0D0D0D', letterSpacing: '-0.02em' }}>
+              {vals[vals.length - 1]}<span style={{ fontSize: 13, color: '#888', marginLeft: 3 }}>{unit}</span>
+            </div>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: 12, color: '#888', marginBottom: 2 }}>
+              {pts.length} check-ins
+            </div>
+            {change !== 0 && (
+              <div style={{ fontSize: 13, fontWeight: 500, color: changeColor }}>
+                {change > 0 ? '+' : ''}{change.toFixed(1)} {unit}
+              </div>
+            )}
+          </div>
+        </div>
+        <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', overflow: 'visible' }}>
+          <defs>
+            <linearGradient id={`grad-${valueKey}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={color} stopOpacity="0.15" />
+              <stop offset="100%" stopColor={color} stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          <path d={areaD} fill={`url(#grad-${valueKey})`} />
+          <path d={pathD} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          {points.map((p, i) => (
+            <g key={i}>
+              <circle cx={p.x} cy={p.y} r="4" fill={color} />
+              {i === points.length - 1 && (
+                <text x={p.x} y={p.y - 10} textAnchor="middle"
+                  style={{ fontSize: 10, fill: color, fontFamily: 'DM Mono, monospace' }}>
+                  {p.value}{unit}
+                </text>
+              )}
+            </g>
+          ))}
+        </svg>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+          <span style={{ fontSize: 10, color: '#AAA', fontFamily: 'DM Mono, monospace' }}>
+            WK {pts[0].week_number}
+          </span>
+          <span style={{ fontSize: 10, color: '#AAA', fontFamily: 'DM Mono, monospace' }}>
+            WK {pts[pts.length - 1].week_number}
+          </span>
+        </div>
+      </div>
+    )
+  }
+
+  const sections = [
+    { id: 'overview', label: 'Overview' },
+    { id: 'weight', label: 'Weight' },
+    { id: 'measurements', label: 'Measurements' },
+    { id: 'feedback', label: 'Feedback' },
+  ]
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+      {/* Section nav */}
+      <div style={{ display: 'flex', gap: 4, background: '#F0EDE8', borderRadius: 8, padding: 4, alignSelf: 'flex-start' }}>
+        {sections.map(s => (
+          <button key={s.id} onClick={() => setActiveSection(s.id)}
+            style={{ padding: '6px 16px', borderRadius: 6, border: 'none', cursor: 'pointer',
+              fontFamily: 'DM Sans', fontSize: 13, fontWeight: activeSection === s.id ? 500 : 400,
+              background: activeSection === s.id ? '#0D0D0D' : 'transparent',
+              color: activeSection === s.id ? '#F5F2ED' : '#888',
+              transition: 'all 0.15s ease' }}>
+            {s.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Overview ── */}
+      {activeSection === 'overview' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+          {/* Countdown */}
+          {daysOut !== null && daysOut > 0 && (
+            <div style={{ background: '#0D0D0D', borderRadius: 14, padding: 24,
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ ...S.label, color: '#0F6E56', marginBottom: 6 }}>Show day countdown</div>
+                <div style={{ fontSize: 42, fontWeight: 300, color: '#F5F2ED', letterSpacing: '-0.03em', lineHeight: 1 }}>
+                  {daysOut}
+                  <span style={{ fontSize: 16, color: '#555', marginLeft: 8, fontWeight: 400 }}>days out</span>
+                </div>
+                <div style={{ fontSize: 12, color: '#555', marginTop: 6 }}>
+                  {new Date(profile.show_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                </div>
+              </div>
+              <div style={{ fontSize: 48 }}>🏆</div>
+            </div>
+          )}
+
+          {/* Stats row */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
+            {/* Streak */}
+            <div style={{ background: '#0D0D0D', borderRadius: 12, padding: '16px 20px' }}>
+              <div style={{ fontSize: 28, fontWeight: 300, color: streak >= 4 ? '#0F6E56' : '#F5F2ED',
+                letterSpacing: '-0.02em' }}>{streak}</div>
+              <div style={{ ...S.label, color: '#888', marginTop: 4 }}>Week streak</div>
+              {streak >= 4 && (
+                <div style={{ fontSize: 10, color: '#0F6E56', marginTop: 4 }}>🔥 On a roll</div>
+              )}
+            </div>
+
+            {/* Total check-ins */}
+            <div style={{ background: '#0D0D0D', borderRadius: 12, padding: '16px 20px' }}>
+              <div style={{ fontSize: 28, fontWeight: 300, color: '#F5F2ED', letterSpacing: '-0.02em' }}>
+                {checkins.length}
+              </div>
+              <div style={{ ...S.label, color: '#888', marginTop: 4 }}>Check-ins total</div>
+            </div>
+
+            {/* Weight change */}
+            {weightChange !== null && (
+              <div style={{ background: '#0D0D0D', borderRadius: 12, padding: '16px 20px' }}>
+                <div style={{ fontSize: 28, fontWeight: 300, letterSpacing: '-0.02em',
+                  color: parseFloat(weightChange) < 0 ? '#0F6E56' : parseFloat(weightChange) > 0 ? '#E24B4A' : '#AAA' }}>
+                  {parseFloat(weightChange) > 0 ? '+' : ''}{weightChange}
+                  <span style={{ fontSize: 13, marginLeft: 3 }}>lbs</span>
+                </div>
+                <div style={{ ...S.label, color: '#888', marginTop: 4 }}>Total change</div>
+              </div>
+            )}
+
+            {/* Feedback received */}
+            <div style={{ background: '#0D0D0D', borderRadius: 12, padding: '16px 20px' }}>
+              <div style={{ fontSize: 28, fontWeight: 300, color: '#F5F2ED', letterSpacing: '-0.02em' }}>
+                {feedbackHistory.length}
+              </div>
+              <div style={{ ...S.label, color: '#888', marginTop: 4 }}>Feedback received</div>
+            </div>
+          </div>
+
+          {/* Weight preview */}
+          {weightData.length >= 2 && (
+            <div onClick={() => setActiveSection('weight')} style={{ cursor: 'pointer' }}>
+              <MiniChart data={sorted} valueKey="weight" label="Weight trend" unit="lbs" />
+            </div>
+          )}
+
+          {/* No data state */}
+          {checkins.length === 0 && (
+            <div style={{ ...S.card, textAlign: 'center', padding: '60px 20px' }}>
+              <div style={{ fontSize: 36, marginBottom: 12 }}>📈</div>
+              <div style={{ fontSize: 16, fontWeight: 500, color: '#0D0D0D', marginBottom: 6 }}>
+                No progress data yet
+              </div>
+              <div style={{ fontSize: 13, color: '#888' }}>
+                Your charts will build up as you submit weekly check-ins.
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Weight ── */}
+      {activeSection === 'weight' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <MiniChart data={sorted} valueKey="weight" label="Weight" unit="lbs" color="#0F6E56" />
+          <MiniChart data={sorted} valueKey="sleep" label="Avg sleep" unit="hrs" color="#7C6AF5" />
+          <MiniChart data={sorted} valueKey="steps" label="Avg steps" unit="" color="#BA7517" />
+        </div>
+      )}
+
+      {/* ── Measurements ── */}
+      {activeSection === 'measurements' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {latestMeasure ? (
+            <>
+              <div style={S.card}>
+                <div style={{ ...S.label, marginBottom: 16 }}>Latest measurements</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
+                  {[
+                    { key: 'waist', label: 'Waist' },
+                    { key: 'chest', label: 'Chest' },
+                    { key: 'hips', label: 'Hips' },
+                    { key: 'arms', label: 'Arms' },
+                    { key: 'thighs', label: 'Thighs' },
+                  ].map(({ key, label }) => latestMeasure[key] ? (
+                    <div key={key} style={{ background: '#F5F2ED', borderRadius: 10, padding: '12px 14px' }}>
+                      <div style={{ fontSize: 20, fontWeight: 500, color: '#0D0D0D' }}>
+                        {latestMeasure[key]}<span style={{ fontSize: 11, color: '#888', marginLeft: 2 }}>in</span>
+                      </div>
+                      <div style={{ ...S.label, marginTop: 4 }}>{label}</div>
+                    </div>
+                  ) : null)}
+                </div>
+                <div style={{ fontSize: 11, color: '#AAA', marginTop: 12 }}>
+                  Week {latestMeasure.week_number} · {new Date(latestMeasure.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                </div>
+              </div>
+              <MiniChart data={sorted} valueKey="waist" label="Waist" unit="in" color="#0F6E56" />
+            </>
+          ) : (
+            <div style={{ ...S.card, textAlign: 'center', padding: '40px 20px', color: '#888', fontSize: 13 }}>
+              No measurement data yet. Measurements are recorded every 4 weeks.
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Feedback history ── */}
+      {activeSection === 'feedback' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {feedbackHistory.length === 0 ? (
+            <div style={{ ...S.card, textAlign: 'center', padding: '40px 20px', color: '#888', fontSize: 13 }}>
+              No feedback yet. Your coach's responses will appear here.
+            </div>
+          ) : feedbackHistory.map(c => (
+            <div key={c.id} style={{ background: '#0D0D0D', borderRadius: 12, padding: 20 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <span style={{ fontSize: 11, color: '#0F6E56', fontFamily: 'DM Mono, monospace', letterSpacing: '0.06em' }}>
+                  WEEK {c.week_number}
+                </span>
+                <span style={{ fontSize: 11, color: '#555', fontFamily: 'DM Mono, monospace' }}>
+                  {new Date(c.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </span>
+              </div>
+              <div style={{ fontSize: 14, color: '#F5F2ED', lineHeight: 1.8 }}>
+                {c.coach_feedback}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+    </div>
+  )
+}
+
 // ─── Check-in tab ─────────────────────────────────────────────────────────────
 
 const TabCheckIn = ({ onSuccess }) => (
@@ -254,6 +575,7 @@ const TabCheckIn = ({ onSuccess }) => (
 
 const TABS = [
   { id: 'home', label: 'Home' },
+  { id: 'progress', label: 'Progress' },
   { id: 'checkin', label: 'Check-in' },
 ]
 
@@ -370,6 +692,9 @@ export default function ClientHome() {
             checkins={checkins}
             onGoToCheckin={() => setActiveTab('checkin')}
           />
+        )}
+        {activeTab === 'progress' && (
+          <TabProgress profile={profile} checkins={checkins} />
         )}
         {activeTab === 'checkin' && (
           <TabCheckIn onSuccess={handleCheckInSuccess} />
