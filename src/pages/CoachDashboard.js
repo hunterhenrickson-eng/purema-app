@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { color, font, type, labelStyle } from '../lib/theme'
+import '../styles/purema-responsive.css'
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
@@ -98,7 +99,7 @@ const SearchBar = ({ clients, checkins, onSelectCheckin, onSelectClient }) => {
   const showDropdown = open && q.length >= 2
 
   return (
-    <div ref={ref} style={{ position: 'relative', width: 260 }}>
+    <div ref={ref} style={{ position: 'relative', width: '100%' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8,
         background: color.surfaceDarkRaised, borderRadius: 8, padding: '7px 12px',
         border: `1px solid ${color.borderDark}` }}>
@@ -977,87 +978,151 @@ export default function CoachDashboard() {
   const pendingCount = checkins.filter(c => !c.coach_feedback).length
   const attentionCount = useMemo(() => buildAttentionQueue(clients, checkins).length, [clients, checkins])
 
-  return (
-    <div style={{ minHeight: '100vh', background: color.bone, fontFamily: font.sans }}>
-
-      {/* Top nav */}
-      <div style={{ background: color.void, position: 'sticky', top: 0, zIndex: 100 }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 32px',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 56 }}>
-
-          {/* Logo — clickable, returns to dashboard */}
-          <div onClick={() => setActiveTab('dashboard')}
-            style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
-            <Mark size={20} />
-            <span style={{ fontSize: 18, fontWeight: 300, letterSpacing: '-0.03em', color: color.textOnDark.primary }}>
-              purema<span style={{ color: color.forest }}>.</span>
+  const NavList = ({ vertical }) => (
+    <nav style={{ display: 'flex', flexDirection: vertical ? 'column' : 'row', gap: vertical ? 4 : 0 }}>
+      {TABS.map(tab => (
+        <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+          style={vertical ? {
+            display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px',
+            border: 'none', borderRadius: 8, textAlign: 'left', cursor: 'pointer',
+            fontFamily: font.sans, fontSize: type.body,
+            fontWeight: activeTab === tab.id ? 500 : 400,
+            background: activeTab === tab.id ? color.surfaceDarkRaised : 'transparent',
+            color: activeTab === tab.id ? color.textOnDark.primary : color.textOnDark.secondary,
+            transition: 'all 0.15s ease',
+          } : {
+            padding: '10px 18px', border: 'none', background: 'transparent', cursor: 'pointer',
+            fontFamily: font.sans, fontSize: type.body,
+            fontWeight: activeTab === tab.id ? 500 : 400,
+            color: activeTab === tab.id ? color.textOnDark.primary : color.textOnDark.secondary,
+            borderBottom: activeTab === tab.id ? `2px solid ${color.forest}` : '2px solid transparent',
+            transition: 'color 0.15s ease, border-bottom 0.15s ease',
+          }}>
+          {tab.label}
+          {tab.id === 'checkins' && pendingCount > 0 && (
+            <span style={{ marginLeft: 6, background: color.gold, color: '#fff',
+              fontSize: type.label, borderRadius: 999, padding: '1px 6px',
+              fontFamily: font.mono, verticalAlign: 'middle' }}>
+              {pendingCount}
             </span>
-          </div>
+          )}
+        </button>
+      ))}
+    </nav>
+  )
 
-          {/* Search + alerts + sign out */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+  const AttentionAlert = () => attentionCount > 0 ? (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
+      onClick={() => setActiveTab('dashboard')}>
+      <div style={{ width: 7, height: 7, borderRadius: '50%', background: color.alert, flexShrink: 0 }} />
+      <span style={{ fontSize: type.label, color: color.alert, fontFamily: font.mono, whiteSpace: 'nowrap' }}>
+        {attentionCount} need{attentionCount === 1 ? 's' : ''} attention
+      </span>
+    </div>
+  ) : null
+
+  const SignOutButton = () => (
+    <button onClick={() => supabase.auth.signOut()}
+      style={{ fontSize: type.label, color: color.textOnDark.secondary, fontFamily: font.mono, letterSpacing: '0.1em',
+        background: 'transparent', border: `1px solid ${color.borderDark}`, cursor: 'pointer',
+        padding: '5px 12px', borderRadius: 6, whiteSpace: 'nowrap' }}>
+      SIGN OUT
+    </button>
+  )
+
+  const Logo = () => (
+    <div onClick={() => setActiveTab('dashboard')}
+      style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+      <Mark size={20} />
+      <span style={{ fontSize: 18, fontWeight: 300, letterSpacing: '-0.03em', color: color.textOnDark.primary }}>
+        purema<span style={{ color: color.forest }}>.</span>
+      </span>
+    </div>
+  )
+
+  return (
+    <div className="purema-shell" style={{ background: color.bone, fontFamily: font.sans }}>
+
+      {/* Desktop sidebar nav (900px+) */}
+      <div className="purema-nav-desktop" style={{ flexDirection: 'column', justifyContent: 'space-between',
+        background: color.void, padding: '28px 20px', position: 'sticky', top: 0, height: '100vh',
+        boxSizing: 'border-box' }}>
+        <div>
+          <div style={{ padding: '0 4px', marginBottom: 28 }}><Logo /></div>
+          <NavList vertical />
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <SearchBar
+            clients={clients}
+            checkins={checkins}
+            onSelectCheckin={setSelected}
+            onSelectClient={() => setActiveTab('clients')}
+          />
+          <AttentionAlert />
+          <SignOutButton />
+        </div>
+      </div>
+
+      {/* Mobile header + page content + mobile bottom tab bar */}
+      <div>
+        <div className="purema-header-mobile" style={{ background: color.void, position: 'sticky', top: 0,
+          zIndex: 100, flexDirection: 'column', gap: 10, padding: '12px 20px', boxSizing: 'border-box' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Logo />
+            <SignOutButton />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <SearchBar
               clients={clients}
               checkins={checkins}
               onSelectCheckin={setSelected}
               onSelectClient={() => setActiveTab('clients')}
             />
-            {attentionCount > 0 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
-                onClick={() => setActiveTab('dashboard')}>
-                <div style={{ width: 7, height: 7, borderRadius: '50%', background: color.alert }} />
-                <span style={{ fontSize: type.label, color: color.alert, fontFamily: font.mono, whiteSpace: 'nowrap' }}>
-                  {attentionCount} need{attentionCount === 1 ? 's' : ''} attention
-                </span>
-              </div>
-            )}
-            <button onClick={() => supabase.auth.signOut()}
-              style={{ fontSize: type.label, color: color.textOnDark.secondary, fontFamily: font.mono, letterSpacing: '0.1em',
-                background: 'transparent', border: `1px solid ${color.borderDark}`, cursor: 'pointer',
-                padding: '5px 12px', borderRadius: 6, whiteSpace: 'nowrap' }}>
-              SIGN OUT
-            </button>
+            <AttentionAlert />
           </div>
         </div>
 
-        {/* Tab bar */}
-        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 32px', display: 'flex' }}>
+        {/* Page content */}
+        <div className="purema-content" style={{ padding: '32px 32px 100px', boxSizing: 'border-box' }}>
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: 80, color: color.textOnLight.secondary,
+              fontSize: type.label, fontFamily: font.mono, letterSpacing: '0.1em' }}>LOADING...</div>
+          ) : (
+            <>
+              {activeTab === 'dashboard' && <TabDashboard checkins={checkins} clients={clients} onSelectCheckin={setSelected} />}
+              {activeTab === 'clients' && <TabClients clients={clients} onInvite={() => fetchAll(coachId)} onStatusChange={handleStatusChange} />}
+              {activeTab === 'checkins' && <TabCheckIns checkins={checkins} onSelectCheckin={setSelected} />}
+              {activeTab === 'calendar' && <TabCalendar />}
+              {activeTab === 'messages' && <TabMessages />}
+              {activeTab === 'overview' && <TabOverview clients={clients} checkins={checkins} />}
+            </>
+          )}
+        </div>
+
+        {/* Mobile bottom tab bar (below 900px) */}
+        <div className="purema-tabbar-mobile" style={{ position: 'fixed', bottom: 0, left: 0, right: 0,
+          background: color.void, borderTop: `1px solid ${color.borderDark}`, zIndex: 100,
+          justifyContent: 'flex-start', gap: 4, overflowX: 'auto', padding: '0 8px', WebkitOverflowScrolling: 'touch' }}>
           {TABS.map(tab => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-              style={{ padding: '10px 18px', border: 'none', background: 'transparent', cursor: 'pointer',
-                fontFamily: font.sans, fontSize: type.body,
+              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+                background: 'transparent', cursor: 'pointer', padding: '6px 6px 4px', flexShrink: 0,
+                border: 'none', borderTop: activeTab === tab.id ? `2px solid ${color.forest}` : '2px solid transparent',
+                fontFamily: font.sans, fontSize: type.label,
                 fontWeight: activeTab === tab.id ? 500 : 400,
                 color: activeTab === tab.id ? color.textOnDark.primary : color.textOnDark.secondary,
-                borderBottom: activeTab === tab.id ? `2px solid ${color.forest}` : '2px solid transparent',
-                transition: 'color 0.15s ease, border-bottom 0.15s ease' }}>
+                whiteSpace: 'nowrap' }}>
               {tab.label}
               {tab.id === 'checkins' && pendingCount > 0 && (
-                <span style={{ marginLeft: 6, background: color.gold, color: '#fff',
-                  fontSize: type.label, borderRadius: 999, padding: '1px 6px',
-                  fontFamily: font.mono, verticalAlign: 'middle' }}>
+                <span style={{ background: color.gold, color: '#fff',
+                  fontSize: type.label, borderRadius: 999, padding: '1px 5px',
+                  fontFamily: font.mono }}>
                   {pendingCount}
                 </span>
               )}
             </button>
           ))}
         </div>
-      </div>
-
-      {/* Page content */}
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 32px 80px' }}>
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: 80, color: color.textOnLight.secondary,
-            fontSize: type.label, fontFamily: font.mono, letterSpacing: '0.1em' }}>LOADING...</div>
-        ) : (
-          <>
-            {activeTab === 'dashboard' && <TabDashboard checkins={checkins} clients={clients} onSelectCheckin={setSelected} />}
-            {activeTab === 'clients' && <TabClients clients={clients} onInvite={() => fetchAll(coachId)} onStatusChange={handleStatusChange} />}
-            {activeTab === 'checkins' && <TabCheckIns checkins={checkins} onSelectCheckin={setSelected} />}
-            {activeTab === 'calendar' && <TabCalendar />}
-            {activeTab === 'messages' && <TabMessages />}
-            {activeTab === 'overview' && <TabOverview clients={clients} checkins={checkins} />}
-          </>
-        )}
       </div>
 
       {selected && (
