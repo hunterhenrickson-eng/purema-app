@@ -27,12 +27,22 @@ function AuthRoutes() {
     return () => subscription.unsubscribe()
   }, [])
 
-  const fetchProfile = async (userId) => {
+  const fetchProfile = async (userId, attempt = 0) => {
     const { data } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
       .single()
+
+    // On fresh signup, auth.signUp() resolving is what fires the session
+    // change that lands here — but the profiles row insert (in Auth.js,
+    // right after signUp) hasn't necessarily landed yet. Retry briefly
+    // instead of treating "no row yet" as "this user must be a client".
+    if (!data && attempt < 5) {
+      setTimeout(() => fetchProfile(userId, attempt + 1), 400)
+      return
+    }
+
     setProfile(data)
     setLoading(false)
   }
