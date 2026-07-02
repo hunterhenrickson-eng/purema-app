@@ -281,9 +281,6 @@ const TabProgress = ({ profile, checkins }) => {
 
   // ── Weight data ──────────────────────────────────────────────────────────
   const weightData = sorted.filter(c => c.weight)
-  const weightMin = weightData.length ? Math.min(...weightData.map(c => c.weight)) : 0
-  const weightMax = weightData.length ? Math.max(...weightData.map(c => c.weight)) : 0
-  const weightRange = weightMax - weightMin || 1
   const weightChange = weightData.length >= 2
     ? (weightData[weightData.length - 1].weight - weightData[0].weight).toFixed(1)
     : null

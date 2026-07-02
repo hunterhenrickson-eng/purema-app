@@ -1,28 +1,25 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { color, font, type, labelStyle } from '../lib/theme'
 
 // ─── Shared styles ────────────────────────────────────────────────────────────
 
 const S = {
-  label: {
-    fontSize: 10, fontWeight: 500, color: '#888', letterSpacing: '0.1em',
-    textTransform: 'uppercase', fontFamily: 'DM Mono, monospace',
-    display: 'block', marginBottom: 6,
-  },
+  label: { ...labelStyle(false), letterSpacing: '0.1em' },
   input: {
-    width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #E8E8E8',
-    fontFamily: 'DM Sans', fontSize: 14, color: '#0D0D0D', outline: 'none',
-    boxSizing: 'border-box', background: '#fff',
+    width: '100%', padding: '10px 12px', borderRadius: 8, border: `1px solid ${color.borderLight}`,
+    fontFamily: font.sans, fontSize: type.body, color: color.textOnLight.primary, outline: 'none',
+    boxSizing: 'border-box', background: color.surfaceLight,
   },
   row: {
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
     padding: '16px 0', borderBottom: '0.5px solid #F5F5F5',
   },
   sectionTitle: {
-    fontSize: 16, fontWeight: 500, color: '#0D0D0D', marginBottom: 4,
+    fontSize: type.bodyLg, fontWeight: 500, color: color.textOnLight.primary, marginBottom: 4,
   },
   sectionSub: {
-    fontSize: 13, color: '#888', marginBottom: 24, lineHeight: 1.5,
+    fontSize: type.body, color: color.textOnLight.secondary, marginBottom: 24, lineHeight: 1.5,
   },
 }
 
@@ -31,10 +28,10 @@ const S = {
 const Toggle = ({ value, onChange }) => (
   <div onClick={() => onChange(!value)}
     style={{ width: 44, height: 24, borderRadius: 999,
-      background: value ? '#0F6E56' : '#E8E8E8', cursor: 'pointer',
+      background: value ? color.forest : color.borderLight, cursor: 'pointer',
       position: 'relative', transition: 'background 0.2s ease', flexShrink: 0 }}>
     <div style={{ position: 'absolute', top: 3, left: value ? 23 : 3,
-      width: 18, height: 18, borderRadius: '50%', background: '#fff',
+      width: 18, height: 18, borderRadius: '50%', background: color.surfaceLight,
       transition: 'left 0.2s ease', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
   </div>
 )
@@ -44,9 +41,9 @@ const SegmentedControl = ({ value, onChange, options }) => (
     {options.map(opt => (
       <button key={opt.value} onClick={() => onChange(opt.value)} type="button"
         style={{ padding: '6px 14px', borderRadius: 6, border: 'none', cursor: 'pointer',
-          fontFamily: 'DM Sans', fontSize: 13, fontWeight: value === opt.value ? 500 : 400,
-          background: value === opt.value ? '#0D0D0D' : 'transparent',
-          color: value === opt.value ? '#F5F2ED' : '#888',
+          fontFamily: font.sans, fontSize: type.body, fontWeight: value === opt.value ? 500 : 400,
+          background: value === opt.value ? color.void : 'transparent',
+          color: value === opt.value ? color.textOnDark.primary : color.textOnLight.secondary,
           transition: 'all 0.15s ease' }}>
         {opt.label}
       </button>
@@ -56,9 +53,9 @@ const SegmentedControl = ({ value, onChange, options }) => (
 
 const SaveButton = ({ saving, saved, onClick }) => (
   <button onClick={onClick} disabled={saving}
-    style={{ height: 44, padding: '0 28px', background: saved ? '#0D5E49' : saving ? '#AAA' : '#0F6E56',
-      border: 'none', borderRadius: 10, color: '#EAF3DE', fontSize: 14, fontWeight: 500,
-      cursor: saving ? 'not-allowed' : 'pointer', fontFamily: 'DM Sans',
+    style={{ height: 44, padding: '0 28px', background: saved ? '#0D5E49' : saving ? color.textOnLight.faint : color.forest,
+      border: 'none', borderRadius: 10, color: color.sage, fontSize: type.body, fontWeight: 500,
+      cursor: saving ? 'not-allowed' : 'pointer', fontFamily: font.sans,
       transition: 'background 0.2s ease' }}>
     {saving ? 'Saving...' : saved ? 'Saved ✓' : 'Save changes'}
   </button>
@@ -115,7 +112,7 @@ const SectionProfile = ({ profile, onProfileUpdate }) => {
 
         {/* Account */}
         <div>
-          <div style={{ fontSize: 11, fontWeight: 600, color: '#0D0D0D', fontFamily: 'DM Mono, monospace',
+          <div style={{ fontSize: type.label, fontWeight: 600, color: color.textOnLight.primary, fontFamily: font.mono,
             letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 12, paddingBottom: 8,
             borderBottom: '0.5px solid #F0F0F0' }}>Account</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -126,10 +123,10 @@ const SectionProfile = ({ profile, onProfileUpdate }) => {
             </div>
             <div>
               <label style={S.label}>Email</label>
-              <div style={{ ...S.input, background: '#F5F2ED', color: '#888' }}>
+              <div style={{ ...S.input, background: color.bone, color: color.textOnLight.secondary }}>
                 {profile?.email}
               </div>
-              <div style={{ fontSize: 11, color: '#AAA', marginTop: 4 }}>
+              <div style={{ fontSize: type.label, color: color.textOnLight.faint, marginTop: 4 }}>
                 Contact your coach to update your email.
               </div>
             </div>
@@ -143,7 +140,7 @@ const SectionProfile = ({ profile, onProfileUpdate }) => {
 
         {/* Personal */}
         <div>
-          <div style={{ fontSize: 11, fontWeight: 600, color: '#0D0D0D', fontFamily: 'DM Mono, monospace',
+          <div style={{ fontSize: type.label, fontWeight: 600, color: color.textOnLight.primary, fontFamily: font.mono,
             letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 12, paddingBottom: 8,
             borderBottom: '0.5px solid #F0F0F0' }}>Personal</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -152,7 +149,7 @@ const SectionProfile = ({ profile, onProfileUpdate }) => {
               <input type="date" value={dateOfBirth} onChange={e => setDateOfBirth(e.target.value)}
                 style={S.input} />
               {age !== null && (
-                <div style={{ fontSize: 11, color: '#888', marginTop: 4 }}>Age: {age}</div>
+                <div style={{ fontSize: type.label, color: color.textOnLight.secondary, marginTop: 4 }}>Age: {age}</div>
               )}
             </div>
           </div>
@@ -160,7 +157,7 @@ const SectionProfile = ({ profile, onProfileUpdate }) => {
 
         {/* Address */}
         <div>
-          <div style={{ fontSize: 11, fontWeight: 600, color: '#0D0D0D', fontFamily: 'DM Mono, monospace',
+          <div style={{ fontSize: type.label, fontWeight: 600, color: color.textOnLight.primary, fontFamily: font.mono,
             letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 12, paddingBottom: 8,
             borderBottom: '0.5px solid #F0F0F0' }}>Address</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -211,7 +208,7 @@ const SectionProfile = ({ profile, onProfileUpdate }) => {
           </div>
         </div>
 
-        {error && <div style={{ fontSize: 13, color: '#E24B4A' }}>{error}</div>}
+        {error && <div style={{ fontSize: type.body, color: color.alert }}>{error}</div>}
         <div><SaveButton saving={saving} saved={saved} onClick={handleSave} /></div>
       </div>
     </div>
@@ -252,18 +249,18 @@ const SectionCompetition = ({ profile, onProfileUpdate }) => {
             style={S.input} />
           {daysUntil !== null && daysUntil > 0 && (
             <div style={{ marginTop: 8, display: 'inline-flex', alignItems: 'center', gap: 8,
-              background: '#EAF3DE', padding: '6px 12px', borderRadius: 8 }}>
-              <span style={{ fontSize: 18, fontWeight: 500, color: '#0F6E56' }}>{daysUntil}</span>
-              <span style={{ fontSize: 12, color: '#3A7A4A' }}>days out</span>
+              background: color.sage, padding: '6px 12px', borderRadius: 8 }}>
+              <span style={{ fontSize: 18, fontWeight: 500, color: color.forest }}>{daysUntil}</span>
+              <span style={{ fontSize: type.label, color: '#3A7A4A' }}>days out</span>
             </div>
           )}
           {daysUntil !== null && daysUntil <= 0 && (
-            <div style={{ marginTop: 8, fontSize: 12, color: '#888' }}>
+            <div style={{ marginTop: 8, fontSize: type.label, color: color.textOnLight.secondary }}>
               Show date has passed — update it for your next competition.
             </div>
           )}
         </div>
-        {error && <div style={{ fontSize: 13, color: '#E24B4A' }}>{error}</div>}
+        {error && <div style={{ fontSize: type.body, color: color.alert }}>{error}</div>}
         <div><SaveButton saving={saving} saved={saved} onClick={handleSave} /></div>
       </div>
     </div>
@@ -296,15 +293,15 @@ const SectionPreferences = ({ profile, onProfileUpdate }) => {
       <div style={{ maxWidth: 480 }}>
         <div style={S.row}>
           <div>
-            <div style={{ fontSize: 14, fontWeight: 500, color: '#0D0D0D' }}>Units</div>
-            <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>
+            <div style={{ fontSize: type.body, fontWeight: 500, color: color.textOnLight.primary }}>Units</div>
+            <div style={{ fontSize: type.label, color: color.textOnLight.secondary, marginTop: 2 }}>
               Weight and measurement display
             </div>
           </div>
           <SegmentedControl value={units} onChange={setUnits}
             options={[{ value: 'imperial', label: 'lbs / in' }, { value: 'metric', label: 'kg / cm' }]} />
         </div>
-        {error && <div style={{ fontSize: 13, color: '#E24B4A', marginTop: 12 }}>{error}</div>}
+        {error && <div style={{ fontSize: type.body, color: color.alert, marginTop: 12 }}>{error}</div>}
         <div style={{ marginTop: 20 }}>
           <SaveButton saving={saving} saved={saved} onClick={handleSave} />
         </div>
@@ -317,8 +314,8 @@ const SectionNotifications = () => (
   <div>
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
       <div style={S.sectionTitle}>Notifications</div>
-      <span style={{ fontSize: 10, background: '#F0EDE8', color: '#888', padding: '3px 10px',
-        borderRadius: 999, fontFamily: 'DM Mono, monospace' }}>COMING SOON</span>
+      <span style={{ fontSize: type.label, background: '#F0EDE8', color: color.textOnLight.secondary, padding: '3px 10px',
+        borderRadius: 999, fontFamily: font.mono }}>COMING SOON</span>
     </div>
     <div style={S.sectionSub}>
       Push, email, and WhatsApp notifications will be available once the mobile app is live.
@@ -332,8 +329,8 @@ const SectionNotifications = () => (
       ].map(({ label, sub }) => (
         <div key={label} style={S.row}>
           <div>
-            <div style={{ fontSize: 14, color: '#0D0D0D' }}>{label}</div>
-            <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>{sub}</div>
+            <div style={{ fontSize: type.body, color: color.textOnLight.primary }}>{label}</div>
+            <div style={{ fontSize: type.label, color: color.textOnLight.secondary, marginTop: 2 }}>{sub}</div>
           </div>
           <Toggle value={false} onChange={() => {}} />
         </div>
@@ -363,8 +360,8 @@ const SectionSecurity = ({ profile }) => {
       <div style={{ maxWidth: 480 }}>
         <div style={S.row}>
           <div>
-            <div style={{ fontSize: 14, fontWeight: 500, color: '#0D0D0D' }}>Password</div>
-            <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>
+            <div style={{ fontSize: type.body, fontWeight: 500, color: color.textOnLight.primary }}>Password</div>
+            <div style={{ fontSize: type.label, color: color.textOnLight.secondary, marginTop: 2 }}>
               {resetSent
                 ? '✓ Reset link sent — check your inbox.'
                 : 'Send a reset link to your email address.'}
@@ -372,11 +369,11 @@ const SectionSecurity = ({ profile }) => {
           </div>
           <button onClick={handlePasswordReset} disabled={resetLoading || resetSent}
             style={{ padding: '8px 16px', borderRadius: 8,
-              border: `1px solid ${resetSent ? '#0F6E56' : '#E8E8E8'}`,
-              background: resetSent ? '#EAF3DE' : '#fff',
-              color: resetSent ? '#0F6E56' : '#0D0D0D',
-              fontSize: 13, cursor: resetLoading || resetSent ? 'default' : 'pointer',
-              fontFamily: 'DM Sans', fontWeight: 500, transition: 'all 0.15s ease',
+              border: `1px solid ${resetSent ? color.forest : color.borderLight}`,
+              background: resetSent ? color.sage : color.surfaceLight,
+              color: resetSent ? color.forest : color.textOnLight.primary,
+              fontSize: type.body, cursor: resetLoading || resetSent ? 'default' : 'pointer',
+              fontFamily: font.sans, fontWeight: 500, transition: 'all 0.15s ease',
               whiteSpace: 'nowrap' }}>
             {resetLoading ? 'Sending...' : resetSent ? 'Sent ✓' : 'Change password'}
           </button>
@@ -384,15 +381,15 @@ const SectionSecurity = ({ profile }) => {
 
         <div style={{ ...S.row, borderBottom: 'none' }}>
           <div>
-            <div style={{ fontSize: 14, fontWeight: 500, color: '#E24B4A' }}>Sign out</div>
-            <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>
+            <div style={{ fontSize: type.body, fontWeight: 500, color: color.alert }}>Sign out</div>
+            <div style={{ fontSize: type.label, color: color.textOnLight.secondary, marginTop: 2 }}>
               Sign out of your account on this device.
             </div>
           </div>
           <button onClick={() => supabase.auth.signOut()}
-            style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #E8E8E8',
-              background: '#fff', color: '#E24B4A', fontSize: 13,
-              cursor: 'pointer', fontFamily: 'DM Sans', fontWeight: 500 }}>
+            style={{ padding: '8px 16px', borderRadius: 8, border: `1px solid ${color.borderLight}`,
+              background: color.surfaceLight, color: color.alert, fontSize: type.body,
+              cursor: 'pointer', fontFamily: font.sans, fontWeight: 500 }}>
             Sign out
           </button>
         </div>
@@ -403,21 +400,12 @@ const SectionSecurity = ({ profile }) => {
 
 
 const SectionBilling = ({ profile }) => {
-  // Stubbed — will be powered by Stripe once connected
-  const billingData = {
-    plan: 'Active',
-    amount: null,
-    nextBilling: null,
-    cardLast4: null,
-    history: [],
-  }
-
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
         <div style={S.sectionTitle}>Billing & Subscription</div>
-        <span style={{ fontSize: 10, background: '#F0EDE8', color: '#888', padding: '3px 10px',
-          borderRadius: 999, fontFamily: 'DM Mono, monospace' }}>STRIPE PENDING</span>
+        <span style={{ fontSize: type.label, background: '#F0EDE8', color: color.textOnLight.secondary, padding: '3px 10px',
+          borderRadius: 999, fontFamily: font.mono }}>STRIPE PENDING</span>
       </div>
       <div style={S.sectionSub}>
         Your subscription details, payment method, and billing history.
@@ -426,20 +414,20 @@ const SectionBilling = ({ profile }) => {
       <div style={{ maxWidth: 520, display: 'flex', flexDirection: 'column', gap: 16 }}>
 
         {/* Current plan */}
-        <div style={{ background: '#0D0D0D', borderRadius: 12, padding: 20 }}>
+        <div style={{ background: color.void, borderRadius: 12, padding: 20 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
-              <div style={{ fontSize: 11, color: '#0F6E56', fontFamily: 'DM Mono, monospace',
+              <div style={{ fontSize: type.label, color: color.forest, fontFamily: font.mono,
                 letterSpacing: '0.08em', marginBottom: 6 }}>CURRENT PLAN</div>
-              <div style={{ fontSize: 22, fontWeight: 300, color: '#F5F2ED', letterSpacing: '-0.01em' }}>
+              <div style={{ fontSize: 22, fontWeight: 300, color: color.textOnDark.primary, letterSpacing: '-0.01em' }}>
                 —
               </div>
-              <div style={{ fontSize: 13, color: '#555', marginTop: 4 }}>
+              <div style={{ fontSize: type.body, color: color.textOnDark.faint, marginTop: 4 }}>
                 Managed by your coach
               </div>
             </div>
-            <span style={{ fontSize: 10, background: '#EAF3DE', color: '#1A5C0A',
-              padding: '4px 12px', borderRadius: 999, fontFamily: 'DM Mono, monospace',
+            <span style={{ fontSize: type.label, background: color.sage, color: '#1A5C0A',
+              padding: '4px 12px', borderRadius: 999, fontFamily: font.mono,
               fontWeight: 500 }}>
               ACTIVE
             </span>
@@ -447,76 +435,76 @@ const SectionBilling = ({ profile }) => {
         </div>
 
         {/* Next billing */}
-        <div style={{ background: '#fff', borderRadius: 12, border: '0.5px solid #E8E8E8', padding: 20 }}>
+        <div style={{ background: color.surfaceLight, borderRadius: 12, border: `0.5px solid ${color.borderLight}`, padding: 20 }}>
           <div style={{ ...S.label, marginBottom: 14 }}>Next billing</div>
           <div style={S.row}>
             <div>
-              <div style={{ fontSize: 14, color: '#0D0D0D' }}>Amount</div>
-              <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>Monthly subscription</div>
+              <div style={{ fontSize: type.body, color: color.textOnLight.primary }}>Amount</div>
+              <div style={{ fontSize: type.label, color: color.textOnLight.secondary, marginTop: 2 }}>Monthly subscription</div>
             </div>
-            <div style={{ fontSize: 14, fontWeight: 500, color: '#AAA' }}>—</div>
+            <div style={{ fontSize: type.body, fontWeight: 500, color: color.textOnLight.faint }}>—</div>
           </div>
           <div style={{ ...S.row, borderBottom: 'none' }}>
             <div>
-              <div style={{ fontSize: 14, color: '#0D0D0D' }}>Next payment date</div>
-              <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>Auto-renews monthly</div>
+              <div style={{ fontSize: type.body, color: color.textOnLight.primary }}>Next payment date</div>
+              <div style={{ fontSize: type.label, color: color.textOnLight.secondary, marginTop: 2 }}>Auto-renews monthly</div>
             </div>
-            <div style={{ fontSize: 14, fontWeight: 500, color: '#AAA' }}>—</div>
+            <div style={{ fontSize: type.body, fontWeight: 500, color: color.textOnLight.faint }}>—</div>
           </div>
         </div>
 
         {/* Payment method */}
-        <div style={{ background: '#fff', borderRadius: 12, border: '0.5px solid #E8E8E8', padding: 20 }}>
+        <div style={{ background: color.surfaceLight, borderRadius: 12, border: `0.5px solid ${color.borderLight}`, padding: 20 }}>
           <div style={{ ...S.label, marginBottom: 14 }}>Payment method</div>
           <div style={{ ...S.row, borderBottom: 'none' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ width: 40, height: 28, background: '#F5F2ED', borderRadius: 4,
+              <div style={{ width: 40, height: 28, background: color.bone, borderRadius: 4,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 10, color: '#888', fontFamily: 'DM Mono, monospace' }}>
+                fontSize: type.label, color: color.textOnLight.secondary, fontFamily: font.mono }}>
                 CARD
               </div>
               <div>
-                <div style={{ fontSize: 14, color: '#AAA' }}>No card on file</div>
-                <div style={{ fontSize: 12, color: '#AAA', marginTop: 2 }}>
+                <div style={{ fontSize: type.body, color: color.textOnLight.faint }}>No card on file</div>
+                <div style={{ fontSize: type.label, color: color.textOnLight.faint, marginTop: 2 }}>
                   Connect Stripe to manage payment method
                 </div>
               </div>
             </div>
             <button disabled
-              style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid #E8E8E8',
-                background: '#F5F2ED', color: '#AAA', fontSize: 13, cursor: 'not-allowed',
-                fontFamily: 'DM Sans' }}>
+              style={{ padding: '8px 14px', borderRadius: 8, border: `1px solid ${color.borderLight}`,
+                background: color.bone, color: color.textOnLight.faint, fontSize: type.body, cursor: 'not-allowed',
+                fontFamily: font.sans }}>
               Update
             </button>
           </div>
         </div>
 
         {/* Billing history */}
-        <div style={{ background: '#fff', borderRadius: 12, border: '0.5px solid #E8E8E8', padding: 20 }}>
+        <div style={{ background: color.surfaceLight, borderRadius: 12, border: `0.5px solid ${color.borderLight}`, padding: 20 }}>
           <div style={{ ...S.label, marginBottom: 14 }}>Billing history</div>
           <div style={{ textAlign: 'center', padding: '32px 0' }}>
             <div style={{ fontSize: 28, marginBottom: 8 }}>📄</div>
-            <div style={{ fontSize: 14, color: '#888' }}>No billing history yet</div>
-            <div style={{ fontSize: 12, color: '#AAA', marginTop: 4 }}>
+            <div style={{ fontSize: type.body, color: color.textOnLight.secondary }}>No billing history yet</div>
+            <div style={{ fontSize: type.label, color: color.textOnLight.faint, marginTop: 4 }}>
               Past invoices will appear here once Stripe is connected.
             </div>
           </div>
         </div>
 
         {/* Cancel */}
-        <div style={{ background: '#fff', borderRadius: 12, border: '0.5px solid #E8E8E8', padding: 20 }}>
-          <div style={{ ...S.label, marginBottom: 4, color: '#E24B4A' }}>Danger zone</div>
+        <div style={{ background: color.surfaceLight, borderRadius: 12, border: `0.5px solid ${color.borderLight}`, padding: 20 }}>
+          <div style={{ ...S.label, marginBottom: 4, color: color.alert }}>Danger zone</div>
           <div style={S.row}>
             <div>
-              <div style={{ fontSize: 14, fontWeight: 500, color: '#0D0D0D' }}>Cancel subscription</div>
-              <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>
+              <div style={{ fontSize: type.body, fontWeight: 500, color: color.textOnLight.primary }}>Cancel subscription</div>
+              <div style={{ fontSize: type.label, color: color.textOnLight.secondary, marginTop: 2 }}>
                 Contact your coach to cancel or pause your subscription.
               </div>
             </div>
             <button disabled
-              style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid #E8E8E8',
-                background: '#F5F2ED', color: '#AAA', fontSize: 13,
-                cursor: 'not-allowed', fontFamily: 'DM Sans' }}>
+              style={{ padding: '8px 14px', borderRadius: 8, border: `1px solid ${color.borderLight}`,
+                background: color.bone, color: color.textOnLight.faint, fontSize: type.body,
+                cursor: 'not-allowed', fontFamily: font.sans }}>
               Cancel
             </button>
           </div>
@@ -547,10 +535,10 @@ export default function ClientSettings({ profile, onProfileUpdate }) {
     <div style={{ display: 'flex', gap: 0, minHeight: 500 }}>
 
       {/* Left nav */}
-      <div style={{ width: 220, flexShrink: 0, borderRight: '0.5px solid #E8E8E8',
+      <div style={{ width: 220, flexShrink: 0, borderRight: `0.5px solid ${color.borderLight}`,
         paddingRight: 0, marginRight: 0 }}>
-        <div style={{ fontSize: 10, fontWeight: 500, color: '#AAA', letterSpacing: '0.1em',
-          fontFamily: 'DM Mono, monospace', textTransform: 'uppercase',
+        <div style={{ fontSize: type.label, fontWeight: 500, color: color.textOnLight.faint, letterSpacing: '0.1em',
+          fontFamily: font.mono, textTransform: 'uppercase',
           padding: '0 12px', marginBottom: 8 }}>
           Settings
         </div>
@@ -558,9 +546,9 @@ export default function ClientSettings({ profile, onProfileUpdate }) {
           <button key={item.id} onClick={() => setActiveSection(item.id)}
             style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10,
               padding: '10px 12px', border: 'none', cursor: 'pointer', textAlign: 'left',
-              borderRadius: 8, marginBottom: 2, fontFamily: 'DM Sans', fontSize: 14,
-              background: activeSection === item.id ? '#0D0D0D' : 'transparent',
-              color: activeSection === item.id ? '#F5F2ED' : '#555',
+              borderRadius: 8, marginBottom: 2, fontFamily: font.sans, fontSize: type.body,
+              background: activeSection === item.id ? color.void : 'transparent',
+              color: activeSection === item.id ? color.textOnDark.primary : color.textOnLight.secondary,
               fontWeight: activeSection === item.id ? 500 : 400,
               transition: 'all 0.15s ease' }}>
             <span style={{ fontSize: 16 }}>{item.icon}</span>

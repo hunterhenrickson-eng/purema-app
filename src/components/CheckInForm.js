@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
+import { color, font, type, labelStyle as themeLabelStyle } from '../lib/theme'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -48,9 +49,9 @@ const initialDailyLog = () => DAYS.map(() => emptyDay())
 
 const Mark = ({ size = 24 }) => (
   <svg width={size} height={size * 0.9} viewBox="0 0 52 48">
-    <polyline points="6,10 18,24 6,38" fill="none" stroke="#0F6E56" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    <polyline points="19,10 31,24 19,38" fill="none" stroke="#0F6E56" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
-    <polyline points="32,10 46,24 32,38" fill="none" stroke="#0F6E56" strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <polyline points="6,10 18,24 6,38" fill="none" stroke={color.forest} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <polyline points="19,10 31,24 19,38" fill="none" stroke={color.forest} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <polyline points="32,10 46,24 32,38" fill="none" stroke={color.forest} strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 )
 
@@ -60,30 +61,21 @@ const inputStyle = {
   width: '100%',
   padding: '9px 12px',
   borderRadius: 8,
-  border: '1px solid #E8E8E8',
-  fontFamily: 'DM Sans, sans-serif',
-  fontSize: 14,
-  color: '#0D0D0D',
-  background: '#fff',
+  border: `1px solid ${color.borderLight}`,
+  fontFamily: font.sans,
+  fontSize: type.body,
+  color: color.textOnLight.primary,
+  background: color.surfaceLight,
   outline: 'none',
   boxSizing: 'border-box',
 }
 
-const labelStyle = {
-  fontSize: 10,
-  fontWeight: 500,
-  color: '#888',
-  letterSpacing: '0.08em',
-  textTransform: 'uppercase',
-  fontFamily: 'DM Mono, monospace',
-  marginBottom: 6,
-  display: 'block',
-}
+const labelStyle = themeLabelStyle(false)
 
 const cardStyle = {
-  background: '#fff',
+  background: color.surfaceLight,
   borderRadius: 14,
-  border: '0.5px solid #E8E8E8',
+  border: `0.5px solid ${color.borderLight}`,
   padding: 24,
   marginBottom: 16,
 }
@@ -91,14 +83,14 @@ const cardStyle = {
 const SectionHeader = ({ number, title, subtitle }) => (
   <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 24,
     paddingBottom: 16, borderBottom: '0.5px solid #F0F0F0' }}>
-    <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#0F6E56',
+    <div style={{ width: 32, height: 32, borderRadius: '50%', background: color.forest,
       display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-      fontFamily: 'DM Mono, monospace', fontSize: 12, fontWeight: 500, color: '#EAF3DE' }}>
+      fontFamily: font.mono, fontSize: type.label, fontWeight: 500, color: color.sage }}>
       {number}
     </div>
     <div>
-      <div style={{ fontSize: 17, fontWeight: 500, color: '#0D0D0D' }}>{title}</div>
-      {subtitle && <div style={{ fontSize: 12, color: '#AAA', marginTop: 2 }}>{subtitle}</div>}
+      <div style={{ fontSize: 17, fontWeight: 500, color: color.textOnLight.primary }}>{title}</div>
+      {subtitle && <div style={{ fontSize: type.label, color: color.textOnLight.faint, marginTop: 2 }}>{subtitle}</div>}
     </div>
   </div>
 )
@@ -110,9 +102,9 @@ const Toggle = ({ value, onChange, labelTrue = 'Yes', labelFalse = 'No' }) => (
     {[true, false].map(v => (
       <button key={String(v)} onClick={() => onChange(v)} type="button"
         style={{ padding: '6px 14px', borderRadius: 6, border: 'none', cursor: 'pointer',
-          fontSize: 12, fontWeight: 500, fontFamily: 'DM Sans',
-          background: value === v ? '#0F6E56' : '#F0EDE8',
-          color: value === v ? '#EAF3DE' : '#888',
+          fontSize: type.label, fontWeight: 500, fontFamily: font.sans,
+          background: value === v ? color.forest : '#F0EDE8',
+          color: value === v ? color.sage : color.textOnLight.secondary,
           transition: 'all 0.15s ease' }}>
         {v ? labelTrue : labelFalse}
       </button>
@@ -134,12 +126,12 @@ const DayColumn = ({ day, date, index, data, onChange }) => {
       padding: '14px 12px', display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
 
       {/* Day header */}
-      <div style={{ textAlign: 'center', paddingBottom: 8, borderBottom: '0.5px solid #E8E8E8' }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: '#0D0D0D', fontFamily: 'DM Mono, monospace',
+      <div style={{ textAlign: 'center', paddingBottom: 8, borderBottom: `0.5px solid ${color.borderLight}` }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: color.textOnLight.primary, fontFamily: font.mono,
           letterSpacing: '0.06em' }}>
           {day}
         </div>
-        <div style={{ fontSize: 10, color: '#AAA', fontFamily: 'DM Mono, monospace',
+        <div style={{ fontSize: type.label, color: color.textOnLight.faint, fontFamily: font.mono,
           letterSpacing: '0.04em', marginTop: 2 }}>
           {date}
         </div>
@@ -432,7 +424,7 @@ export default function CheckInForm({ onSuccess }) {
 
   if (profileLoading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 80 }}>
-      <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 12, color: '#0F6E56', letterSpacing: '0.1em' }}>
+      <div style={{ fontFamily: font.mono, fontSize: type.label, color: color.forest, letterSpacing: '0.1em' }}>
         LOADING...
       </div>
     </div>
@@ -440,16 +432,16 @@ export default function CheckInForm({ onSuccess }) {
 
   if (profileError) return (
     <div style={{ padding: 40, textAlign: 'center' }}>
-      <div style={{ fontSize: 15, color: '#0D0D0D', marginBottom: 8 }}>Something went wrong</div>
-      <div style={{ fontSize: 13, color: '#888' }}>{profileError}</div>
+      <div style={{ fontSize: 15, color: color.textOnLight.primary, marginBottom: 8 }}>Something went wrong</div>
+      <div style={{ fontSize: type.body, color: color.textOnLight.secondary }}>{profileError}</div>
     </div>
   )
 
   if (step === -1) return (
     <div style={{ padding: 80, textAlign: 'center' }}>
       <Mark size={40} />
-      <div style={{ marginTop: 24, fontSize: 24, fontWeight: 300, color: '#0D0D0D' }}>Check-in submitted.</div>
-      <div style={{ marginTop: 8, fontSize: 14, color: '#888' }}>Your coach will review it shortly.</div>
+      <div style={{ marginTop: 24, fontSize: 24, fontWeight: 300, color: color.textOnLight.primary }}>Check-in submitted.</div>
+      <div style={{ marginTop: 8, fontSize: type.body, color: color.textOnLight.secondary }}>Your coach will review it shortly.</div>
     </div>
   )
 
@@ -459,17 +451,17 @@ export default function CheckInForm({ onSuccess }) {
   const adjustedStep = step
 
   return (
-    <div style={{ fontFamily: 'DM Sans, sans-serif' }}>
+    <div style={{ fontFamily: font.sans }}>
 
       {/* Draft save indicator */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8, minHeight: 18 }}>
         {draftSaving && (
-          <span style={{ fontSize: 11, color: '#AAA', fontFamily: 'DM Mono, monospace', letterSpacing: '0.06em' }}>
+          <span style={{ fontSize: type.label, color: color.textOnLight.faint, fontFamily: font.mono, letterSpacing: '0.06em' }}>
             Saving...
           </span>
         )}
         {draftSaved && !draftSaving && (
-          <span style={{ fontSize: 11, color: '#0F6E56', fontFamily: 'DM Mono, monospace', letterSpacing: '0.06em' }}>
+          <span style={{ fontSize: type.label, color: color.forest, fontFamily: font.mono, letterSpacing: '0.06em' }}>
             ✓ Draft saved
           </span>
         )}
@@ -478,19 +470,19 @@ export default function CheckInForm({ onSuccess }) {
       {/* Progress bar */}
       <div style={{ marginBottom: 24 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-          <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 10, color: '#AAA', letterSpacing: '0.1em' }}>
+          <span style={{ fontFamily: font.mono, fontSize: type.label, color: color.textOnLight.faint, letterSpacing: '0.1em' }}>
             STEP {adjustedStep + 1} OF {progressSteps}
           </span>
           <div style={{ display: 'flex', gap: 4 }}>
             {Array.from({ length: progressSteps }).map((_, i) => (
               <div key={i} style={{ width: 28, height: 3, borderRadius: 2,
-                background: i <= adjustedStep ? '#0F6E56' : '#E8E8E8', transition: 'background 0.3s' }} />
+                background: i <= adjustedStep ? color.forest : color.borderLight, transition: 'background 0.3s' }} />
             ))}
           </div>
         </div>
-        <div style={{ height: 2, background: '#E8E8E8', borderRadius: 999 }}>
+        <div style={{ height: 2, background: color.borderLight, borderRadius: 999 }}>
           <div style={{ height: '100%', width: `${((adjustedStep + 1) / progressSteps) * 100}%`,
-            background: '#0F6E56', borderRadius: 999, transition: 'width 0.4s ease' }} />
+            background: color.forest, borderRadius: 999, transition: 'width 0.4s ease' }} />
         </div>
       </div>
 
@@ -501,18 +493,18 @@ export default function CheckInForm({ onSuccess }) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <div>
               <label style={labelStyle}>Your name</label>
-              <div style={{ ...inputStyle, background: '#F5F2ED', color: '#0D0D0D',
+              <div style={{ ...inputStyle, background: color.bone, color: color.textOnLight.primary,
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 {profile?.full_name}
-                <span style={{ fontSize: 9, color: '#0F6E56', fontFamily: 'DM Mono, monospace' }}>CONFIRMED</span>
+                <span style={{ fontSize: type.label, color: color.forest, fontFamily: font.mono }}>CONFIRMED</span>
               </div>
             </div>
             <div>
               <label style={labelStyle}>Week number</label>
-              <input type="number" value={weekNumber} onChange={e => setWeekNumber(e.target.value)}
+              <input type="number" value={weekNumber}
                 onChange={e => { setWeekNumber(e.target.value); scheduleSave({ weekNumber: e.target.value }) }}
               style={inputStyle} />
-              <div style={{ fontSize: 11, color: '#AAA', marginTop: 4 }}>
+              <div style={{ fontSize: type.label, color: color.textOnLight.faint, marginTop: 4 }}>
                 Auto-filled from last check-in. Edit if needed.
               </div>
             </div>
@@ -526,10 +518,10 @@ export default function CheckInForm({ onSuccess }) {
           <SectionHeader number="02" title="Daily log" subtitle="Fill in each day of the week" />
           {/* Scroll hint */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <div style={{ fontSize: 11, color: '#AAA', fontFamily: 'DM Mono, monospace', letterSpacing: '0.06em' }}>
+            <div style={{ fontSize: type.label, color: color.textOnLight.faint, fontFamily: font.mono, letterSpacing: '0.06em' }}>
               SUN → SAT
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#AAA', fontFamily: 'DM Sans' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: type.label, color: color.textOnLight.faint, fontFamily: font.sans }}>
               <span>Scroll to see all 7 days</span>
               <span style={{ fontSize: 14 }}>→</span>
             </div>
@@ -642,24 +634,24 @@ export default function CheckInForm({ onSuccess }) {
       <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
         {step > 0 && (
           <button onClick={() => setStep(s => s - 1)} type="button"
-            style={{ flex: 1, height: 48, background: '#F5F2ED', border: '1px solid #E8E8E8',
-              borderRadius: 10, fontSize: 14, fontWeight: 500, color: '#555', cursor: 'pointer',
-              fontFamily: 'DM Sans' }}>
+            style={{ flex: 1, height: 48, background: color.bone, border: `1px solid ${color.borderLight}`,
+              borderRadius: 10, fontSize: type.body, fontWeight: 500, color: color.textOnLight.secondary, cursor: 'pointer',
+              fontFamily: font.sans }}>
             Back
           </button>
         )}
         {step < (showMeasurements ? 4 : 3) ? (
           <button onClick={() => setStep(s => s + 1)} type="button"
-            style={{ flex: 3, height: 48, background: '#0F6E56', border: 'none',
-              borderRadius: 10, fontSize: 14, fontWeight: 500, color: '#EAF3DE',
-              cursor: 'pointer', fontFamily: 'DM Sans' }}>
+            style={{ flex: 3, height: 48, background: color.forest, border: 'none',
+              borderRadius: 10, fontSize: type.body, fontWeight: 500, color: color.sage,
+              cursor: 'pointer', fontFamily: font.sans }}>
             Continue
           </button>
         ) : (
           <button onClick={handleSubmit} disabled={loading} type="button"
-            style={{ flex: 3, height: 48, background: loading ? '#AAA' : '#0F6E56', border: 'none',
-              borderRadius: 10, fontSize: 14, fontWeight: 500, color: '#EAF3DE',
-              cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'DM Sans' }}>
+            style={{ flex: 3, height: 48, background: loading ? color.textOnLight.faint : color.forest, border: 'none',
+              borderRadius: 10, fontSize: type.body, fontWeight: 500, color: color.sage,
+              cursor: loading ? 'not-allowed' : 'pointer', fontFamily: font.sans }}>
             {loading ? 'Submitting...' : 'Submit check-in'}
           </button>
         )}

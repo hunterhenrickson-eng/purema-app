@@ -219,19 +219,6 @@ const AttentionCard = ({ item, onSelectCheckin }) => {
 
 // ─── Check-in detail modal ────────────────────────────────────────────────────
 
-// ─── Performance badge ───────────────────────────────────────────────────────
-
-const PerfBadge = ({ value }) => {
-  if (value === '' || value === null || value === undefined) return null
-  const v = parseInt(value)
-  const map = { 0: { label: 'Regression', color: color.alert, bg: '#2A1010' }, 1: { label: 'No change', color: color.gold, bg: '#2A1A00' }, 2: { label: 'Progression', color: color.forest, bg: '#0A1F16' } }
-  const p = map[v]
-  if (!p) return null
-  return <span style={{ fontSize: type.label, background: p.bg, color: p.color, padding: '2px 8px', borderRadius: 999, fontFamily: font.mono, fontWeight: 500 }}>{p.label}</span>
-}
-
-// ─── Check-in detail modal ────────────────────────────────────────────────────
-
 const CheckInDetail = ({ checkin, onClose, onFeedbackSave }) => {
   const [feedback, setFeedback] = useState(checkin.coach_feedback || '')
   const [saving, setSaving] = useState(false)

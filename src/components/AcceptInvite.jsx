@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { color, font } from '../lib/theme';
 
 export default function AcceptInvite({ token }) {
   const [invite, setInvite] = useState(null);
@@ -66,15 +67,15 @@ export default function AcceptInvite({ token }) {
     window.location.href = '/';
   }
 
-  if (status === 'loading') return <p style={{ padding: 40, fontFamily: 'DM Sans' }}>Loading invite...</p>;
-  if (status === 'invalid') return <p style={{ padding: 40, fontFamily: 'DM Sans' }}>This invite link is invalid.</p>;
-  if (status === 'used') return <p style={{ padding: 40, fontFamily: 'DM Sans' }}>This invite has already been used.</p>;
-  if (status === 'expired') return <p style={{ padding: 40, fontFamily: 'DM Sans' }}>This invite link has expired.</p>;
+  if (status === 'loading') return <p style={{ padding: 40, fontFamily: font.sans }}>Loading invite...</p>;
+  if (status === 'invalid') return <p style={{ padding: 40, fontFamily: font.sans }}>This invite link is invalid.</p>;
+  if (status === 'used') return <p style={{ padding: 40, fontFamily: font.sans }}>This invite has already been used.</p>;
+  if (status === 'expired') return <p style={{ padding: 40, fontFamily: font.sans }}>This invite link has expired.</p>;
 
   return (
-    <div style={{ maxWidth: 400, margin: '60px auto', fontFamily: 'DM Sans' }}>
+    <div style={{ maxWidth: 400, margin: '60px auto', fontFamily: font.sans }}>
       <h2 style={{ fontWeight: 500 }}>Welcome to Purema</h2>
-      <p style={{ marginBottom: 24, color: '#555' }}>
+      <p style={{ marginBottom: 24, color: color.textOnLight.secondary }}>
         You've been invited to join as a client. Set a password to finish
         creating your account for <strong>{invite.email}</strong>.
       </p>
@@ -86,7 +87,7 @@ export default function AcceptInvite({ token }) {
           placeholder="Full name"
           value={fullName}
           onChange={(e) => setFullName(e.target.value)}
-          style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid #ccc' }}
+          style={{ padding: '10px 12px', borderRadius: 8, border: `1px solid ${color.borderLight}` }}
         />
         <input
           type="password"
@@ -95,7 +96,7 @@ export default function AcceptInvite({ token }) {
           placeholder="Create a password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid #ccc' }}
+          style={{ padding: '10px 12px', borderRadius: 8, border: `1px solid ${color.borderLight}` }}
         />
         <button
           type="submit"
@@ -104,8 +105,8 @@ export default function AcceptInvite({ token }) {
             padding: '12px',
             borderRadius: 8,
             border: 'none',
-            background: '#0F6E56',
-            color: '#F5F2ED',
+            background: color.forest,
+            color: color.sage,
             fontWeight: 500,
             cursor: 'pointer',
           }}
@@ -114,7 +115,7 @@ export default function AcceptInvite({ token }) {
         </button>
       </form>
 
-      {error && <p style={{ color: '#E24B4A', marginTop: 12 }}>{error}</p>}
+      {error && <p style={{ color: color.alert, marginTop: 12 }}>{error}</p>}
     </div>
   );
 }
