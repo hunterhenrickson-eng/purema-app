@@ -943,7 +943,7 @@ export default function CoachDashboard() {
           }}>
           {tab.label}
           {tab.id === 'checkins' && pendingCount > 0 && (
-            <span style={{ marginLeft: 6, background: color.gold, color: '#fff',
+            <span style={{ marginLeft: 6, background: color.gold, color: color.surfaceLight,
               fontSize: type.label, borderRadius: 999, padding: '1px 6px',
               fontFamily: font.mono, verticalAlign: 'middle' }}>
               {pendingCount}
@@ -1057,7 +1057,7 @@ export default function CoachDashboard() {
                 whiteSpace: 'nowrap' }}>
               {tab.label}
               {tab.id === 'checkins' && pendingCount > 0 && (
-                <span style={{ background: color.gold, color: '#fff',
+                <span style={{ background: color.gold, color: color.surfaceLight,
                   fontSize: type.label, borderRadius: 999, padding: '1px 5px',
                   fontFamily: font.mono }}>
                   {pendingCount}

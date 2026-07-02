@@ -99,7 +99,7 @@ export default function InviteClient() {
       {link && (
         <div style={{ marginTop: 12, padding: 12, background: roleBg, borderRadius: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-            <span style={{ fontSize: type.label, background: '#fff', color: roleColor,
+            <span style={{ fontSize: type.label, background: color.surfaceLight, color: roleColor,
               padding: '2px 8px', borderRadius: 999, fontFamily: font.mono,
               fontWeight: 500, border: `1px solid ${roleBg}` }}>
               {roleLabel} invite
