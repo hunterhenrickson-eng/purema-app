@@ -4,6 +4,7 @@ import { color, font, type, labelStyle } from '../lib/theme'
 import '../styles/purema-responsive.css'
 import InviteClient from '../components/InviteClient'
 import { PLANS, planById, tierLimit, isSubscribed } from '../lib/billing'
+import { getActivePhase } from '../lib/dietPlan'
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
@@ -221,10 +222,59 @@ const AttentionCard = ({ item, onSelectCheckin }) => {
 
 // ─── Check-in detail modal ────────────────────────────────────────────────────
 
-const CheckInDetail = ({ checkin, onClose, onFeedbackSave }) => {
+const CheckInDetail = ({ checkin, onClose, onFeedbackSave, coachId }) => {
   const [feedback, setFeedback] = useState(checkin.coach_feedback || '')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [override, setOverride] = useState(null)
+  const [overrideForm, setOverrideForm] = useState({ calories: '', protein: '', carbs: '', fats: '', note: '' })
+  const [overrideLoading, setOverrideLoading] = useState(true)
+  const [overrideSaving, setOverrideSaving] = useState(false)
+  const [overrideSaved, setOverrideSaved] = useState(false)
+  const [overrideError, setOverrideError] = useState(null)
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadOverride() {
+      setOverrideLoading(true)
+      const { data } = await supabase.from('weekly_target_overrides')
+        .select('*').eq('client_id', checkin.client_id).eq('week_number', checkin.week_number).maybeSingle()
+      if (cancelled) return
+      setOverride(data || null)
+      if (data) {
+        setOverrideForm({
+          calories: data.calories ?? '', protein: data.protein ?? '', carbs: data.carbs ?? '', fats: data.fats ?? '', note: '',
+        })
+      }
+      setOverrideLoading(false)
+    }
+    loadOverride()
+    return () => { cancelled = true }
+  }, [checkin.client_id, checkin.week_number])
+
+  const saveOverride = async () => {
+    setOverrideSaving(true)
+    setOverrideError(null)
+    const values = {
+      calories: overrideForm.calories === '' ? null : parseFloat(overrideForm.calories),
+      protein: overrideForm.protein === '' ? null : parseFloat(overrideForm.protein),
+      carbs: overrideForm.carbs === '' ? null : parseFloat(overrideForm.carbs),
+      fats: overrideForm.fats === '' ? null : parseFloat(overrideForm.fats),
+    }
+    const { data, error } = await supabase.from('weekly_target_overrides')
+      .upsert({
+        client_id: checkin.client_id, coach_id: coachId, week_number: checkin.week_number, ...values,
+      }, { onConflict: 'client_id,week_number' })
+      .select().single()
+    setOverrideSaving(false)
+    if (error || !data) { setOverrideError(error?.message || "Couldn't save override."); return }
+    setOverride(data)
+    await supabase.from('macro_adjustments').insert({
+      client_id: checkin.client_id, coach_id: coachId, phase_id: null, ...values, note: overrideForm.note || null,
+    })
+    setOverrideSaved(true)
+    setTimeout(() => setOverrideSaved(false), 2000)
+  }
 
   // Parse notes — could be JSON (new format) or plain text (old format)
   let parsedNotes = null
@@ -489,6 +539,31 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave }) => {
             </div>
           )}
 
+          {/* Override this week's targets — doesn't touch the underlying
+              diet plan, just this one check-in's week */}
+          <div style={{ background: color.surfaceLight, borderRadius: 12, border: `0.5px solid ${color.borderLight}`, padding: 16 }}>
+            <div style={{ ...S.label, marginBottom: 4 }}>Override targets for week {checkin.week_number}</div>
+            <div style={{ fontSize: type.label, color: color.textOnLight.secondary, marginBottom: 12 }}>
+              Only affects this check-in — the client's diet plan stays unchanged.
+            </div>
+            {!overrideLoading && (
+              <>
+                <PhaseFieldsGrid values={overrideForm} onChange={(key, val) => setOverrideForm(v => ({ ...v, [key]: val }))} />
+                <input type="text" placeholder="Note (optional) — why this week is different" value={overrideForm.note}
+                  onChange={e => setOverrideForm(v => ({ ...v, note: e.target.value }))}
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: `1px solid ${color.borderLight}`,
+                    fontFamily: font.sans, fontSize: type.body, boxSizing: 'border-box', marginBottom: 8, color: color.textOnLight.primary }} />
+                {overrideError && <div style={{ fontSize: type.body, color: color.alert, marginBottom: 8 }}>{overrideError}</div>}
+                <button onClick={saveOverride} disabled={overrideSaving}
+                  style={{ padding: '7px 16px', borderRadius: 6, border: 'none',
+                    background: overrideSaved ? '#0D5E49' : color.forest, color: color.sage,
+                    fontFamily: font.sans, fontSize: type.label, fontWeight: 500, cursor: overrideSaving ? 'not-allowed' : 'pointer' }}>
+                  {overrideSaving ? 'Saving...' : overrideSaved ? 'Saved ✓' : override ? 'Update override' : 'Save override'}
+                </button>
+              </>
+            )}
+          </div>
+
           {/* Coach feedback — always shown */}
           <div style={{ background: color.void, borderRadius: 12, padding: 16 }}>
             <div style={{ ...S.label, color: color.forest, marginBottom: 8 }}>Coach feedback</div>
@@ -572,15 +647,12 @@ const TabDashboard = ({ checkins, clients, onSelectCheckin }) => {
 
 // ─── Tab: Clients ─────────────────────────────────────────────────────────────
 
+// Macro targets (calories/protein/carbs/fats) moved to the diet plan
+// builder below — this panel now only covers the two fields that aren't
+// part of a phased plan: a goal weight, and how many days before
+// show_date the peak week window starts.
 const TARGET_FIELDS = [
   { key: 'target_weight', label: 'Weight', unit: 'lbs' },
-  { key: 'target_calories', label: 'Calories', unit: 'kcal' },
-  { key: 'target_protein', label: 'Protein', unit: 'g' },
-  { key: 'target_carbs', label: 'Carbs', unit: 'g' },
-  { key: 'target_fats', label: 'Fats', unit: 'g' },
-  // Not a weekly nutrition target — how many days before this client's
-  // show_date their peak week window starts. Lives here anyway since this
-  // is the only "coach edits one field on one client" surface that exists.
   { key: 'peak_week_days', label: 'Peak week', unit: 'days', integer: true },
 ]
 
@@ -607,7 +679,7 @@ const TargetsPanel = ({ client, onSave }) => {
 
   return (
     <div style={{ marginTop: 10, paddingTop: 14, borderTop: '0.5px solid #F0F0F0' }}>
-      <div style={{ ...S.label, marginBottom: 10 }}>Targets & peak week</div>
+      <div style={{ ...S.label, marginBottom: 10 }}>Weight goal & peak week</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 10, marginBottom: 12 }}>
         {TARGET_FIELDS.map(f => (
           <div key={f.key}>
@@ -632,8 +704,259 @@ const TargetsPanel = ({ client, onSave }) => {
   )
 }
 
+// ─── Diet plan builder ────────────────────────────────────────────────────────
+// A plan is a sequence of phases (start date + macro targets) — one phase
+// for a flat target, several for something like a reverse diet that ramps
+// calories up over weeks. The client's MacroBar reads whichever phase is
+// active as of today (see getActivePhase in lib/dietPlan.js), so nothing
+// here needs to "activate" a phase — it just takes effect on its start date.
+
+const MACRO_PHASE_FIELDS = [
+  { key: 'calories', label: 'Calories', unit: 'kcal' },
+  { key: 'protein', label: 'Protein', unit: 'g' },
+  { key: 'carbs', label: 'Carbs', unit: 'g' },
+  { key: 'fats', label: 'Fats', unit: 'g' },
+]
+
+const emptyPhaseForm = () => ({ start_date: '', calories: '', protein: '', carbs: '', fats: '', note: '' })
+
+const phaseValuesFromForm = (form) => ({
+  calories: form.calories === '' ? null : parseFloat(form.calories),
+  protein: form.protein === '' ? null : parseFloat(form.protein),
+  carbs: form.carbs === '' ? null : parseFloat(form.carbs),
+  fats: form.fats === '' ? null : parseFloat(form.fats),
+})
+
+const PhaseFieldsGrid = ({ values, onChange, includeDate }) => (
+  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: 8, marginBottom: 8 }}>
+    {includeDate && (
+      <div>
+        <label style={{ ...S.label, fontSize: type.label, marginBottom: 4 }}>Start date</label>
+        <input type="date" value={values.start_date} onChange={e => onChange('start_date', e.target.value)}
+          style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: `1px solid ${color.borderLight}`,
+            fontFamily: font.sans, fontSize: type.body, boxSizing: 'border-box', color: color.textOnLight.primary }} />
+      </div>
+    )}
+    {MACRO_PHASE_FIELDS.map(f => (
+      <div key={f.key}>
+        <label style={{ ...S.label, fontSize: type.label, marginBottom: 4 }}>{f.label}</label>
+        <input type="number" step={0.1} placeholder="—" value={values[f.key]}
+          onChange={e => onChange(f.key, e.target.value)}
+          style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: `1px solid ${color.borderLight}`,
+            fontFamily: font.sans, fontSize: type.body, boxSizing: 'border-box', color: color.textOnLight.primary }} />
+      </div>
+    ))}
+  </div>
+)
+
+const DietPlanPanel = ({ client, coachId }) => {
+  const [phases, setPhases] = useState(null)
+  const [history, setHistory] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [form, setForm] = useState(emptyPhaseForm())
+  const [adding, setAdding] = useState(false)
+  const [editingId, setEditingId] = useState(null)
+  const [editForm, setEditForm] = useState(emptyPhaseForm())
+  const [editSaving, setEditSaving] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      setLoading(true)
+      const [{ data: phaseRows }, { data: historyRows }] = await Promise.all([
+        supabase.from('diet_plan_phases').select('*').eq('client_id', client.id).order('start_date', { ascending: true }),
+        supabase.from('macro_adjustments').select('*').eq('client_id', client.id).order('created_at', { ascending: false }).limit(20),
+      ])
+      if (cancelled) return
+      setPhases(phaseRows || [])
+      setHistory(historyRows || [])
+      setLoading(false)
+    }
+    load()
+    return () => { cancelled = true }
+  }, [client.id])
+
+  const logAdjustment = async (phaseId, values, note) => {
+    const { data } = await supabase.from('macro_adjustments').insert({
+      client_id: client.id, coach_id: coachId, phase_id: phaseId,
+      calories: values.calories, protein: values.protein, carbs: values.carbs, fats: values.fats,
+      note: note || null,
+    }).select().single()
+    if (data) setHistory(prev => [data, ...prev])
+  }
+
+  const addPhase = async () => {
+    if (!form.start_date) { setError('Pick a start date.'); return }
+    setAdding(true)
+    setError(null)
+
+    // A client's plan is created lazily on its first phase — there's no
+    // separate "create plan" step in the UI.
+    let planId
+    const { data: existingPlan } = await supabase.from('diet_plans').select('id').eq('client_id', client.id).maybeSingle()
+    if (existingPlan) {
+      planId = existingPlan.id
+    } else {
+      const { data: newPlan, error: planError } = await supabase.from('diet_plans')
+        .insert({ client_id: client.id, coach_id: coachId }).select().single()
+      if (planError || !newPlan) { setError(planError?.message || "Couldn't create plan."); setAdding(false); return }
+      planId = newPlan.id
+    }
+
+    const values = phaseValuesFromForm(form)
+    const { data: phase, error: phaseError } = await supabase.from('diet_plan_phases')
+      .insert({ plan_id: planId, client_id: client.id, coach_id: coachId, start_date: form.start_date, ...values })
+      .select().single()
+
+    setAdding(false)
+    if (phaseError || !phase) { setError(phaseError?.message || "Couldn't add phase."); return }
+
+    setPhases(prev => [...(prev || []), phase].sort((a, b) => (a.start_date < b.start_date ? -1 : 1)))
+    await logAdjustment(phase.id, values, form.note)
+    setForm(emptyPhaseForm())
+  }
+
+  const startEdit = (phase) => {
+    setEditingId(phase.id)
+    setError(null)
+    setEditForm({
+      start_date: phase.start_date,
+      calories: phase.calories ?? '', protein: phase.protein ?? '', carbs: phase.carbs ?? '', fats: phase.fats ?? '',
+      note: '',
+    })
+  }
+
+  const saveEdit = async (phaseId) => {
+    setEditSaving(true)
+    setError(null)
+    const values = phaseValuesFromForm(editForm)
+    const { data, error: updateError } = await supabase.from('diet_plan_phases')
+      .update({ start_date: editForm.start_date, ...values })
+      .eq('id', phaseId).select().single()
+    setEditSaving(false)
+    if (updateError || !data) { setError(updateError?.message || "Couldn't save phase."); return }
+    setPhases(prev => prev.map(p => (p.id === phaseId ? data : p)).sort((a, b) => (a.start_date < b.start_date ? -1 : 1)))
+    await logAdjustment(phaseId, values, editForm.note)
+    setEditingId(null)
+  }
+
+  if (loading) {
+    return (
+      <div style={{ marginTop: 10, paddingTop: 14, borderTop: '0.5px solid #F0F0F0', fontSize: type.body, color: color.textOnLight.secondary }}>
+        Loading plan...
+      </div>
+    )
+  }
+
+  const activePhase = getActivePhase(phases)
+
+  return (
+    <div style={{ marginTop: 10, paddingTop: 14, borderTop: '0.5px solid #F0F0F0' }}>
+      <div style={{ ...S.label, marginBottom: 10 }}>Diet plan</div>
+
+      {phases.length === 0 ? (
+        <div style={{ fontSize: type.body, color: color.textOnLight.secondary, marginBottom: 12 }}>
+          No phases yet — add one below to set this client's macro targets.
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
+          {phases.map(phase => (
+            <div key={phase.id} style={{ background: phase.id === activePhase?.id ? color.sage : color.bone, borderRadius: 8, padding: 10 }}>
+              {editingId === phase.id ? (
+                <div>
+                  <PhaseFieldsGrid values={editForm} includeDate onChange={(key, val) => setEditForm(v => ({ ...v, [key]: val }))} />
+                  <input type="text" placeholder="Note (optional) — why this changed" value={editForm.note}
+                    onChange={e => setEditForm(v => ({ ...v, note: e.target.value }))}
+                    style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: `1px solid ${color.borderLight}`,
+                      fontFamily: font.sans, fontSize: type.body, boxSizing: 'border-box', marginBottom: 8, color: color.textOnLight.primary }} />
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={() => saveEdit(phase.id)} disabled={editSaving}
+                      style={{ padding: '6px 14px', borderRadius: 6, border: 'none', background: color.forest, color: color.sage,
+                        fontFamily: font.sans, fontSize: type.label, fontWeight: 500, cursor: 'pointer' }}>
+                      {editSaving ? 'Saving...' : 'Save'}
+                    </button>
+                    <button onClick={() => setEditingId(null)}
+                      style={{ padding: '6px 14px', borderRadius: 6, border: `1px solid ${color.borderLight}`, background: 'transparent',
+                        color: color.textOnLight.secondary, fontFamily: font.sans, fontSize: type.label, cursor: 'pointer' }}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                  <div>
+                    <div style={{ fontSize: type.body, fontWeight: 500, color: color.textOnLight.primary }}>
+                      {new Date(`${phase.start_date}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      {phase.id === activePhase?.id && (
+                        <span style={{ marginLeft: 8, fontSize: type.label, color: color.forest, fontFamily: font.mono }}>ACTIVE</span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: type.label, color: color.textOnLight.secondary, marginTop: 2 }}>
+                      {[
+                        phase.calories != null && `${phase.calories} kcal`,
+                        phase.protein != null && `${phase.protein}g protein`,
+                        phase.carbs != null && `${phase.carbs}g carbs`,
+                        phase.fats != null && `${phase.fats}g fats`,
+                      ].filter(Boolean).join(' · ') || 'No macros set'}
+                    </div>
+                  </div>
+                  <button onClick={() => startEdit(phase)}
+                    style={{ fontSize: type.label, padding: '4px 10px', borderRadius: 6, border: `1px solid ${color.borderLight}`,
+                      background: 'transparent', color: color.textOnLight.secondary, cursor: 'pointer', fontFamily: font.mono }}>
+                    Edit
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={{ background: color.bone, borderRadius: 8, padding: 12, marginBottom: 14 }}>
+        <div style={{ ...S.label, fontSize: type.label, marginBottom: 8 }}>Add phase</div>
+        <PhaseFieldsGrid values={form} includeDate onChange={(key, val) => setForm(v => ({ ...v, [key]: val }))} />
+        <input type="text" placeholder="Note (optional) — why this phase" value={form.note}
+          onChange={e => setForm(v => ({ ...v, note: e.target.value }))}
+          style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: `1px solid ${color.borderLight}`,
+            fontFamily: font.sans, fontSize: type.body, boxSizing: 'border-box', marginBottom: 8, color: color.textOnLight.primary }} />
+        <button onClick={addPhase} disabled={adding}
+          style={{ padding: '7px 16px', borderRadius: 6, border: 'none', background: color.forest, color: color.sage,
+            fontFamily: font.sans, fontSize: type.label, fontWeight: 500, cursor: adding ? 'not-allowed' : 'pointer' }}>
+          {adding ? 'Adding...' : 'Add phase'}
+        </button>
+      </div>
+
+      {error && <div style={{ fontSize: type.body, color: color.alert, marginBottom: 10 }}>{error}</div>}
+
+      {history.length > 0 && (
+        <div>
+          <div style={{ ...S.label, fontSize: type.label, marginBottom: 8 }}>Adjustment history</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 180, overflowY: 'auto' }}>
+            {history.map(h => (
+              <div key={h.id} style={{ fontSize: type.label, color: color.textOnLight.secondary }}>
+                <span style={{ fontFamily: font.mono, color: color.textOnLight.faint }}>
+                  {new Date(h.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                </span>{' '}
+                {[
+                  h.calories != null && `${h.calories} kcal`,
+                  h.protein != null && `${h.protein}g P`,
+                  h.carbs != null && `${h.carbs}g C`,
+                  h.fats != null && `${h.fats}g F`,
+                ].filter(Boolean).join(' · ')}
+                {h.note && <span style={{ fontStyle: 'italic' }}> — {h.note}</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 const TabClients = ({ clients, profile, onStatusChange, onTargetsSave, onGoToBilling }) => {
   const [expandedId, setExpandedId] = useState(null)
+  const [expandedPlanId, setExpandedPlanId] = useState(null)
   const activeClients = clients.filter(c => !c.status || c.status === 'active')
   const limit = tierLimit(profile?.subscription_tier)
   const atLimit = activeClients.length >= limit
@@ -675,6 +998,14 @@ const TabClients = ({ clients, profile, onStatusChange, onTargetsSave, onGoToBil
                 background: expandedId === client.id ? color.bone : 'transparent', color: color.textOnLight.secondary,
                 cursor: 'pointer', fontFamily: font.mono }}>
               Targets
+            </button>
+          )}
+          {client.status !== 'archived' && (
+            <button onClick={() => setExpandedPlanId(expandedPlanId === client.id ? null : client.id)}
+              style={{ fontSize: type.label, padding: '4px 10px', borderRadius: 6, border: `1px solid ${color.borderLight}`,
+                background: expandedPlanId === client.id ? color.bone : 'transparent', color: color.textOnLight.secondary,
+                cursor: 'pointer', fontFamily: font.mono }}>
+              Diet plan
             </button>
           )}
           {(!client.status || client.status === 'active') && (
@@ -719,6 +1050,9 @@ const TabClients = ({ clients, profile, onStatusChange, onTargetsSave, onGoToBil
       )}
       {expandedId === client.id && (
         <TargetsPanel client={client} onSave={onTargetsSave} />
+      )}
+      {expandedPlanId === client.id && (
+        <DietPlanPanel client={client} coachId={profile?.id} />
       )}
     </div>
     )
@@ -1510,7 +1844,7 @@ export default function CoachDashboard() {
       </div>
 
       {selected && (
-        <CheckInDetail checkin={selected} onClose={() => setSelected(null)} onFeedbackSave={handleFeedbackSave} />
+        <CheckInDetail checkin={selected} onClose={() => setSelected(null)} onFeedbackSave={handleFeedbackSave} coachId={profile?.id} />
       )}
     </div>
   )

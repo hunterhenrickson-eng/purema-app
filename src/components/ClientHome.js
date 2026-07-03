@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import CheckInForm from './CheckInForm'
 import ClientSettings from './ClientSettings'
 import { color, font, type, labelStyle } from '../lib/theme'
+import { getEffectiveTargets } from '../lib/dietPlan'
 import '../styles/purema-responsive.css'
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
@@ -102,9 +103,10 @@ const MacroBar = ({ label, value, unit, color: barColor, target }) => {
 
 // ─── Home tab ─────────────────────────────────────────────────────────────────
 
-const TabHome = ({ profile, checkins, onGoToCheckin }) => {
+const TabHome = ({ profile, checkins, dietPhases, targetOverrides, onGoToCheckin }) => {
   const latest = checkins[0]
   const nextWeek = latest ? latest.week_number + 1 : 1
+  const targets = latest ? getEffectiveTargets(dietPhases, targetOverrides, latest.week_number, profile) : null
   const hasCheckedInThisWeek = latest &&
     (new Date() - new Date(latest.submitted_at)) / (1000 * 60 * 60 * 24) < 7
 
@@ -163,10 +165,10 @@ const TabHome = ({ profile, checkins, onGoToCheckin }) => {
             {(latest.calories || latest.protein || latest.carbs || latest.fats) && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <div style={{ ...S.label, marginBottom: 2 }}>Nutrition this week</div>
-                <MacroBar label="KCAL" value={latest.calories} unit="" color={color.forest} target={profile?.target_calories} />
-                <MacroBar label="PRO" value={latest.protein} unit="g" color={color.forest} target={profile?.target_protein} />
-                <MacroBar label="CARB" value={latest.carbs} unit="g" color={color.gold} target={profile?.target_carbs} />
-                <MacroBar label="FAT" value={latest.fats} unit="g" color={color.textOnLight.faint} target={profile?.target_fats} />
+                <MacroBar label="KCAL" value={latest.calories} unit="" color={color.forest} target={targets?.calories} />
+                <MacroBar label="PRO" value={latest.protein} unit="g" color={color.forest} target={targets?.protein} />
+                <MacroBar label="CARB" value={latest.carbs} unit="g" color={color.gold} target={targets?.carbs} />
+                <MacroBar label="FAT" value={latest.fats} unit="g" color={color.textOnLight.faint} target={targets?.fats} />
               </div>
             )}
           </div>
@@ -587,6 +589,8 @@ export default function ClientHome() {
   const [activeTab, setActiveTab] = useState('home')
   const [profile, setProfile] = useState(null)
   const [checkins, setCheckins] = useState([])
+  const [dietPhases, setDietPhases] = useState([])
+  const [targetOverrides, setTargetOverrides] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -594,14 +598,18 @@ export default function ClientHome() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      const [profileRes, checkinsRes] = await Promise.all([
+      const [profileRes, checkinsRes, phasesRes, overridesRes] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', user.id).single(),
         supabase.from('check_ins').select('*').eq('client_id', user.id)
           .order('submitted_at', { ascending: false }),
+        supabase.from('diet_plan_phases').select('*').eq('client_id', user.id),
+        supabase.from('weekly_target_overrides').select('*').eq('client_id', user.id),
       ])
 
       if (!profileRes.error) setProfile(profileRes.data)
       if (!checkinsRes.error) setCheckins(checkinsRes.data || [])
+      if (!phasesRes.error) setDietPhases(phasesRes.data || [])
+      if (!overridesRes.error) setTargetOverrides(overridesRes.data || [])
       setLoading(false)
     }
     load()
@@ -715,6 +723,8 @@ export default function ClientHome() {
             <TabHome
               profile={profile}
               checkins={checkins}
+              dietPhases={dietPhases}
+              targetOverrides={targetOverrides}
               onGoToCheckin={() => setActiveTab('checkin')}
             />
           )}
