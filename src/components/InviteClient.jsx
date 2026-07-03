@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { color, font, type, labelStyle } from '../lib/theme';
 
-export default function InviteClient() {
+export default function InviteClient({ atLimit = false, onUpgradeClick } = {}) {
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('client');
   const [link, setLink] = useState(null);
@@ -10,8 +10,13 @@ export default function InviteClient() {
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  // Coach invites aren't subject to a client-count limit — only blocks the
+  // 'client' role.
+  const blocked = atLimit && role === 'client';
+
   async function handleInvite(e) {
     e.preventDefault();
+    if (blocked) return;
     setError(null);
     setLink(null);
     setLoading(true);
@@ -71,26 +76,42 @@ export default function InviteClient() {
         ))}
       </div>
 
-      {/* Email + submit */}
-      <form onSubmit={handleInvite} style={{ display: 'flex', gap: 8 }}>
-        <input
-          type="email"
-          required
-          placeholder="their@email.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          style={{ flex: 1, padding: '10px 12px', borderRadius: 8,
-            border: `1px solid ${color.borderLight}`, fontFamily: font.sans,
-            fontSize: type.body, outline: 'none', color: color.textOnLight.primary }}
-        />
-        <button type="submit" disabled={loading}
-          style={{ padding: '10px 18px', borderRadius: 8, border: 'none',
-            background: loading ? color.textOnLight.faint : color.forest, color: color.textOnDark.primary,
-            fontFamily: font.sans, fontWeight: 500, cursor: loading ? 'not-allowed' : 'pointer',
-            fontSize: type.body, whiteSpace: 'nowrap' }}>
-          {loading ? 'Generating...' : `Invite as ${roleLabel}`}
-        </button>
-      </form>
+      {blocked ? (
+        <div style={{ padding: 12, background: '#FAEEDA', borderRadius: 8,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: type.body, color: '#633806' }}>
+            You've reached your plan's client limit.
+          </span>
+          {onUpgradeClick && (
+            <button onClick={onUpgradeClick} type="button"
+              style={{ padding: '6px 14px', borderRadius: 6, border: 'none',
+                background: color.gold, color: '#fff', fontFamily: font.sans,
+                fontSize: type.label, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              Upgrade plan
+            </button>
+          )}
+        </div>
+      ) : (
+        <form onSubmit={handleInvite} style={{ display: 'flex', gap: 8 }}>
+          <input
+            type="email"
+            required
+            placeholder="their@email.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            style={{ flex: 1, padding: '10px 12px', borderRadius: 8,
+              border: `1px solid ${color.borderLight}`, fontFamily: font.sans,
+              fontSize: type.body, outline: 'none', color: color.textOnLight.primary }}
+          />
+          <button type="submit" disabled={loading}
+            style={{ padding: '10px 18px', borderRadius: 8, border: 'none',
+              background: loading ? color.textOnLight.faint : color.forest, color: color.textOnDark.primary,
+              fontFamily: font.sans, fontWeight: 500, cursor: loading ? 'not-allowed' : 'pointer',
+              fontSize: type.body, whiteSpace: 'nowrap' }}>
+            {loading ? 'Generating...' : `Invite as ${roleLabel}`}
+          </button>
+        </form>
+      )}
 
       {error && (
         <p style={{ color: color.alert, marginTop: 8, fontSize: type.body }}>{error}</p>

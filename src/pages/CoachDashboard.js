@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { color, font, type, labelStyle } from '../lib/theme'
 import '../styles/purema-responsive.css'
 import InviteClient from '../components/InviteClient'
+import { PLANS, planById, tierLimit, isSubscribed } from '../lib/billing'
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
@@ -627,9 +628,11 @@ const TargetsPanel = ({ client, onSave }) => {
   )
 }
 
-const TabClients = ({ clients, onStatusChange, onTargetsSave }) => {
+const TabClients = ({ clients, profile, onStatusChange, onTargetsSave, onGoToBilling }) => {
   const [expandedId, setExpandedId] = useState(null)
   const activeClients = clients.filter(c => !c.status || c.status === 'active')
+  const limit = tierLimit(profile?.subscription_tier)
+  const atLimit = activeClients.length >= limit
   const pausedClients = clients.filter(c => c.status === 'paused')
   const archivedClients = clients.filter(c => c.status === 'archived')
 
@@ -720,7 +723,7 @@ const TabClients = ({ clients, onStatusChange, onTargetsSave }) => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <div style={S.card}>
-        <InviteClient />
+        <InviteClient atLimit={atLimit} onUpgradeClick={onGoToBilling} />
       </div>
 
       {activeClients.length > 0 && (
@@ -830,7 +833,7 @@ const TabCheckIns = ({ checkins, onSelectCheckin }) => {
 
 // ─── Tab: Overview ────────────────────────────────────────────────────────────
 
-const TabOverview = ({ clients, checkins }) => {
+const TabOverview = ({ clients, checkins, profile }) => {
   const activeClients = clients.filter(c => !c.status || c.status === 'active')
   const pausedClients = clients.filter(c => c.status === 'paused')
   const archivedClients = clients.filter(c => c.status === 'archived')
@@ -906,27 +909,152 @@ const TabOverview = ({ clients, checkins }) => {
       <div>
         <div style={S.sectionTitle}>Capacity</div>
         <div style={{ ...S.card }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <div style={{ fontSize: type.body, fontWeight: 500, color: color.textOnLight.primary }}>Client slots</div>
-            <span style={{ fontSize: type.label, background: color.sage, color: '#1A5C0A',
-              padding: '3px 10px', borderRadius: 999, fontFamily: font.mono }}>
-              Free plan · 3 max
-            </span>
-          </div>
-          <div style={{ background: '#F0EDE8', borderRadius: 999, height: 6, overflow: 'hidden' }}>
-            <div style={{ height: '100%', borderRadius: 999, background: color.forest,
-              width: `${Math.min((activeClients.length / 3) * 100, 100)}%`,
-              transition: 'width 0.3s ease' }} />
-          </div>
-          <div style={{ fontSize: type.label, color: color.textOnLight.secondary, marginTop: 8 }}>
-            {activeClients.length} of 3 slots used
-            {activeClients.length >= 3 && (
-              <span style={{ color: color.alert, marginLeft: 8 }}>· Upgrade to add more clients</span>
-            )}
-          </div>
+          {(() => {
+            const plan = planById(profile?.subscription_tier)
+            const limit = tierLimit(profile?.subscription_tier)
+            const unlimited = limit === Infinity
+            const atLimit = !unlimited && activeClients.length >= limit
+            return (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <div style={{ fontSize: type.body, fontWeight: 500, color: color.textOnLight.primary }}>Client slots</div>
+                  <span style={{ fontSize: type.label, background: color.sage, color: '#1A5C0A',
+                    padding: '3px 10px', borderRadius: 999, fontFamily: font.mono }}>
+                    {plan ? `${plan.label} plan` : 'No plan'} · {unlimited ? 'Unlimited' : `${limit} max`}
+                  </span>
+                </div>
+                {!unlimited && (
+                  <div style={{ background: '#F0EDE8', borderRadius: 999, height: 6, overflow: 'hidden' }}>
+                    <div style={{ height: '100%', borderRadius: 999, background: color.forest,
+                      width: `${Math.min((activeClients.length / (limit || 1)) * 100, 100)}%`,
+                      transition: 'width 0.3s ease' }} />
+                  </div>
+                )}
+                <div style={{ fontSize: type.label, color: color.textOnLight.secondary, marginTop: 8 }}>
+                  {unlimited
+                    ? `${activeClients.length} clients — unlimited plan`
+                    : `${activeClients.length} of ${limit} slots used`}
+                  {atLimit && (
+                    <span style={{ color: color.alert, marginLeft: 8 }}>· Upgrade to add more clients</span>
+                  )}
+                </div>
+              </>
+            )
+          })()}
         </div>
       </div>
 
+    </div>
+  )
+}
+
+// ─── Tab: Billing ─────────────────────────────────────────────────────────────
+
+const TabBilling = ({ profile, onProfileRefresh }) => {
+  const [loadingTier, setLoadingTier] = useState(null)
+  const [portalLoading, setPortalLoading] = useState(false)
+  const [error, setError] = useState(null)
+
+  const currentPlan = planById(profile?.subscription_tier)
+  const subscribed = isSubscribed(profile)
+
+  const handleSubscribe = async (tier) => {
+    setError(null)
+    setLoadingTier(tier)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      const res = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tier, userId: user.id, email: user.email }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Could not start checkout')
+      window.location.href = data.url
+    } catch (err) {
+      setError(err.message)
+      setLoadingTier(null)
+    }
+  }
+
+  const handleManage = async () => {
+    setError(null)
+    setPortalLoading(true)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      const res = await fetch('/api/create-portal-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Could not open the billing portal')
+      window.location.href = data.url
+    } catch (err) {
+      setError(err.message)
+      setPortalLoading(false)
+    }
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      <div>
+        <div style={S.sectionTitle}>Billing</div>
+        <div style={{ fontSize: type.body, color: color.textOnLight.secondary }}>
+          {subscribed
+            ? 'Manage your subscription or switch plans.'
+            : 'Subscribe to start inviting clients.'}
+        </div>
+      </div>
+
+      {subscribed && currentPlan && (
+        <div style={{ background: color.void, borderRadius: 12, padding: 20,
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+          <div>
+            <div style={{ ...labelStyle(true), color: color.forest }}>Current plan</div>
+            <div style={{ fontSize: 22, fontWeight: 300, color: color.textOnDark.primary }}>
+              {currentPlan.label} · ${currentPlan.price}/mo
+            </div>
+            <div style={{ fontSize: type.label, color: color.textOnDark.faint, marginTop: 2 }}>
+              {currentPlan.limit === Infinity ? 'Unlimited clients' : `${currentPlan.limit} client max`}
+            </div>
+          </div>
+          <button onClick={handleManage} disabled={portalLoading}
+            style={{ padding: '10px 18px', borderRadius: 8, border: `1px solid ${color.borderDark}`,
+              background: 'transparent', color: color.textOnDark.primary, fontFamily: font.sans,
+              fontSize: type.body, fontWeight: 500, cursor: portalLoading ? 'not-allowed' : 'pointer' }}>
+            {portalLoading ? 'Opening...' : 'Manage subscription'}
+          </button>
+        </div>
+      )}
+
+      {error && <div style={{ fontSize: type.body, color: color.alert }}>{error}</div>}
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
+        {PLANS.map(plan => {
+          const isCurrent = profile?.subscription_tier === plan.id && subscribed
+          return (
+            <div key={plan.id} style={{ ...S.card,
+              border: isCurrent ? `1.5px solid ${color.forest}` : `0.5px solid ${color.borderLight}` }}>
+              <div style={S.label}>{plan.label}</div>
+              <div style={{ fontSize: 28, fontWeight: 300, color: color.textOnLight.primary, marginTop: 6 }}>
+                ${plan.price}<span style={{ fontSize: 13, color: color.textOnLight.secondary }}>/mo</span>
+              </div>
+              <div style={{ fontSize: type.body, color: color.textOnLight.secondary, marginTop: 6, marginBottom: 16 }}>
+                {plan.limit === Infinity ? 'Unlimited clients' : `Up to ${plan.limit} clients`}
+              </div>
+              <button onClick={() => handleSubscribe(plan.id)} disabled={loadingTier === plan.id || isCurrent}
+                style={{ width: '100%', padding: '10px 0', borderRadius: 8, border: 'none',
+                  background: isCurrent ? color.bone : color.forest,
+                  color: isCurrent ? color.textOnLight.faint : color.sage,
+                  fontFamily: font.sans, fontSize: type.body, fontWeight: 500,
+                  cursor: isCurrent ? 'default' : loadingTier === plan.id ? 'not-allowed' : 'pointer' }}>
+                {isCurrent ? 'Current plan' : loadingTier === plan.id ? 'Redirecting...' : 'Subscribe'}
+              </button>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
@@ -960,6 +1088,7 @@ const TABS = [
   { id: 'calendar', label: 'Calendar' },
   { id: 'messages', label: 'Messages' },
   { id: 'overview', label: 'Overview' },
+  { id: 'billing', label: 'Billing' },
 ]
 
 // ─── Main shell ───────────────────────────────────────────────────────────────
@@ -968,22 +1097,41 @@ export default function CoachDashboard() {
   const [activeTab, setActiveTab] = useState('dashboard')
   const [checkins, setCheckins] = useState([])
   const [clients, setClients] = useState([])
+  const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState(null)
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       fetchAll(user.id)
+      // Stripe Checkout redirects back with ?checkout=success — the webhook
+      // that actually flips subscription_status may land a beat after this
+      // page load, so give it a couple retries before settling.
+      if (new URLSearchParams(window.location.search).get('checkout') === 'success') {
+        let attempt = 0
+        const poll = setInterval(() => {
+          attempt += 1
+          refreshProfile(user.id)
+          if (attempt >= 5) clearInterval(poll)
+        }, 1500)
+      }
     })
   }, [])
 
+  const refreshProfile = async (id) => {
+    const { data } = await supabase.from('profiles').select('*').eq('id', id).single()
+    if (data) setProfile(data)
+  }
+
   const fetchAll = async (id) => {
-    const [checkinsRes, clientsRes] = await Promise.all([
+    const [checkinsRes, clientsRes, profileRes] = await Promise.all([
       supabase.from('check_ins').select('*').eq('coach_id', id).order('submitted_at', { ascending: false }),
       supabase.from('profiles').select('*').eq('coach_id', id),
+      supabase.from('profiles').select('*').eq('id', id).single(),
     ])
     if (!checkinsRes.error) setCheckins(checkinsRes.data || [])
     if (!clientsRes.error) setClients(clientsRes.data || [])
+    if (!profileRes.error) setProfile(profileRes.data)
     setLoading(false)
   }
 
@@ -1137,11 +1285,12 @@ export default function CoachDashboard() {
           ) : (
             <>
               {activeTab === 'dashboard' && <TabDashboard checkins={checkins} clients={clients} onSelectCheckin={setSelected} />}
-              {activeTab === 'clients' && <TabClients clients={clients} onStatusChange={handleStatusChange} onTargetsSave={handleTargetsSave} />}
+              {activeTab === 'clients' && <TabClients clients={clients} profile={profile} onStatusChange={handleStatusChange} onTargetsSave={handleTargetsSave} onGoToBilling={() => setActiveTab('billing')} />}
               {activeTab === 'checkins' && <TabCheckIns checkins={checkins} onSelectCheckin={setSelected} />}
               {activeTab === 'calendar' && <TabCalendar />}
               {activeTab === 'messages' && <TabMessages />}
-              {activeTab === 'overview' && <TabOverview clients={clients} checkins={checkins} />}
+              {activeTab === 'overview' && <TabOverview clients={clients} checkins={checkins} profile={profile} />}
+              {activeTab === 'billing' && <TabBilling profile={profile} />}
             </>
           )}
         </div>
