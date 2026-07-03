@@ -578,6 +578,10 @@ const TARGET_FIELDS = [
   { key: 'target_protein', label: 'Protein', unit: 'g' },
   { key: 'target_carbs', label: 'Carbs', unit: 'g' },
   { key: 'target_fats', label: 'Fats', unit: 'g' },
+  // Not a weekly nutrition target — how many days before this client's
+  // show_date their peak week window starts. Lives here anyway since this
+  // is the only "coach edits one field on one client" surface that exists.
+  { key: 'peak_week_days', label: 'Peak week', unit: 'days', integer: true },
 ]
 
 const TargetsPanel = ({ client, onSave }) => {
@@ -592,7 +596,7 @@ const TargetsPanel = ({ client, onSave }) => {
     setSaving(true)
     setError(null)
     const payload = Object.fromEntries(
-      TARGET_FIELDS.map(f => [f.key, values[f.key] === '' ? null : parseFloat(values[f.key])])
+      TARGET_FIELDS.map(f => [f.key, values[f.key] === '' ? null : (f.integer ? parseInt(values[f.key], 10) : parseFloat(values[f.key]))])
     )
     const result = await onSave(client.id, payload)
     setSaving(false)
@@ -603,12 +607,12 @@ const TargetsPanel = ({ client, onSave }) => {
 
   return (
     <div style={{ marginTop: 10, paddingTop: 14, borderTop: '0.5px solid #F0F0F0' }}>
-      <div style={{ ...S.label, marginBottom: 10 }}>Weekly targets</div>
+      <div style={{ ...S.label, marginBottom: 10 }}>Targets & peak week</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 10, marginBottom: 12 }}>
         {TARGET_FIELDS.map(f => (
           <div key={f.key}>
             <label style={{ ...S.label, fontSize: type.label, marginBottom: 4 }}>{f.label} ({f.unit})</label>
-            <input type="number" step="0.1" placeholder="—" value={values[f.key]}
+            <input type="number" step={f.integer ? 1 : 0.1} min={f.integer ? 0 : undefined} placeholder="—" value={values[f.key]}
               onChange={e => setValues(v => ({ ...v, [f.key]: e.target.value }))}
               style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: `1px solid ${color.borderLight}`,
                 fontFamily: font.sans, fontSize: type.body, outline: 'none', color: color.textOnLight.primary,
@@ -1059,15 +1063,167 @@ const TabBilling = ({ profile, onProfileRefresh }) => {
   )
 }
 
-// ─── Tab: Calendar (placeholder) ─────────────────────────────────────────────
+// ─── Tab: Calendar ────────────────────────────────────────────────────────────
 
-const TabCalendar = () => (
-  <div style={{ ...S.card, textAlign: 'center', padding: '60px 20px' }}>
-    <div style={{ fontSize: 32, marginBottom: 12 }}>📅</div>
-    <div style={{ fontSize: type.bodyLg, fontWeight: 500, color: color.textOnLight.primary, marginBottom: 6 }}>Calendar</div>
-    <div style={{ fontSize: type.body, color: color.textOnLight.secondary }}>Shared calendar with check-in dates, peak weeks, and show days. Coming soon.</div>
-  </div>
-)
+const CALENDAR_COLORS = { checkin: color.forest, peak: color.gold, show: color.alert }
+const CALENDAR_LABELS = { checkin: 'Check-in', peak: 'Peak week', show: 'Show day' }
+const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+// Local Y-M-D key — avoids the day-shifting that toISOString() causes by
+// converting to UTC first, which matters since these are calendar dates,
+// not instants.
+function ymd(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function buildCalendarEvents(clients, checkins) {
+  const events = {}
+  const add = (dateKey, name, type) => {
+    if (!events[dateKey]) events[dateKey] = []
+    events[dateKey].push({ name, type })
+  }
+
+  clients.forEach(client => {
+    if (!client.show_date) return
+    const show = new Date(`${client.show_date}T00:00:00`)
+    add(ymd(show), client.full_name || client.email, 'show')
+    const peakDays = client.peak_week_days || 0
+    for (let i = 1; i <= peakDays; i++) {
+      const d = new Date(show)
+      d.setDate(d.getDate() - i)
+      add(ymd(d), client.full_name || client.email, 'peak')
+    }
+  })
+
+  checkins.forEach(c => {
+    if (!c.submitted_at) return
+    add(ymd(new Date(c.submitted_at)), c.client_name, 'checkin')
+  })
+
+  return events
+}
+
+function buildMonthWeeks(year, month) {
+  const firstDay = new Date(year, month, 1)
+  const startWeekday = firstDay.getDay()
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const cells = []
+  for (let i = 0; i < startWeekday; i++) cells.push(null)
+  for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(year, month, d))
+  while (cells.length % 7 !== 0) cells.push(null)
+  const weeks = []
+  for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7))
+  return weeks
+}
+
+const TabCalendar = ({ clients, checkins }) => {
+  const [viewDate, setViewDate] = useState(() => new Date())
+  const [selectedDay, setSelectedDay] = useState(null)
+
+  const events = useMemo(() => buildCalendarEvents(clients, checkins), [clients, checkins])
+  const year = viewDate.getFullYear()
+  const month = viewDate.getMonth()
+  const weeks = useMemo(() => buildMonthWeeks(year, month), [year, month])
+
+  const todayKey = ymd(new Date())
+  const monthLabel = viewDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+
+  const changeMonth = (delta) => {
+    setSelectedDay(null)
+    setViewDate(new Date(year, month + delta, 1))
+  }
+
+  const selectedEvents = selectedDay ? (events[selectedDay] || []) : []
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+      {/* Header: month nav + legend */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button onClick={() => changeMonth(-1)} type="button"
+            style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${color.borderLight}`,
+              background: color.surfaceLight, cursor: 'pointer', fontSize: 16, color: color.textOnLight.primary }}>‹</button>
+          <div style={{ fontSize: type.bodyLg, fontWeight: 500, color: color.textOnLight.primary, minWidth: 160, textAlign: 'center' }}>
+            {monthLabel}
+          </div>
+          <button onClick={() => changeMonth(1)} type="button"
+            style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${color.borderLight}`,
+              background: color.surfaceLight, cursor: 'pointer', fontSize: 16, color: color.textOnLight.primary }}>›</button>
+        </div>
+        <div style={{ display: 'flex', gap: 16 }}>
+          {Object.entries(CALENDAR_LABELS).map(([key, label]) => (
+            <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: CALENDAR_COLORS[key] }} />
+              <span style={{ fontSize: type.label, color: color.textOnLight.secondary }}>{label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Weekday header */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6 }}>
+        {WEEKDAY_LABELS.map(d => (
+          <div key={d} style={{ textAlign: 'center', fontSize: type.label, color: color.textOnLight.faint, fontFamily: font.mono }}>{d}</div>
+        ))}
+      </div>
+
+      {/* Month grid */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {weeks.map((week, wi) => (
+          <div key={wi} style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6 }}>
+            {week.map((day, di) => {
+              if (!day) return <div key={di} />
+              const dayKey = ymd(day)
+              const dayEvents = events[dayKey] || []
+              const types = [...new Set(dayEvents.map(e => e.type))]
+              const isToday = dayKey === todayKey
+              const isSelected = dayKey === selectedDay
+              return (
+                <button key={di} type="button" onClick={() => setSelectedDay(isSelected ? null : dayKey)}
+                  style={{ aspectRatio: '1', borderRadius: 8,
+                    border: isSelected ? `1.5px solid ${color.forest}` : isToday ? `1px solid ${color.borderDark}` : `0.5px solid ${color.borderLight}`,
+                    background: isToday ? color.bone : color.surfaceLight, cursor: 'pointer',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, padding: 4 }}>
+                  <span style={{ fontSize: type.label, color: color.textOnLight.primary, fontWeight: isToday ? 600 : 400 }}>{day.getDate()}</span>
+                  {types.length > 0 && (
+                    <div style={{ display: 'flex', gap: 3 }}>
+                      {types.map(t => (
+                        <div key={t} style={{ width: 5, height: 5, borderRadius: '50%', background: CALENDAR_COLORS[t] }} />
+                      ))}
+                    </div>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        ))}
+      </div>
+
+      {/* Selected day detail */}
+      {selectedDay && (
+        <div style={S.card}>
+          <div style={{ ...S.label, marginBottom: 10 }}>
+            {new Date(`${selectedDay}T00:00:00`).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+          </div>
+          {selectedEvents.length === 0 ? (
+            <div style={{ fontSize: type.body, color: color.textOnLight.secondary }}>No events on this day.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {selectedEvents.map((e, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: CALENDAR_COLORS[e.type], flexShrink: 0 }} />
+                  <span style={{ fontSize: type.body, color: color.textOnLight.primary }}>{e.name}</span>
+                  <span style={{ fontSize: type.label, color: color.textOnLight.secondary }}>· {CALENDAR_LABELS[e.type]}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
 
 // ─── Tab: Messages (placeholder) ─────────────────────────────────────────────
 
@@ -1287,7 +1443,7 @@ export default function CoachDashboard() {
               {activeTab === 'dashboard' && <TabDashboard checkins={checkins} clients={clients} onSelectCheckin={setSelected} />}
               {activeTab === 'clients' && <TabClients clients={clients} profile={profile} onStatusChange={handleStatusChange} onTargetsSave={handleTargetsSave} onGoToBilling={() => setActiveTab('billing')} />}
               {activeTab === 'checkins' && <TabCheckIns checkins={checkins} onSelectCheckin={setSelected} />}
-              {activeTab === 'calendar' && <TabCalendar />}
+              {activeTab === 'calendar' && <TabCalendar clients={clients} checkins={checkins} />}
               {activeTab === 'messages' && <TabMessages />}
               {activeTab === 'overview' && <TabOverview clients={clients} checkins={checkins} profile={profile} />}
               {activeTab === 'billing' && <TabBilling profile={profile} />}
