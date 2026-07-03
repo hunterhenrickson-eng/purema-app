@@ -25,10 +25,11 @@ const S = {
 
 // ─── Components ───────────────────────────────────────────────────────────────
 
-const Toggle = ({ value, onChange }) => (
-  <div onClick={() => onChange(!value)}
+const Toggle = ({ value, onChange, disabled }) => (
+  <div onClick={() => !disabled && onChange(!value)}
     style={{ width: 44, height: 24, borderRadius: 999,
-      background: value ? color.forest : color.borderLight, cursor: 'pointer',
+      background: value ? color.forest : color.borderLight, cursor: disabled ? 'default' : 'pointer',
+      opacity: disabled ? 0.6 : 1,
       position: 'relative', transition: 'background 0.2s ease', flexShrink: 0 }}>
     <div style={{ position: 'absolute', top: 3, left: value ? 23 : 3,
       width: 18, height: 18, borderRadius: '50%', background: color.surfaceLight,
@@ -310,34 +311,52 @@ const SectionPreferences = ({ profile, onProfileUpdate }) => {
   )
 }
 
-const SectionNotifications = () => (
-  <div>
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
+// Preferences storage only — flipping one of these toggles just persists
+// the coach's/client's choice on their profile row. There's no push/email/
+// WhatsApp delivery infrastructure to actually act on these yet.
+const NOTIFICATION_PREFS = [
+  { key: 'notify_coach_feedback', label: 'Coach feedback received', sub: 'Notify when your coach leaves feedback' },
+  { key: 'notify_weekly_reminder', label: 'Weekly check-in reminder', sub: 'Remind me to submit my check-in' },
+  { key: 'notify_show_day_countdown', label: 'Show day countdown', sub: 'Daily reminder as competition approaches' },
+  { key: 'notify_macro_target_updates', label: 'Macro targets updated', sub: 'When your coach adjusts your targets' },
+]
+
+const SectionNotifications = ({ profile, onProfileUpdate }) => {
+  const [savingKey, setSavingKey] = useState(null)
+  const [error, setError] = useState(null)
+
+  const handleToggle = async (key, value) => {
+    setError(null)
+    setSavingKey(key)
+    const { data, error: err } = await supabase
+      .from('profiles').update({ [key]: value })
+      .eq('id', profile.id).select().single()
+    setSavingKey(null)
+    if (err) { setError(err.message); return }
+    if (onProfileUpdate) onProfileUpdate(data)
+  }
+
+  return (
+    <div>
       <div style={S.sectionTitle}>Notifications</div>
-      <span style={{ fontSize: type.label, background: '#F0EDE8', color: color.textOnLight.secondary, padding: '3px 10px',
-        borderRadius: 999, fontFamily: font.mono }}>COMING SOON</span>
-    </div>
-    <div style={S.sectionSub}>
-      Push, email, and WhatsApp notifications will be available once the mobile app is live.
-    </div>
-    <div style={{ maxWidth: 480, opacity: 0.4 }}>
-      {[
-        { label: 'Coach feedback received', sub: 'Notify when your coach leaves feedback' },
-        { label: 'Weekly check-in reminder', sub: 'Remind me to submit my check-in' },
-        { label: 'Show day countdown', sub: 'Daily reminder as competition approaches' },
-        { label: 'Macro targets updated', sub: 'When your coach adjusts your targets' },
-      ].map(({ label, sub }) => (
-        <div key={label} style={S.row}>
-          <div>
-            <div style={{ fontSize: type.body, color: color.textOnLight.primary }}>{label}</div>
-            <div style={{ fontSize: type.label, color: color.textOnLight.secondary, marginTop: 2 }}>{sub}</div>
+      <div style={S.sectionSub}>
+        Choose what you want to be notified about. (Delivery — push, email, or WhatsApp — isn't built yet; this just saves your preference.)
+      </div>
+      {error && <div style={{ fontSize: type.body, color: color.alert, marginBottom: 12 }}>{error}</div>}
+      <div style={{ maxWidth: 480 }}>
+        {NOTIFICATION_PREFS.map(({ key, label, sub }) => (
+          <div key={key} style={S.row}>
+            <div>
+              <div style={{ fontSize: type.body, color: color.textOnLight.primary }}>{label}</div>
+              <div style={{ fontSize: type.label, color: color.textOnLight.secondary, marginTop: 2 }}>{sub}</div>
+            </div>
+            <Toggle value={!!profile?.[key]} onChange={(v) => handleToggle(key, v)} disabled={savingKey === key} />
           </div>
-          <Toggle value={false} onChange={() => {}} />
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
-  </div>
-)
+  )
+}
 
 const SectionSecurity = ({ profile }) => {
   const [resetSent, setResetSent] = useState(false)
@@ -568,7 +587,9 @@ export default function ClientSettings({ profile, onProfileUpdate }) {
         {activeSection === 'preferences' && (
           <SectionPreferences profile={profile} onProfileUpdate={onProfileUpdate} />
         )}
-        {activeSection === 'notifications' && <SectionNotifications />}
+        {activeSection === 'notifications' && (
+          <SectionNotifications profile={profile} onProfileUpdate={onProfileUpdate} />
+        )}
         {activeSection === 'security' && <SectionSecurity profile={profile} />}
         {activeSection === 'billing' && <SectionBilling profile={profile} />}
       </div>
