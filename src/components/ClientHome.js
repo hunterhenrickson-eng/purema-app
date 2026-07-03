@@ -61,7 +61,7 @@ const S = {
 
 // ─── Stat pill ────────────────────────────────────────────────────────────────
 
-const StatPill = ({ label, value, unit }) => {
+const StatPill = ({ label, value, unit, target }) => {
   if (!value) return null
   return (
     <div style={{ background: color.bone, borderRadius: 10, padding: '12px 16px', flex: 1, minWidth: 0 }}>
@@ -69,6 +69,9 @@ const StatPill = ({ label, value, unit }) => {
         {value}<span style={{ fontSize: type.label, color: color.textOnLight.faint, marginLeft: 3 }}>{unit}</span>
       </div>
       <div style={{ ...S.label, marginTop: 4 }}>{label}</div>
+      {typeof target === 'number' && target > 0 && (
+        <div style={{ fontSize: type.label, color: color.textOnLight.faint, marginTop: 2 }}>Goal: {target}{unit}</div>
+      )}
     </div>
   )
 }
@@ -153,17 +156,17 @@ const TabHome = ({ profile, checkins, onGoToCheckin }) => {
               Week {latest.week_number} · {formatDate(latest.submitted_at)}
             </div>
             <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
-              <StatPill label="WEIGHT" value={latest.weight} unit="lbs" />
+              <StatPill label="WEIGHT" value={latest.weight} unit="lbs" target={profile?.target_weight} />
               <StatPill label="WAIST" value={latest.waist} unit="in" />
               <StatPill label="SLEEP" value={latest.sleep} unit="hrs" />
             </div>
             {(latest.calories || latest.protein || latest.carbs || latest.fats) && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <div style={{ ...S.label, marginBottom: 2 }}>Nutrition this week</div>
-                <MacroBar label="KCAL" value={latest.calories} unit="" color={color.forest} target={latest.target_calories} />
-                <MacroBar label="PRO" value={latest.protein} unit="g" color={color.forest} target={latest.target_protein} />
-                <MacroBar label="CARB" value={latest.carbs} unit="g" color={color.gold} target={latest.target_carbs} />
-                <MacroBar label="FAT" value={latest.fats} unit="g" color={color.textOnLight.faint} target={latest.target_fats} />
+                <MacroBar label="KCAL" value={latest.calories} unit="" color={color.forest} target={profile?.target_calories} />
+                <MacroBar label="PRO" value={latest.protein} unit="g" color={color.forest} target={profile?.target_protein} />
+                <MacroBar label="CARB" value={latest.carbs} unit="g" color={color.gold} target={profile?.target_carbs} />
+                <MacroBar label="FAT" value={latest.fats} unit="g" color={color.textOnLight.faint} target={profile?.target_fats} />
               </div>
             )}
           </div>

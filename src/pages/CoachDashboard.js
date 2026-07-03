@@ -571,68 +571,151 @@ const TabDashboard = ({ checkins, clients, onSelectCheckin }) => {
 
 // ─── Tab: Clients ─────────────────────────────────────────────────────────────
 
-const TabClients = ({ clients, onStatusChange }) => {
+const TARGET_FIELDS = [
+  { key: 'target_weight', label: 'Weight', unit: 'lbs' },
+  { key: 'target_calories', label: 'Calories', unit: 'kcal' },
+  { key: 'target_protein', label: 'Protein', unit: 'g' },
+  { key: 'target_carbs', label: 'Carbs', unit: 'g' },
+  { key: 'target_fats', label: 'Fats', unit: 'g' },
+]
+
+const TargetsPanel = ({ client, onSave }) => {
+  const [values, setValues] = useState(() =>
+    Object.fromEntries(TARGET_FIELDS.map(f => [f.key, client[f.key] ?? '']))
+  )
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [error, setError] = useState(null)
+
+  const handleSave = async () => {
+    setSaving(true)
+    setError(null)
+    const payload = Object.fromEntries(
+      TARGET_FIELDS.map(f => [f.key, values[f.key] === '' ? null : parseFloat(values[f.key])])
+    )
+    const result = await onSave(client.id, payload)
+    setSaving(false)
+    if (!result.ok) { setError(result.message); return }
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
+  }
+
+  return (
+    <div style={{ marginTop: 10, paddingTop: 14, borderTop: '0.5px solid #F0F0F0' }}>
+      <div style={{ ...S.label, marginBottom: 10 }}>Weekly targets</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 10, marginBottom: 12 }}>
+        {TARGET_FIELDS.map(f => (
+          <div key={f.key}>
+            <label style={{ ...S.label, fontSize: type.label, marginBottom: 4 }}>{f.label} ({f.unit})</label>
+            <input type="number" step="0.1" placeholder="—" value={values[f.key]}
+              onChange={e => setValues(v => ({ ...v, [f.key]: e.target.value }))}
+              style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: `1px solid ${color.borderLight}`,
+                fontFamily: font.sans, fontSize: type.body, outline: 'none', color: color.textOnLight.primary,
+                boxSizing: 'border-box' }} />
+          </div>
+        ))}
+      </div>
+      {error && <div style={{ fontSize: type.body, color: color.alert, marginBottom: 10 }}>{error}</div>}
+      <button onClick={handleSave} disabled={saving}
+        style={{ padding: '7px 16px', borderRadius: 6, border: 'none',
+          background: saved ? '#0D5E49' : color.forest, color: color.sage,
+          fontFamily: font.sans, fontSize: type.label, fontWeight: 500,
+          cursor: saving ? 'not-allowed' : 'pointer' }}>
+        {saving ? 'Saving...' : saved ? 'Saved ✓' : 'Save targets'}
+      </button>
+    </div>
+  )
+}
+
+const TabClients = ({ clients, onStatusChange, onTargetsSave }) => {
+  const [expandedId, setExpandedId] = useState(null)
   const activeClients = clients.filter(c => !c.status || c.status === 'active')
   const pausedClients = clients.filter(c => c.status === 'paused')
   const archivedClients = clients.filter(c => c.status === 'archived')
 
-  const ClientRow = ({ client }) => (
-    <div style={{ ...S.card, display: 'flex', alignItems: 'center', gap: 14 }}>
-      <div style={{ width: 40, height: 40, borderRadius: '50%',
-        background: client.status === 'paused' ? '#F0EDE8' : client.status === 'archived' ? '#F0EDE8' : color.sage,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 14, fontWeight: 500,
-        color: client.status === 'paused' ? color.textOnLight.secondary : client.status === 'archived' ? color.textOnLight.faint : color.forest,
-        flexShrink: 0 }}>
-        {(client.full_name || client.email || '?').charAt(0).toUpperCase()}
-      </div>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontSize: type.body, fontWeight: 500, color: client.status === 'archived' ? color.textOnLight.faint : color.textOnLight.primary }}>
-          {client.full_name || '—'}
+  const ClientRow = ({ client }) => {
+    const [statusError, setStatusError] = useState(null)
+
+    const changeStatus = async (newStatus) => {
+      setStatusError(null)
+      const result = await onStatusChange(client.id, newStatus)
+      if (!result.ok) setStatusError(result.message)
+    }
+
+    return (
+    <div style={S.card}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        <div style={{ width: 40, height: 40, borderRadius: '50%',
+          background: client.status === 'paused' ? '#F0EDE8' : client.status === 'archived' ? '#F0EDE8' : color.sage,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 14, fontWeight: 500,
+          color: client.status === 'paused' ? color.textOnLight.secondary : client.status === 'archived' ? color.textOnLight.faint : color.forest,
+          flexShrink: 0 }}>
+          {(client.full_name || client.email || '?').charAt(0).toUpperCase()}
         </div>
-        <div style={{ fontSize: type.label, color: color.textOnLight.secondary, marginTop: 2 }}>
-          {client.email} · Joined {new Date(client.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: type.body, fontWeight: 500, color: client.status === 'archived' ? color.textOnLight.faint : color.textOnLight.primary }}>
+            {client.full_name || '—'}
+          </div>
+          <div style={{ fontSize: type.label, color: color.textOnLight.secondary, marginTop: 2 }}>
+            {client.email} · Joined {new Date(client.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          {client.status !== 'archived' && (
+            <button onClick={() => setExpandedId(expandedId === client.id ? null : client.id)}
+              style={{ fontSize: type.label, padding: '4px 10px', borderRadius: 6, border: `1px solid ${color.borderLight}`,
+                background: expandedId === client.id ? color.bone : 'transparent', color: color.textOnLight.secondary,
+                cursor: 'pointer', fontFamily: font.mono }}>
+              Targets
+            </button>
+          )}
+          {(!client.status || client.status === 'active') && (
+            <button onClick={() => changeStatus('paused')}
+              style={{ fontSize: type.label, padding: '4px 10px', borderRadius: 6, border: `1px solid ${color.borderLight}`,
+                background: 'transparent', color: color.textOnLight.secondary, cursor: 'pointer', fontFamily: font.mono }}>
+              Pause
+            </button>
+          )}
+          {client.status === 'paused' && (
+            <>
+              <button onClick={() => changeStatus('active')}
+                style={{ fontSize: type.label, padding: '4px 10px', borderRadius: 6, border: `1px solid ${color.forest}`,
+                  background: 'transparent', color: color.forest, cursor: 'pointer', fontFamily: font.mono }}>
+                Reactivate
+              </button>
+              <button onClick={() => changeStatus('archived')}
+                style={{ fontSize: type.label, padding: '4px 10px', borderRadius: 6, border: `1px solid ${color.alert}`,
+                  background: 'transparent', color: color.alert, cursor: 'pointer', fontFamily: font.mono }}>
+                Archive
+              </button>
+            </>
+          )}
+          {client.status !== 'archived' && (
+            <span style={{ fontSize: type.label,
+              background: client.status === 'paused' ? '#F0EDE8' : color.sage,
+              color: client.status === 'paused' ? color.textOnLight.secondary : '#1A5C0A',
+              padding: '3px 10px', borderRadius: 999, fontFamily: font.mono }}>
+              {client.status === 'paused' ? 'Paused' : 'Active'}
+            </span>
+          )}
+          {client.status === 'archived' && (
+            <span style={{ fontSize: type.label, background: '#F0EDE8', color: color.textOnLight.faint,
+              padding: '3px 10px', borderRadius: 999, fontFamily: font.mono }}>
+              Archived
+            </span>
+          )}
         </div>
       </div>
-      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-        {(!client.status || client.status === 'active') && (
-          <button onClick={() => onStatusChange(client.id, 'paused')}
-            style={{ fontSize: type.label, padding: '4px 10px', borderRadius: 6, border: `1px solid ${color.borderLight}`,
-              background: 'transparent', color: color.textOnLight.secondary, cursor: 'pointer', fontFamily: font.mono }}>
-            Pause
-          </button>
-        )}
-        {client.status === 'paused' && (
-          <>
-            <button onClick={() => onStatusChange(client.id, 'active')}
-              style={{ fontSize: type.label, padding: '4px 10px', borderRadius: 6, border: `1px solid ${color.forest}`,
-                background: 'transparent', color: color.forest, cursor: 'pointer', fontFamily: font.mono }}>
-              Reactivate
-            </button>
-            <button onClick={() => onStatusChange(client.id, 'archived')}
-              style={{ fontSize: type.label, padding: '4px 10px', borderRadius: 6, border: `1px solid ${color.alert}`,
-                background: 'transparent', color: color.alert, cursor: 'pointer', fontFamily: font.mono }}>
-              Archive
-            </button>
-          </>
-        )}
-        {client.status !== 'archived' && (
-          <span style={{ fontSize: type.label,
-            background: client.status === 'paused' ? '#F0EDE8' : color.sage,
-            color: client.status === 'paused' ? color.textOnLight.secondary : '#1A5C0A',
-            padding: '3px 10px', borderRadius: 999, fontFamily: font.mono }}>
-            {client.status === 'paused' ? 'Paused' : 'Active'}
-          </span>
-        )}
-        {client.status === 'archived' && (
-          <span style={{ fontSize: type.label, background: '#F0EDE8', color: color.textOnLight.faint,
-            padding: '3px 10px', borderRadius: 999, fontFamily: font.mono }}>
-            Archived
-          </span>
-        )}
-      </div>
+      {statusError && (
+        <div style={{ fontSize: type.body, color: color.alert, marginTop: 8 }}>{statusError}</div>
+      )}
+      {expandedId === client.id && (
+        <TargetsPanel client={client} onSave={onTargetsSave} />
+      )}
     </div>
-  )
+    )
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -908,14 +991,35 @@ export default function CoachDashboard() {
     setCheckins(prev => prev.map(c => c.id === id ? { ...c, coach_feedback: feedback } : c))
   }
 
+  // .select().single() forces a real row back — if RLS silently filters the
+  // write (0 rows matched), this errors instead of the update() call
+  // succeeding with an empty result that looks like a no-op success.
   const handleStatusChange = async (clientId, newStatus) => {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('profiles')
       .update({ status: newStatus })
       .eq('id', clientId)
-    if (!error) {
-      setClients(prev => prev.map(c => c.id === clientId ? { ...c, status: newStatus } : c))
+      .select()
+      .single()
+    if (error || !data) {
+      return { ok: false, message: error?.message || "Update didn't apply — check permissions." }
     }
+    setClients(prev => prev.map(c => c.id === clientId ? { ...c, status: newStatus } : c))
+    return { ok: true }
+  }
+
+  const handleTargetsSave = async (clientId, targets) => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .update(targets)
+      .eq('id', clientId)
+      .select()
+      .single()
+    if (error || !data) {
+      return { ok: false, message: error?.message || "Update didn't apply — check permissions." }
+    }
+    setClients(prev => prev.map(c => c.id === clientId ? { ...c, ...targets } : c))
+    return { ok: true }
   }
 
   const pendingCount = checkins.filter(c => !c.coach_feedback).length
@@ -1033,7 +1137,7 @@ export default function CoachDashboard() {
           ) : (
             <>
               {activeTab === 'dashboard' && <TabDashboard checkins={checkins} clients={clients} onSelectCheckin={setSelected} />}
-              {activeTab === 'clients' && <TabClients clients={clients} onStatusChange={handleStatusChange} />}
+              {activeTab === 'clients' && <TabClients clients={clients} onStatusChange={handleStatusChange} onTargetsSave={handleTargetsSave} />}
               {activeTab === 'checkins' && <TabCheckIns checkins={checkins} onSelectCheckin={setSelected} />}
               {activeTab === 'calendar' && <TabCalendar />}
               {activeTab === 'messages' && <TabMessages />}
