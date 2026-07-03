@@ -1,6 +1,33 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { color, font } from '../lib/theme';
+import { color, font, type, labelStyle, inputStyle } from '../lib/theme';
+import '../styles/purema-responsive.css';
+
+const Mark = ({ size = 32 }) => (
+  <svg width={size} height={size * 0.9} viewBox="0 0 52 48">
+    <polyline points="6,10 18,24 6,38" fill="none" stroke={color.forest} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <polyline points="19,10 31,24 19,38" fill="none" stroke={color.forest} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <polyline points="32,10 46,24 32,38" fill="none" stroke={color.forest} strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+)
+
+const Shell = ({ children }) => (
+  <div style={{ minHeight: '100vh', background: color.void, display: 'flex',
+    flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+    padding: 24, fontFamily: font.sans }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 40 }}>
+      <Mark size={40} />
+      <div style={{ fontSize: type.display, fontWeight: 300, letterSpacing: '-0.03em',
+        color: color.textOnDark.primary, marginTop: 12 }}>
+        purema<span style={{ color: color.forest }}>.</span>
+      </div>
+    </div>
+    <div className="purema-card" style={{ background: color.surfaceDark,
+      borderRadius: 16, border: `0.5px solid ${color.borderDark}`, padding: 32, maxWidth: 400, width: '100%' }}>
+      {children}
+    </div>
+  </div>
+)
 
 export default function AcceptInvite({ token }) {
   const [invite, setInvite] = useState(null);
@@ -70,37 +97,43 @@ export default function AcceptInvite({ token }) {
     window.location.href = '/';
   }
 
-  if (status === 'loading') return <p style={{ padding: 40, fontFamily: font.sans }}>Loading invite...</p>;
-  if (status === 'invalid') return <p style={{ padding: 40, fontFamily: font.sans }}>This invite link is invalid.</p>;
-  if (status === 'used') return <p style={{ padding: 40, fontFamily: font.sans }}>This invite has already been used.</p>;
-  if (status === 'expired') return <p style={{ padding: 40, fontFamily: font.sans }}>This invite link has expired.</p>;
+  if (status === 'loading') return <Shell><p style={{ color: color.textOnDark.secondary, fontSize: type.body, margin: 0 }}>Loading invite...</p></Shell>;
+  if (status === 'invalid') return <Shell><p style={{ color: color.textOnDark.secondary, fontSize: type.body, margin: 0 }}>This invite link is invalid.</p></Shell>;
+  if (status === 'used') return <Shell><p style={{ color: color.textOnDark.secondary, fontSize: type.body, margin: 0 }}>This invite has already been used.</p></Shell>;
+  if (status === 'expired') return <Shell><p style={{ color: color.textOnDark.secondary, fontSize: type.body, margin: 0 }}>This invite link has expired.</p></Shell>;
 
   return (
-    <div style={{ maxWidth: 400, margin: '60px auto', fontFamily: font.sans }}>
-      <h2 style={{ fontWeight: 500 }}>Welcome to Purema</h2>
-      <p style={{ marginBottom: 24, color: color.textOnLight.secondary }}>
+    <Shell>
+      <h2 style={{ fontWeight: 500, fontSize: type.heading, color: color.textOnDark.primary, margin: '0 0 8px' }}>Welcome to Purema</h2>
+      <p style={{ marginBottom: 24, color: color.textOnDark.secondary, fontSize: type.body }}>
         You've been invited to join as a {invite.role === 'coach' ? 'coach' : 'client'}. Set a password to finish
-        creating your account for <strong>{invite.email}</strong>.
+        creating your account for <strong style={{ color: color.textOnDark.primary }}>{invite.email}</strong>.
       </p>
 
-      <form onSubmit={handleSignup} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <input
-          type="text"
-          required
-          placeholder="Full name"
-          value={fullName}
-          onChange={(e) => setFullName(e.target.value)}
-          style={{ padding: '10px 12px', borderRadius: 8, border: `1px solid ${color.borderLight}` }}
-        />
-        <input
-          type="password"
-          required
-          minLength={6}
-          placeholder="Create a password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          style={{ padding: '10px 12px', borderRadius: 8, border: `1px solid ${color.borderLight}` }}
-        />
+      <form onSubmit={handleSignup} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div>
+          <label style={labelStyle(true)}>Full name</label>
+          <input
+            type="text"
+            required
+            placeholder="First and last name"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            style={inputStyle}
+          />
+        </div>
+        <div>
+          <label style={labelStyle(true)}>Password</label>
+          <input
+            type="password"
+            required
+            minLength={6}
+            placeholder="Min 6 characters"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            style={inputStyle}
+          />
+        </div>
         <button
           type="submit"
           disabled={submitting}
@@ -108,17 +141,20 @@ export default function AcceptInvite({ token }) {
             padding: '12px',
             borderRadius: 8,
             border: 'none',
-            background: color.forest,
-            color: color.sage,
+            background: submitting ? color.textOnDark.faint : color.forest,
+            color: color.textOnDark.primary,
             fontWeight: 500,
-            cursor: 'pointer',
+            fontSize: type.body,
+            fontFamily: font.sans,
+            cursor: submitting ? 'not-allowed' : 'pointer',
+            marginTop: 4,
           }}
         >
           {submitting ? 'Creating account...' : 'Create Account'}
         </button>
       </form>
 
-      {error && <p style={{ color: color.alert, marginTop: 12 }}>{error}</p>}
-    </div>
+      {error && <p style={{ color: color.alert, marginTop: 12, fontSize: type.body }}>{error}</p>}
+    </Shell>
   );
 }
