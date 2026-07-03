@@ -1065,7 +1065,7 @@ const TabBilling = ({ profile, onProfileRefresh }) => {
 
 // ─── Tab: Calendar ────────────────────────────────────────────────────────────
 
-const CALENDAR_COLORS = { checkin: color.forest, peak: color.gold, show: color.alert }
+const CALENDAR_COLORS = { checkin: color.forest, peak: color.alert, show: color.gold }
 const CALENDAR_LABELS = { checkin: 'Check-in', peak: 'Peak week', show: 'Show day' }
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
@@ -1103,6 +1103,16 @@ function buildCalendarEvents(clients, checkins) {
   return events
 }
 
+// Flattens the dateKey->events map into a single chronological list from
+// today onward, since events aren't naturally ordered across dateKeys.
+function buildUpcomingEvents(events, todayKey, limit) {
+  return Object.entries(events)
+    .filter(([dateKey]) => dateKey >= todayKey)
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .flatMap(([dateKey, dayEvents]) => dayEvents.map(e => ({ ...e, dateKey })))
+    .slice(0, limit)
+}
+
 function buildMonthWeeks(year, month) {
   const firstDay = new Date(year, month, 1)
   const startWeekday = firstDay.getDay()
@@ -1127,6 +1137,7 @@ const TabCalendar = ({ clients, checkins }) => {
 
   const todayKey = ymd(new Date())
   const monthLabel = viewDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+  const upcoming = useMemo(() => buildUpcomingEvents(events, todayKey, 8), [events, todayKey])
 
   const changeMonth = (delta) => {
     setSelectedDay(null)
@@ -1221,6 +1232,27 @@ const TabCalendar = ({ clients, checkins }) => {
           )}
         </div>
       )}
+
+      {/* Upcoming events */}
+      <div style={S.card}>
+        <div style={{ ...S.label, marginBottom: 10 }}>Upcoming</div>
+        {upcoming.length === 0 ? (
+          <div style={{ fontSize: type.body, color: color.textOnLight.secondary }}>No upcoming events.</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {upcoming.map((e, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: CALENDAR_COLORS[e.type], flexShrink: 0 }} />
+                <span style={{ fontSize: type.label, color: color.textOnLight.faint, fontFamily: font.mono, minWidth: 80 }}>
+                  {new Date(`${e.dateKey}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                </span>
+                <span style={{ fontSize: type.body, color: color.textOnLight.primary }}>{e.name}</span>
+                <span style={{ fontSize: type.label, color: color.textOnLight.secondary }}>· {CALENDAR_LABELS[e.type]}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
