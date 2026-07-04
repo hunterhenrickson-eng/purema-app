@@ -5,6 +5,7 @@ import '../styles/purema-responsive.css'
 import InviteClient from '../components/InviteClient'
 import { PLANS, planById, tierLimit, isSubscribed } from '../lib/billing'
 import { getActivePhase } from '../lib/dietPlan'
+import ImportHistory from '../components/ImportHistory'
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
@@ -29,6 +30,17 @@ const S = {
   label: { ...labelStyle(false), letterSpacing: '0.1em' },
   sectionTitle: { ...labelStyle(false), letterSpacing: '0.1em', marginBottom: 14 },
 }
+
+// A transparency label, not a warning — backfilled history is real data,
+// just not a live weekly submission, so this stays subtle/neutral rather
+// than using an alert color.
+const ImportedTag = ({ onDark }) => (
+  <span style={{ fontSize: type.label, color: onDark ? color.textOnDark.faint : color.textOnLight.faint,
+    border: `1px solid ${onDark ? color.borderDark : color.borderLight}`,
+    padding: '1px 7px', borderRadius: 999, fontFamily: font.mono, whiteSpace: 'nowrap' }}>
+    Imported
+  </span>
+)
 
 // ─── Attention queue logic ────────────────────────────────────────────────────
 
@@ -311,7 +323,10 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave, coachId }) => {
         <div style={{ position: 'sticky', top: 0, background: color.void, padding: '16px 24px', borderRadius: '16px 16px 0 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 }}>
           <div>
             <div style={{ fontSize: 17, fontWeight: 500, color: color.textOnDark.primary }}>{checkin.client_name}</div>
-            <div style={{ fontSize: type.label, color: color.forest, fontFamily: font.mono, marginTop: 2 }}>WEEK {checkin.week_number}</div>
+            <div style={{ fontSize: type.label, color: color.forest, fontFamily: font.mono, marginTop: 2, display: 'flex', alignItems: 'center', gap: 8 }}>
+              WEEK {checkin.week_number}
+              {checkin.imported_backfill && <ImportedTag onDark />}
+            </div>
           </div>
           <button onClick={onClose} style={{ background: color.surfaceDarkRaised, border: 'none', color: color.textOnDark.secondary, width: 32, height: 32, borderRadius: '50%', cursor: 'pointer', fontSize: 16 }}>×</button>
         </div>
@@ -954,9 +969,10 @@ const DietPlanPanel = ({ client, coachId }) => {
   )
 }
 
-const TabClients = ({ clients, profile, onStatusChange, onTargetsSave, onGoToBilling }) => {
+const TabClients = ({ clients, checkins, profile, onStatusChange, onTargetsSave, onGoToBilling, onImportCheckins }) => {
   const [expandedId, setExpandedId] = useState(null)
   const [expandedPlanId, setExpandedPlanId] = useState(null)
+  const [importingClient, setImportingClient] = useState(null)
   const activeClients = clients.filter(c => !c.status || c.status === 'active')
   const limit = tierLimit(profile?.subscription_tier)
   const atLimit = activeClients.length >= limit
@@ -1006,6 +1022,13 @@ const TabClients = ({ clients, profile, onStatusChange, onTargetsSave, onGoToBil
                 background: expandedPlanId === client.id ? color.bone : 'transparent', color: color.textOnLight.secondary,
                 cursor: 'pointer', fontFamily: font.mono }}>
               Diet plan
+            </button>
+          )}
+          {client.status !== 'archived' && (
+            <button onClick={() => setImportingClient(client)}
+              style={{ fontSize: type.label, padding: '4px 10px', borderRadius: 6, border: `1px solid ${color.borderLight}`,
+                background: 'transparent', color: color.textOnLight.secondary, cursor: 'pointer', fontFamily: font.mono }}>
+              Import history
             </button>
           )}
           {(!client.status || client.status === 'active') && (
@@ -1096,6 +1119,16 @@ const TabClients = ({ clients, profile, onStatusChange, onTargetsSave, onGoToBil
           No clients yet. Invite one above to get started.
         </div>
       )}
+
+      {importingClient && (
+        <ImportHistory
+          client={importingClient}
+          coachId={profile?.id}
+          existingCheckins={checkins.filter(c => c.client_id === importingClient.id)}
+          onClose={() => setImportingClient(null)}
+          onImported={(newRows) => onImportCheckins(newRows)}
+        />
+      )}
     </div>
   )
 }
@@ -1149,9 +1182,12 @@ const TabCheckIns = ({ checkins, onSelectCheckin }) => {
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: type.body, fontWeight: 500, color: color.textOnLight.primary }}>{checkin.client_name}</div>
-                  <div style={{ fontSize: type.label, color: color.textOnLight.secondary, marginTop: 2 }}>
-                    Week {checkin.week_number} · {formatDate(checkin.submitted_at)}
-                    {checkin.weight ? ' · ' + checkin.weight + ' lbs' : ''}
+                  <div style={{ fontSize: type.label, color: color.textOnLight.secondary, marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span>
+                      Week {checkin.week_number} · {formatDate(checkin.submitted_at)}
+                      {checkin.weight ? ' · ' + checkin.weight + ' lbs' : ''}
+                    </span>
+                    {checkin.imported_backfill && <ImportedTag />}
                   </div>
                 </div>
                 <span style={{ fontSize: type.label, background: isPending ? '#FAEEDA' : color.sage,
@@ -1692,6 +1728,10 @@ export default function CoachDashboard() {
     return { ok: true }
   }
 
+  const handleImportCheckins = (newRows) => {
+    setCheckins(prev => [...prev, ...newRows].sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at)))
+  }
+
   const pendingCount = checkins.filter(c => !c.coach_feedback).length
   const attentionCount = useMemo(() => buildAttentionQueue(clients, checkins).length, [clients, checkins])
 
@@ -1807,7 +1847,7 @@ export default function CoachDashboard() {
           ) : (
             <>
               {activeTab === 'dashboard' && <TabDashboard checkins={checkins} clients={clients} onSelectCheckin={setSelected} />}
-              {activeTab === 'clients' && <TabClients clients={clients} profile={profile} onStatusChange={handleStatusChange} onTargetsSave={handleTargetsSave} onGoToBilling={() => setActiveTab('billing')} />}
+              {activeTab === 'clients' && <TabClients clients={clients} checkins={checkins} profile={profile} onStatusChange={handleStatusChange} onTargetsSave={handleTargetsSave} onImportCheckins={handleImportCheckins} onGoToBilling={() => setActiveTab('billing')} />}
               {activeTab === 'checkins' && <TabCheckIns checkins={checkins} onSelectCheckin={setSelected} />}
               {activeTab === 'calendar' && <TabCalendar clients={clients} checkins={checkins} />}
               {activeTab === 'messages' && <TabMessages />}

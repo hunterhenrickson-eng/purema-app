@@ -60,6 +60,17 @@ const S = {
   },
 }
 
+// A transparency label, not a warning — backfilled history is real data,
+// just not a live weekly submission, so this stays subtle/neutral rather
+// than using an alert color.
+const ImportedTag = ({ onDark }) => (
+  <span style={{ fontSize: type.label, color: onDark ? color.textOnDark.faint : color.textOnLight.faint,
+    border: `1px solid ${onDark ? color.borderDark : color.borderLight}`,
+    padding: '1px 7px', borderRadius: 999, fontFamily: font.mono, whiteSpace: 'nowrap' }}>
+    Imported
+  </span>
+)
+
 // ─── Stat pill ────────────────────────────────────────────────────────────────
 
 const StatPill = ({ label, value, unit, target }) => {
@@ -209,8 +220,9 @@ const TabHome = ({ profile, checkins, dietPhases, targetOverrides, onGoToCheckin
               <div key={c.id} style={{ ...S.card, display: 'flex', alignItems: 'center',
                 justifyContent: 'space-between', padding: '14px 16px' }}>
                 <div>
-                  <div style={{ fontSize: type.body, fontWeight: 500, color: color.textOnLight.primary }}>
+                  <div style={{ fontSize: type.body, fontWeight: 500, color: color.textOnLight.primary, display: 'flex', alignItems: 'center', gap: 6 }}>
                     Week {c.week_number}
+                    {c.imported_backfill && <ImportedTag />}
                   </div>
                   <div style={{ fontSize: type.label, color: color.textOnLight.faint, marginTop: 2 }}>
                     {formatDate(c.submitted_at)}{c.weight ? ` · ${c.weight} lbs` : ''}
@@ -550,8 +562,9 @@ const TabProgress = ({ profile, checkins }) => {
           ) : feedbackHistory.map(c => (
             <div key={c.id} style={{ background: color.void, borderRadius: 12, padding: 20 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <span style={{ fontSize: type.label, color: color.forest, fontFamily: font.mono, letterSpacing: '0.06em' }}>
+                <span style={{ fontSize: type.label, color: color.forest, fontFamily: font.mono, letterSpacing: '0.06em', display: 'flex', alignItems: 'center', gap: 8 }}>
                   WEEK {c.week_number}
+                  {c.imported_backfill && <ImportedTag onDark />}
                 </span>
                 <span style={{ fontSize: type.label, color: color.textOnDark.faint, fontFamily: font.mono }}>
                   {new Date(c.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
