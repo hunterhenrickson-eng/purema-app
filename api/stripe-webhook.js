@@ -73,7 +73,17 @@ module.exports = async (req, res) => {
         const sub = event.data.object
         const userId = sub.metadata?.supabase_user_id
         const tier = tierFromSubscription(sub)
-        const update = { stripe_subscription_id: sub.id, subscription_status: sub.status, subscription_tier: tier }
+        const update = {
+          stripe_subscription_id: sub.id,
+          subscription_status: sub.status,
+          subscription_tier: tier,
+          // Derived straight from Stripe's own subscription status rather
+          // than only reacting to invoice events — self-heals the dashboard
+          // gate even if an invoice webhook is ever missed. 'unpaid' is what
+          // Stripe lands on once Smart Retries are exhausted (exact status
+          // depends on the account's subscription settings).
+          payment_status: sub.status === 'unpaid' ? 'suspended' : sub.status === 'past_due' ? 'past_due' : 'active',
+        }
 
         if (userId) {
           await admin.from('profiles').update(update).eq('id', userId)
@@ -89,11 +99,38 @@ module.exports = async (req, res) => {
       case 'customer.subscription.deleted': {
         const sub = event.data.object
         const userId = sub.metadata?.supabase_user_id
-        const update = { subscription_status: 'canceled' }
+        // A canceled subscription (e.g. retries exhausted and the account's
+        // Stripe settings cancel instead of leaving it 'unpaid') gates
+        // access the same way 'unpaid' does — no active plan either way.
+        const update = { subscription_status: 'canceled', payment_status: 'suspended' }
         if (userId) {
           await admin.from('profiles').update(update).eq('id', userId)
         } else {
           await admin.from('profiles').update(update).eq('stripe_customer_id', sub.customer)
+        }
+        break
+      }
+
+      case 'invoice.payment_failed': {
+        const invoice = event.data.object
+        const userId = invoice.subscription_details?.metadata?.supabase_user_id
+        const update = { payment_status: 'past_due', payment_failed_at: new Date().toISOString() }
+        if (userId) {
+          await admin.from('profiles').update(update).eq('id', userId)
+        } else {
+          await admin.from('profiles').update(update).eq('stripe_customer_id', invoice.customer)
+        }
+        break
+      }
+
+      case 'invoice.payment_succeeded': {
+        const invoice = event.data.object
+        const userId = invoice.subscription_details?.metadata?.supabase_user_id
+        const update = { payment_status: 'active' }
+        if (userId) {
+          await admin.from('profiles').update(update).eq('id', userId)
+        } else {
+          await admin.from('profiles').update(update).eq('stripe_customer_id', invoice.customer)
         }
         break
       }

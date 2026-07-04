@@ -22,3 +22,12 @@ export function tierLimit(tier) {
 export function isSubscribed(profile) {
   return profile?.subscription_status === 'active' || profile?.subscription_status === 'trialing'
 }
+
+// Reflects Stripe dunning state, set by the webhook — not derived locally.
+export function isPastDue(profile) {
+  return profile?.payment_status === 'past_due'
+}
+
+export function isSuspended(profile) {
+  return profile?.payment_status === 'suspended'
+}

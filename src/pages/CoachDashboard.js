@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import { color, font, type, labelStyle } from '../lib/theme'
 import '../styles/purema-responsive.css'
 import InviteClient from '../components/InviteClient'
-import { PLANS, planById, tierLimit, isSubscribed } from '../lib/billing'
+import { PLANS, planById, tierLimit, isSubscribed, isPastDue, isSuspended } from '../lib/billing'
 import { getActivePhase } from '../lib/dietPlan'
 import ImportHistory from '../components/ImportHistory'
 
@@ -1658,6 +1658,8 @@ export default function CoachDashboard() {
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState(null)
+  const [portalLoading, setPortalLoading] = useState(false)
+  const [portalError, setPortalError] = useState(null)
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -1679,6 +1681,27 @@ export default function CoachDashboard() {
   const refreshProfile = async (id) => {
     const { data } = await supabase.from('profiles').select('*').eq('id', id).single()
     if (data) setProfile(data)
+  }
+
+  // Shared by the past-due banner and the suspended read-only screen — both
+  // just need to get the coach into Stripe's own billing portal to fix
+  // their card themselves.
+  const openBillingPortal = async () => {
+    setPortalError(null)
+    setPortalLoading(true)
+    try {
+      const res = await fetch('/api/create-portal-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: profile?.id }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Could not open the billing portal')
+      window.location.href = data.url
+    } catch (err) {
+      setPortalError(err.message)
+      setPortalLoading(false)
+    }
   }
 
   const fetchAll = async (id) => {
@@ -1797,6 +1820,39 @@ export default function CoachDashboard() {
     </div>
   )
 
+  // Payment retries were exhausted (or the subscription was canceled outright)
+  // — block everything except a read-only screen pointing back to Stripe's
+  // billing portal. Nothing is deleted; this just gates access until the
+  // coach fixes their card and the webhook flips payment_status back.
+  if (!loading && isSuspended(profile)) {
+    return (
+      <div style={{ minHeight: '100vh', background: color.void, display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center', padding: 24, fontFamily: font.sans, gap: 20, textAlign: 'center' }}>
+        <Mark size={40} />
+        <div style={{ fontSize: type.heading, fontWeight: 300, color: color.textOnDark.primary, maxWidth: 480 }}>
+          Your subscription is past due
+        </div>
+        <div style={{ fontSize: type.body, color: color.textOnDark.secondary, maxWidth: 420, lineHeight: 1.6 }}>
+          Payment retries were unsuccessful, so access to your dashboard is paused. Nothing has been deleted —
+          update your payment method to pick up right where you left off.
+        </div>
+        {portalError && <div style={{ fontSize: type.body, color: color.alert }}>{portalError}</div>}
+        <button onClick={openBillingPortal} disabled={portalLoading}
+          style={{ padding: '12px 24px', borderRadius: 8, border: 'none',
+            background: portalLoading ? color.textOnDark.faint : color.forest, color: color.sage,
+            fontFamily: font.sans, fontSize: type.body, fontWeight: 500,
+            cursor: portalLoading ? 'not-allowed' : 'pointer' }}>
+          {portalLoading ? 'Opening...' : 'Update payment method'}
+        </button>
+        <button onClick={() => supabase.auth.signOut()}
+          style={{ fontSize: type.label, color: color.textOnDark.faint, fontFamily: font.mono, letterSpacing: '0.1em',
+            background: 'transparent', border: 'none', cursor: 'pointer' }}>
+          SIGN OUT
+        </button>
+      </div>
+    )
+  }
+
   return (
     <div className="purema-shell" style={{ background: color.bone, fontFamily: font.sans }}>
 
@@ -1846,6 +1902,24 @@ export default function CoachDashboard() {
               fontSize: type.label, fontFamily: font.mono, letterSpacing: '0.1em' }}>LOADING...</div>
           ) : (
             <>
+              {isPastDue(profile) && (
+                <div style={{ background: '#FAEEDA', border: `1px solid ${color.gold}`, borderRadius: 10,
+                  padding: '12px 16px', marginBottom: 20, display: 'flex', alignItems: 'center',
+                  justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: type.body, color: '#633806' }}>
+                    Your last payment failed — update your card to avoid losing access.
+                  </span>
+                  <button onClick={openBillingPortal} disabled={portalLoading}
+                    style={{ padding: '6px 14px', borderRadius: 6, border: 'none', background: color.gold,
+                      color: '#fff', fontFamily: font.sans, fontSize: type.label, fontWeight: 500,
+                      cursor: portalLoading ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}>
+                    {portalLoading ? 'Opening...' : 'Update payment method'}
+                  </button>
+                </div>
+              )}
+              {portalError && isPastDue(profile) && (
+                <div style={{ fontSize: type.body, color: color.alert, marginBottom: 20 }}>{portalError}</div>
+              )}
               {activeTab === 'dashboard' && <TabDashboard checkins={checkins} clients={clients} onSelectCheckin={setSelected} />}
               {activeTab === 'clients' && <TabClients clients={clients} checkins={checkins} profile={profile} onStatusChange={handleStatusChange} onTargetsSave={handleTargetsSave} onImportCheckins={handleImportCheckins} onGoToBilling={() => setActiveTab('billing')} />}
               {activeTab === 'checkins' && <TabCheckIns checkins={checkins} onSelectCheckin={setSelected} />}
