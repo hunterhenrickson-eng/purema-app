@@ -72,6 +72,34 @@ export const labelStyle = (onDark = true) => ({
   marginBottom: 6,
 })
 
+// Soft-tint background + dark-same-hue text for every status pill in the
+// app (check-in Reviewed/Pending, Imported tag, attention queue, subscription
+// tier, payment banners, calendar event types). Built on the existing brand
+// hues (sage/gold/alert) rather than inventing new colors, so a "success"
+// badge here is always the same green as everywhere else success shows up.
+const BADGE_HUES = {
+  success: { background: color.sage, textColor: '#1A5C0A' },
+  warning: { background: '#FAEEDA', textColor: '#633806' },
+  alert: { background: '#FBE4E3', textColor: '#8A2A28' },
+  neutral: { background: '#F0EDE8', textColor: color.textOnLight.secondary },
+  info: { background: '#E3F0EC', textColor: color.forest },
+}
+
+export function badge(kind = 'neutral') {
+  const hue = BADGE_HUES[kind] || BADGE_HUES.neutral
+  return {
+    background: hue.background,
+    color: hue.textColor,
+    fontFamily: font.mono,
+    fontSize: type.label,
+    fontWeight: 500,
+    padding: '3px 10px',
+    borderRadius: 999,
+    display: 'inline-block',
+    lineHeight: 1.5,
+  }
+}
+
 export const inputStyle = {
   width: '100%',
   padding: '12px 14px',

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import CheckInForm from './CheckInForm'
 import ClientSettings from './ClientSettings'
-import { color, font, type, labelStyle } from '../lib/theme'
+import { color, font, type, labelStyle, badge } from '../lib/theme'
 import { getEffectiveTargets } from '../lib/dietPlan'
 import MessageThread from './MessageThread'
 import '../styles/purema-responsive.css'
@@ -62,12 +62,11 @@ const S = {
 }
 
 // A transparency label, not a warning — backfilled history is real data,
-// just not a live weekly submission, so this stays subtle/neutral rather
-// than using an alert color.
-const ImportedTag = ({ onDark }) => (
-  <span style={{ fontSize: type.label, color: onDark ? color.textOnDark.faint : color.textOnLight.faint,
-    border: `1px solid ${onDark ? color.borderDark : color.borderLight}`,
-    padding: '1px 7px', borderRadius: 999, fontFamily: font.mono, whiteSpace: 'nowrap' }}>
+// just not a live weekly submission, so this stays neutral rather than
+// using an alert color. The badge has its own opaque background, so it
+// reads the same whether the surrounding card is light or dark.
+const ImportedTag = () => (
+  <span style={{ ...badge('neutral'), whiteSpace: 'nowrap' }}>
     Imported
   </span>
 )
@@ -78,12 +77,12 @@ const StatPill = ({ label, value, unit, target }) => {
   if (!value) return null
   return (
     <div style={{ background: color.bone, borderRadius: 10, padding: '12px 16px', flex: 1, minWidth: 0 }}>
-      <div style={{ fontSize: 20, fontWeight: 500, color: color.textOnLight.primary, letterSpacing: '-0.01em' }}>
+      <div style={{ fontSize: 20, fontWeight: 500, color: color.textOnLight.primary, letterSpacing: '-0.01em', fontFamily: font.mono }}>
         {value}<span style={{ fontSize: type.label, color: color.textOnLight.faint, marginLeft: 3 }}>{unit}</span>
       </div>
       <div style={{ ...S.label, marginTop: 4 }}>{label}</div>
       {typeof target === 'number' && target > 0 && (
-        <div style={{ fontSize: type.label, color: color.textOnLight.faint, marginTop: 2 }}>Goal: {target}{unit}</div>
+        <div style={{ fontSize: type.label, color: color.textOnLight.faint, marginTop: 2, fontFamily: font.mono }}>Goal: {target}{unit}</div>
       )}
     </div>
   )
@@ -106,7 +105,7 @@ const MacroBar = ({ label, value, unit, color: barColor, target }) => {
       <div style={{ flex: 1, height: 6, background: '#F0EDE8', borderRadius: 999, overflow: 'hidden' }}>
         <div style={{ height: '100%', width: `${pct}%`, background: barColor, borderRadius: 999, opacity: 0.85 }} />
       </div>
-      <div style={{ fontSize: type.body, fontWeight: 500, color: color.textOnLight.primary, minWidth: 52, textAlign: 'right' }}>
+      <div style={{ fontSize: type.body, fontWeight: 500, color: color.textOnLight.primary, minWidth: 52, textAlign: 'right', fontFamily: font.mono }}>
         {value}{unit}
       </div>
     </div>
@@ -138,7 +137,10 @@ const TabHome = ({ profile, checkins, dietPhases, targetOverrides, onGoToCheckin
           </div>
         </div>
 
-        {!hasCheckedInThisWeek ? (
+        {/* When there's no history yet, the empty-state card below already
+            has its own "Submit Week 1 Check-in" button — showing this one
+            too would just be the same action offered twice on one screen. */}
+        {!hasCheckedInThisWeek && checkins.length > 0 ? (
           <button onClick={onGoToCheckin}
             style={{ height: 44, padding: '0 24px', background: color.forest, border: 'none',
               borderRadius: 10, color: color.sage, fontSize: type.body, fontWeight: 500,
@@ -146,7 +148,7 @@ const TabHome = ({ profile, checkins, dietPhases, targetOverrides, onGoToCheckin
               display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
             Submit Week {nextWeek} Check-in <span>→</span>
           </button>
-        ) : (
+        ) : checkins.length > 0 && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: color.sage,
             padding: '10px 16px', borderRadius: 10 }}>
             <span style={{ fontSize: 16 }}>✓</span>
@@ -229,11 +231,7 @@ const TabHome = ({ profile, checkins, dietPhases, targetOverrides, onGoToCheckin
                     {formatDate(c.submitted_at)}{c.weight ? ` · ${c.weight} lbs` : ''}
                   </div>
                 </div>
-                <span style={{ fontSize: type.label,
-                  background: c.coach_feedback ? color.sage : '#F0EDE8',
-                  color: c.coach_feedback ? '#1A5C0A' : color.textOnLight.faint,
-                  padding: '3px 10px', borderRadius: 999,
-                  fontFamily: font.mono, fontWeight: 500 }}>
+                <span style={badge(c.coach_feedback ? 'success' : 'neutral')}>
                   {c.coach_feedback ? 'Reviewed' : 'Pending'}
                 </span>
               </div>
@@ -350,16 +348,16 @@ const TabProgress = ({ profile, checkins }) => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
           <div>
             <div style={{ ...S.label, marginBottom: 4 }}>{label}</div>
-            <div style={{ fontSize: 24, fontWeight: 300, color: color.textOnLight.primary, letterSpacing: '-0.02em' }}>
+            <div style={{ fontSize: 24, fontWeight: 300, color: color.textOnLight.primary, letterSpacing: '-0.02em', fontFamily: font.mono }}>
               {vals[vals.length - 1]}<span style={{ fontSize: type.body, color: color.textOnLight.secondary, marginLeft: 3 }}>{unit}</span>
             </div>
           </div>
           <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: type.label, color: color.textOnLight.secondary, marginBottom: 2 }}>
+            <div style={{ fontSize: type.label, color: color.textOnLight.secondary, marginBottom: 2, fontFamily: font.mono }}>
               {pts.length} check-ins
             </div>
             {change !== 0 && (
-              <div style={{ fontSize: type.body, fontWeight: 500, color: changeColor }}>
+              <div style={{ fontSize: type.body, fontWeight: 500, color: changeColor, fontFamily: font.mono }}>
                 {change > 0 ? '+' : ''}{change.toFixed(1)} {unit}
               </div>
             )}
@@ -432,11 +430,11 @@ const TabProgress = ({ profile, checkins }) => {
               display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
                 <div style={{ ...S.label, color: color.forest, marginBottom: 6 }}>Show day countdown</div>
-                <div style={{ fontSize: 42, fontWeight: 300, color: color.textOnDark.primary, letterSpacing: '-0.03em', lineHeight: 1 }}>
+                <div style={{ fontSize: 42, fontWeight: 300, color: color.textOnDark.primary, letterSpacing: '-0.03em', lineHeight: 1, fontFamily: font.mono }}>
                   {daysOut}
-                  <span style={{ fontSize: 16, color: color.textOnDark.faint, marginLeft: 8, fontWeight: 400 }}>days out</span>
+                  <span style={{ fontSize: 16, color: color.textOnDark.faint, marginLeft: 8, fontWeight: 400, fontFamily: font.sans }}>days out</span>
                 </div>
-                <div style={{ fontSize: type.label, color: color.textOnDark.faint, marginTop: 6 }}>
+                <div style={{ fontSize: type.label, color: color.textOnDark.faint, marginTop: 6, fontFamily: font.mono }}>
                   {new Date(profile.show_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
                 </div>
               </div>
@@ -449,7 +447,7 @@ const TabProgress = ({ profile, checkins }) => {
             {/* Streak */}
             <div style={{ background: color.void, borderRadius: 12, padding: '16px 20px' }}>
               <div style={{ fontSize: 28, fontWeight: 300, color: streak >= 4 ? color.forest : color.textOnDark.primary,
-                letterSpacing: '-0.02em' }}>{streak}</div>
+                letterSpacing: '-0.02em', fontFamily: font.mono }}>{streak}</div>
               <div style={{ ...S.label, color: color.textOnDark.label, marginTop: 4 }}>Week streak</div>
               {streak >= 4 && (
                 <div style={{ fontSize: type.label, color: color.forest, marginTop: 4 }}>🔥 On a roll</div>
@@ -458,7 +456,7 @@ const TabProgress = ({ profile, checkins }) => {
 
             {/* Total check-ins */}
             <div style={{ background: color.void, borderRadius: 12, padding: '16px 20px' }}>
-              <div style={{ fontSize: 28, fontWeight: 300, color: color.textOnDark.primary, letterSpacing: '-0.02em' }}>
+              <div style={{ fontSize: 28, fontWeight: 300, color: color.textOnDark.primary, letterSpacing: '-0.02em', fontFamily: font.mono }}>
                 {checkins.length}
               </div>
               <div style={{ ...S.label, color: color.textOnDark.label, marginTop: 4 }}>Check-ins total</div>
@@ -467,7 +465,7 @@ const TabProgress = ({ profile, checkins }) => {
             {/* Weight change */}
             {weightChange !== null && (
               <div style={{ background: color.void, borderRadius: 12, padding: '16px 20px' }}>
-                <div style={{ fontSize: 28, fontWeight: 300, letterSpacing: '-0.02em',
+                <div style={{ fontSize: 28, fontWeight: 300, letterSpacing: '-0.02em', fontFamily: font.mono,
                   color: parseFloat(weightChange) < 0 ? color.forest : parseFloat(weightChange) > 0 ? color.alert : color.textOnDark.secondary }}>
                   {parseFloat(weightChange) > 0 ? '+' : ''}{weightChange}
                   <span style={{ fontSize: 13, marginLeft: 3 }}>lbs</span>
@@ -478,7 +476,7 @@ const TabProgress = ({ profile, checkins }) => {
 
             {/* Feedback received */}
             <div style={{ background: color.void, borderRadius: 12, padding: '16px 20px' }}>
-              <div style={{ fontSize: 28, fontWeight: 300, color: color.textOnDark.primary, letterSpacing: '-0.02em' }}>
+              <div style={{ fontSize: 28, fontWeight: 300, color: color.textOnDark.primary, letterSpacing: '-0.02em', fontFamily: font.mono }}>
                 {feedbackHistory.length}
               </div>
               <div style={{ ...S.label, color: color.textOnDark.label, marginTop: 4 }}>Feedback received</div>
@@ -532,7 +530,7 @@ const TabProgress = ({ profile, checkins }) => {
                     { key: 'thighs', label: 'Thighs' },
                   ].map(({ key, label }) => latestMeasure[key] ? (
                     <div key={key} style={{ background: color.bone, borderRadius: 10, padding: '12px 14px' }}>
-                      <div style={{ fontSize: 20, fontWeight: 500, color: color.textOnLight.primary }}>
+                      <div style={{ fontSize: 20, fontWeight: 500, color: color.textOnLight.primary, fontFamily: font.mono }}>
                         {latestMeasure[key]}<span style={{ fontSize: type.label, color: color.textOnLight.faint, marginLeft: 2 }}>in</span>
                       </div>
                       <div style={{ ...S.label, marginTop: 4 }}>{label}</div>
@@ -565,7 +563,7 @@ const TabProgress = ({ profile, checkins }) => {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                 <span style={{ fontSize: type.label, color: color.forest, fontFamily: font.mono, letterSpacing: '0.06em', display: 'flex', alignItems: 'center', gap: 8 }}>
                   WEEK {c.week_number}
-                  {c.imported_backfill && <ImportedTag onDark />}
+                  {c.imported_backfill && <ImportedTag />}
                 </span>
                 <span style={{ fontSize: type.label, color: color.textOnDark.faint, fontFamily: font.mono }}>
                   {new Date(c.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}

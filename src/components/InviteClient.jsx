@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { color, font, type, labelStyle } from '../lib/theme';
+import { color, font, type, labelStyle, badge } from '../lib/theme';
 
 export default function InviteClient({ atLimit = false, onUpgradeClick } = {}) {
   const [email, setEmail] = useState('');
@@ -53,8 +53,7 @@ export default function InviteClient({ atLimit = false, onUpgradeClick } = {}) {
   }
 
   const roleLabel = role === 'client' ? 'Client' : 'Coach';
-  const roleBg = role === 'client' ? color.sage : '#FAEEDA';
-  const roleColor = role === 'client' ? '#1A5C0A' : '#633806';
+  const roleBadge = badge(role === 'client' ? 'success' : 'warning');
 
   return (
     <div>
@@ -77,15 +76,15 @@ export default function InviteClient({ atLimit = false, onUpgradeClick } = {}) {
       </div>
 
       {blocked ? (
-        <div style={{ padding: 12, background: '#FAEEDA', borderRadius: 8,
+        <div style={{ padding: 12, background: badge('warning').background, borderRadius: 8,
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: type.body, color: '#633806' }}>
+          <span style={{ fontSize: type.body, color: badge('warning').color }}>
             You've reached your plan's client limit.
           </span>
           {onUpgradeClick && (
             <button onClick={onUpgradeClick} type="button"
-              style={{ padding: '6px 14px', borderRadius: 6, border: 'none',
-                background: color.gold, color: '#fff', fontFamily: font.sans,
+              style={{ padding: '6px 14px', borderRadius: 6, border: `1px solid ${color.gold}`,
+                background: 'transparent', color: color.gold, fontFamily: font.sans,
                 fontSize: type.label, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }}>
               Upgrade plan
             </button>
@@ -118,11 +117,9 @@ export default function InviteClient({ atLimit = false, onUpgradeClick } = {}) {
       )}
 
       {link && (
-        <div style={{ marginTop: 12, padding: 12, background: roleBg, borderRadius: 8 }}>
+        <div style={{ marginTop: 12, padding: 12, background: roleBadge.background, borderRadius: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-            <span style={{ fontSize: type.label, background: color.surfaceLight, color: roleColor,
-              padding: '2px 8px', borderRadius: 999, fontFamily: font.mono,
-              fontWeight: 500, border: `1px solid ${roleBg}` }}>
+            <span style={{ ...roleBadge, background: color.surfaceLight, border: `1px solid ${roleBadge.background}` }}>
               {roleLabel} invite
             </span>
             <span style={{ fontSize: type.label, color: color.textOnLight.secondary }}>Share this link:</span>

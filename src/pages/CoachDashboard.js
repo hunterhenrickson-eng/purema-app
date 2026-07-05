@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { supabase } from '../lib/supabase'
-import { color, font, type, labelStyle } from '../lib/theme'
+import { color, font, type, labelStyle, badge } from '../lib/theme'
 import '../styles/purema-responsive.css'
 import InviteClient from '../components/InviteClient'
 import { PLANS, planById, tierLimit, isSubscribed, isPastDue, isSuspended } from '../lib/billing'
@@ -33,12 +33,11 @@ const S = {
 }
 
 // A transparency label, not a warning — backfilled history is real data,
-// just not a live weekly submission, so this stays subtle/neutral rather
-// than using an alert color.
-const ImportedTag = ({ onDark }) => (
-  <span style={{ fontSize: type.label, color: onDark ? color.textOnDark.faint : color.textOnLight.faint,
-    border: `1px solid ${onDark ? color.borderDark : color.borderLight}`,
-    padding: '1px 7px', borderRadius: 999, fontFamily: font.mono, whiteSpace: 'nowrap' }}>
+// just not a live weekly submission, so this stays neutral rather than
+// using an alert color. The badge has its own opaque background, so it
+// reads the same whether the surrounding card is light or dark.
+const ImportedTag = () => (
+  <span style={{ ...badge('neutral'), whiteSpace: 'nowrap' }}>
     Imported
   </span>
 )
@@ -63,7 +62,7 @@ function buildAttentionQueue(clients, checkins) {
           type: 'feedback_needed', priority: 1, client, checkin: latest,
           label: 'Feedback needed',
           sublabel: `Submitted ${Math.floor(hoursAgo)}h ago · Week ${latest.week_number}`,
-          color: color.gold, bg: '#FAEEDA', textColor: '#633806',
+          badgeType: 'warning',
         })
         return
       }
@@ -78,7 +77,7 @@ function buildAttentionQueue(clients, checkins) {
           sublabel: latest
             ? `Last seen ${Math.floor((now - new Date(latest.submitted_at)) / (1000 * 60 * 60 * 24))} days ago`
             : 'No check-ins yet',
-          color: color.textOnLight.secondary, bg: '#F0EDE8', textColor: color.textOnLight.secondary,
+          badgeType: 'neutral',
         })
       }
     }
@@ -139,7 +138,7 @@ const SearchBar = ({ clients, checkins, onSelectCheckin, onSelectClient }) => {
       {showDropdown && (
         <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0,
           background: color.surfaceLight, borderRadius: 10, border: `0.5px solid ${color.borderLight}`,
-          boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 300, overflow: 'hidden' }}>
+          zIndex: 300, overflow: 'hidden' }}>
           {!hasResults && (
             <div style={{ padding: '14px 16px', fontSize: type.body, color: color.textOnLight.secondary, fontFamily: font.sans }}>
               No results for "{query}"
@@ -185,9 +184,7 @@ const SearchBar = ({ clients, checkins, onSelectCheckin, onSelectClient }) => {
                     <div style={{ fontSize: type.body, fontWeight: 500, color: color.textOnLight.primary }}>{checkin.client_name}</div>
                     <div style={{ fontSize: type.label, color: color.textOnLight.secondary }}>Week {checkin.week_number} · {new Date(checkin.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
                   </div>
-                  <span style={{ marginLeft: 'auto', fontSize: type.label, background: checkin.coach_feedback ? color.sage : '#FAEEDA',
-                    color: checkin.coach_feedback ? '#1A5C0A' : '#633806',
-                    padding: '2px 8px', borderRadius: 999, fontFamily: font.mono }}>
+                  <span style={{ marginLeft: 'auto', ...badge(checkin.coach_feedback ? 'success' : 'warning') }}>
                     {checkin.coach_feedback ? 'Done' : 'Pending'}
                   </span>
                 </div>
@@ -205,16 +202,17 @@ const SearchBar = ({ clients, checkins, onSelectCheckin, onSelectClient }) => {
 const AttentionCard = ({ item, onSelectCheckin }) => {
   const initials = (item.client.full_name || item.client.email || '?')
     .split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
+  const itemBadge = badge(item.badgeType)
 
   return (
     <div onClick={() => item.checkin && onSelectCheckin(item.checkin)}
       style={{ ...S.card, display: 'flex', alignItems: 'center', gap: 14,
         cursor: item.checkin ? 'pointer' : 'default' }}
-      onMouseEnter={e => { if (item.checkin) e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.08)' }}
-      onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}>
-      <div style={{ width: 42, height: 42, borderRadius: '50%', background: item.bg,
+      onMouseEnter={e => { if (item.checkin) e.currentTarget.style.borderColor = color.forest }}
+      onMouseLeave={e => e.currentTarget.style.borderColor = color.borderLight}>
+      <div style={{ width: 42, height: 42, borderRadius: '50%', background: itemBadge.background,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 13, fontWeight: 500, color: item.color, flexShrink: 0 }}>
+        fontSize: 13, fontWeight: 500, color: itemBadge.color, flexShrink: 0 }}>
         {initials}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -223,9 +221,7 @@ const AttentionCard = ({ item, onSelectCheckin }) => {
         </div>
         <div style={{ fontSize: type.label, color: color.textOnLight.secondary, marginTop: 2 }}>{item.sublabel}</div>
       </div>
-      <span style={{ fontSize: type.label, background: item.bg, color: item.textColor,
-        padding: '3px 10px', borderRadius: 999, fontFamily: font.mono,
-        fontWeight: 500, whiteSpace: 'nowrap', flexShrink: 0 }}>
+      <span style={{ ...itemBadge, whiteSpace: 'nowrap', flexShrink: 0 }}>
         {item.label}
       </span>
       {item.checkin && <span style={{ color: color.textOnLight.faint, fontSize: 18, flexShrink: 0 }}>›</span>}
@@ -331,7 +327,7 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave, coachId }) => {
             <div style={{ fontSize: 17, fontWeight: 500, color: color.textOnDark.primary }}>{checkin.client_name}</div>
             <div style={{ fontSize: type.label, color: color.forest, fontFamily: font.mono, marginTop: 2, display: 'flex', alignItems: 'center', gap: 8 }}>
               WEEK {checkin.week_number}
-              {checkin.imported_backfill && <ImportedTag onDark />}
+              {checkin.imported_backfill && <ImportedTag />}
             </div>
           </div>
           <button onClick={onClose} style={{ background: color.surfaceDarkRaised, border: 'none', color: color.textOnDark.secondary, width: 32, height: 32, borderRadius: '50%', cursor: 'pointer', fontSize: 16 }}>×</button>
@@ -576,8 +572,9 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave, coachId }) => {
                     fontFamily: font.sans, fontSize: type.body, boxSizing: 'border-box', marginBottom: 8, color: color.textOnLight.primary }} />
                 {overrideError && <div style={{ fontSize: type.body, color: color.alert, marginBottom: 8 }}>{overrideError}</div>}
                 <button onClick={saveOverride} disabled={overrideSaving}
-                  style={{ padding: '7px 16px', borderRadius: 6, border: 'none',
-                    background: overrideSaved ? '#0D5E49' : color.forest, color: color.sage,
+                  style={{ padding: '7px 16px', borderRadius: 6,
+                    border: `1px solid ${overrideSaved ? color.forest : color.textOnLight.secondary}`,
+                    background: 'transparent', color: overrideSaved ? color.forest : color.textOnLight.secondary,
                     fontFamily: font.sans, fontSize: type.label, fontWeight: 500, cursor: overrideSaving ? 'not-allowed' : 'pointer' }}>
                   {overrideSaving ? 'Saving...' : overrideSaved ? 'Saved ✓' : override ? 'Update override' : 'Save override'}
                 </button>
@@ -647,7 +644,7 @@ const TabDashboard = ({ checkins, clients, onSelectCheckin }) => {
           { label: 'Needs attention', value: attentionItems.length, color: attentionItems.length > 0 ? color.alert : color.textOnDark.secondary },
         ].map(({ label, value, color: statColor }) => (
           <div key={label} style={{ background: color.void, borderRadius: 12, padding: '18px 20px' }}>
-            <div style={{ fontSize: 28, fontWeight: 300, color: statColor, letterSpacing: '-0.02em' }}>{value}</div>
+            <div style={{ fontSize: 28, fontWeight: 300, color: statColor, letterSpacing: '-0.02em', fontFamily: font.mono }}>{value}</div>
             <div style={{ ...S.label, color: color.textOnDark.label, marginTop: 6 }}>{label}</div>
           </div>
         ))}
@@ -927,7 +924,8 @@ const DietPlanPanel = ({ client, coachId }) => {
                       fontFamily: font.sans, fontSize: type.body, boxSizing: 'border-box', marginBottom: 8, color: color.textOnLight.primary }} />
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button onClick={() => saveEdit(phase.id)} disabled={editSaving}
-                      style={{ padding: '6px 14px', borderRadius: 6, border: 'none', background: color.forest, color: color.sage,
+                      style={{ padding: '6px 14px', borderRadius: 6, border: `1px solid ${color.textOnLight.secondary}`,
+                        background: 'transparent', color: color.textOnLight.secondary,
                         fontFamily: font.sans, fontSize: type.label, fontWeight: 500, cursor: 'pointer' }}>
                       {editSaving ? 'Saving...' : 'Save'}
                     </button>
@@ -941,13 +939,13 @@ const DietPlanPanel = ({ client, coachId }) => {
               ) : (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
                   <div>
-                    <div style={{ fontSize: type.body, fontWeight: 500, color: color.textOnLight.primary }}>
+                    <div style={{ fontSize: type.body, fontWeight: 500, color: color.textOnLight.primary, fontFamily: font.mono }}>
                       {new Date(`${phase.start_date}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                       {phase.id === activePhase?.id && (
-                        <span style={{ marginLeft: 8, fontSize: type.label, color: color.forest, fontFamily: font.mono }}>ACTIVE</span>
+                        <span style={{ marginLeft: 8, fontSize: type.label, color: color.forest }}>ACTIVE</span>
                       )}
                     </div>
-                    <div style={{ fontSize: type.label, color: color.textOnLight.secondary, marginTop: 2 }}>
+                    <div style={{ fontSize: type.label, color: color.textOnLight.secondary, marginTop: 2, fontFamily: font.mono }}>
                       {[
                         phase.calories != null && `${phase.calories} kcal`,
                         phase.protein != null && `${phase.protein}g protein`,
@@ -993,12 +991,14 @@ const DietPlanPanel = ({ client, coachId }) => {
                 <span style={{ fontFamily: font.mono, color: color.textOnLight.faint }}>
                   {new Date(h.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                 </span>{' '}
-                {[
-                  h.calories != null && `${h.calories} kcal`,
-                  h.protein != null && `${h.protein}g P`,
-                  h.carbs != null && `${h.carbs}g C`,
-                  h.fats != null && `${h.fats}g F`,
-                ].filter(Boolean).join(' · ')}
+                <span style={{ fontFamily: font.mono }}>
+                  {[
+                    h.calories != null && `${h.calories} kcal`,
+                    h.protein != null && `${h.protein}g P`,
+                    h.carbs != null && `${h.carbs}g C`,
+                    h.fats != null && `${h.fats}g F`,
+                  ].filter(Boolean).join(' · ')}
+                </span>
                 {h.note && <span style={{ fontStyle: 'italic' }}> — {h.note}</span>}
               </div>
             ))}
@@ -1093,16 +1093,12 @@ const TabClients = ({ clients, checkins, profile, onStatusChange, onTargetsSave,
             </>
           )}
           {client.status !== 'archived' && (
-            <span style={{ fontSize: type.label,
-              background: client.status === 'paused' ? '#F0EDE8' : color.sage,
-              color: client.status === 'paused' ? color.textOnLight.secondary : '#1A5C0A',
-              padding: '3px 10px', borderRadius: 999, fontFamily: font.mono }}>
+            <span style={badge(client.status === 'paused' ? 'neutral' : 'success')}>
               {client.status === 'paused' ? 'Paused' : 'Active'}
             </span>
           )}
           {client.status === 'archived' && (
-            <span style={{ fontSize: type.label, background: '#F0EDE8', color: color.textOnLight.faint,
-              padding: '3px 10px', borderRadius: 999, fontFamily: font.mono }}>
+            <span style={badge('neutral')}>
               Archived
             </span>
           )}
@@ -1212,12 +1208,12 @@ const TabCheckIns = ({ checkins, onSelectCheckin }) => {
             return (
               <div key={checkin.id} onClick={() => onSelectCheckin(checkin)}
                 style={{ ...S.card, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 14, opacity: isPending ? 1 : 0.7 }}
-                onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.08)'; e.currentTarget.style.opacity = '1' }}
-                onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.opacity = isPending ? '1' : '0.7' }}>
+                onMouseEnter={e => { e.currentTarget.style.borderColor = color.forest; e.currentTarget.style.opacity = '1' }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = color.borderLight; e.currentTarget.style.opacity = isPending ? '1' : '0.7' }}>
                 <div style={{ width: 40, height: 40, borderRadius: '50%',
-                  background: isPending ? '#FAEEDA' : color.sage,
+                  background: badge(isPending ? 'warning' : 'success').background,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 14, fontWeight: 500, color: isPending ? color.gold : color.forest, flexShrink: 0 }}>
+                  fontSize: 14, fontWeight: 500, color: badge(isPending ? 'warning' : 'success').color, flexShrink: 0 }}>
                   {checkin.client_name.charAt(0).toUpperCase()}
                 </div>
                 <div style={{ flex: 1 }}>
@@ -1230,9 +1226,7 @@ const TabCheckIns = ({ checkins, onSelectCheckin }) => {
                     {checkin.imported_backfill && <ImportedTag />}
                   </div>
                 </div>
-                <span style={{ fontSize: type.label, background: isPending ? '#FAEEDA' : color.sage,
-                  color: isPending ? '#633806' : '#1A5C0A',
-                  padding: '3px 10px', borderRadius: 999, fontFamily: font.mono, fontWeight: 500 }}>
+                <span style={badge(isPending ? 'warning' : 'success')}>
                   {isPending ? 'Pending' : 'Done'}
                 </span>
                 <span style={{ color: color.textOnLight.faint, fontSize: 18 }}>›</span>
@@ -1266,7 +1260,7 @@ const TabOverview = ({ clients, checkins, profile }) => {
 
   const StatCard = ({ label, value, sub, color: accentColor = color.textOnDark.primary }) => (
     <div style={{ background: color.void, borderRadius: 12, padding: '18px 20px' }}>
-      <div style={{ fontSize: 28, fontWeight: 300, color: accentColor, letterSpacing: '-0.02em' }}>{value}</div>
+      <div style={{ fontSize: 28, fontWeight: 300, color: accentColor, letterSpacing: '-0.02em', fontFamily: font.mono }}>{value}</div>
       <div style={{ ...S.label, color: color.textOnDark.label, marginTop: 6 }}>{label}</div>
       {sub && <div style={{ fontSize: type.label, color: color.textOnDark.faint, marginTop: 4 }}>{sub}</div>}
     </div>
@@ -1332,8 +1326,7 @@ const TabOverview = ({ clients, checkins, profile }) => {
               <>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                   <div style={{ fontSize: type.body, fontWeight: 500, color: color.textOnLight.primary }}>Client slots</div>
-                  <span style={{ fontSize: type.label, background: color.sage, color: '#1A5C0A',
-                    padding: '3px 10px', borderRadius: 999, fontFamily: font.mono }}>
+                  <span style={badge('success')}>
                     {plan ? `${plan.label} plan` : 'No plan'} · {unlimited ? 'Unlimited' : `${limit} max`}
                   </span>
                 </div>
@@ -1427,7 +1420,7 @@ const TabBilling = ({ profile, onProfileRefresh }) => {
           <div>
             <div style={{ ...labelStyle(true), color: color.forest }}>Current plan</div>
             <div style={{ fontSize: 22, fontWeight: 300, color: color.textOnDark.primary }}>
-              {currentPlan.label} · ${currentPlan.price}/mo
+              {currentPlan.label} · <span style={{ fontFamily: font.mono }}>${currentPlan.price}/mo</span>
             </div>
             <div style={{ fontSize: type.label, color: color.textOnDark.faint, marginTop: 2 }}>
               {currentPlan.limit === Infinity ? 'Unlimited clients' : `${currentPlan.limit} client max`}
@@ -1451,18 +1444,26 @@ const TabBilling = ({ profile, onProfileRefresh }) => {
             <div key={plan.id} style={{ ...S.card,
               border: isCurrent ? `1.5px solid ${color.forest}` : `0.5px solid ${color.borderLight}` }}>
               <div style={S.label}>{plan.label}</div>
-              <div style={{ fontSize: 28, fontWeight: 300, color: color.textOnLight.primary, marginTop: 6 }}>
+              <div style={{ fontSize: 28, fontWeight: 300, color: color.textOnLight.primary, marginTop: 6, fontFamily: font.mono }}>
                 ${plan.price}<span style={{ fontSize: 13, color: color.textOnLight.secondary }}>/mo</span>
               </div>
               <div style={{ fontSize: type.body, color: color.textOnLight.secondary, marginTop: 6, marginBottom: 16 }}>
                 {plan.limit === Infinity ? 'Unlimited clients' : `Up to ${plan.limit} clients`}
               </div>
               <button onClick={() => handleSubscribe(plan.id)} disabled={loadingTier === plan.id || isCurrent}
-                style={{ width: '100%', padding: '10px 0', borderRadius: 8, border: 'none',
-                  background: isCurrent ? color.bone : color.forest,
-                  color: isCurrent ? color.textOnLight.faint : color.sage,
+                style={plan.recommended && !isCurrent ? {
+                  width: '100%', padding: '10px 0', borderRadius: 8, border: 'none',
+                  background: color.forest, color: color.sage,
                   fontFamily: font.sans, fontSize: type.body, fontWeight: 500,
-                  cursor: isCurrent ? 'default' : loadingTier === plan.id ? 'not-allowed' : 'pointer' }}>
+                  cursor: loadingTier === plan.id ? 'not-allowed' : 'pointer',
+                } : {
+                  width: '100%', padding: '10px 0', borderRadius: 8,
+                  border: `1px solid ${isCurrent ? color.borderLight : color.textOnLight.secondary}`,
+                  background: 'transparent',
+                  color: isCurrent ? color.textOnLight.faint : color.textOnLight.secondary,
+                  fontFamily: font.sans, fontSize: type.body, fontWeight: 500,
+                  cursor: isCurrent ? 'default' : loadingTier === plan.id ? 'not-allowed' : 'pointer',
+                }}>
                 {isCurrent ? 'Current plan' : loadingTier === plan.id ? 'Redirecting...' : 'Subscribe'}
               </button>
             </div>
@@ -1606,7 +1607,7 @@ const TabCalendar = ({ clients, checkins }) => {
                     border: isSelected ? `1.5px solid ${color.forest}` : isToday ? `1px solid ${color.borderDark}` : `0.5px solid ${color.borderLight}`,
                     background: isToday ? color.bone : color.surfaceLight, cursor: 'pointer',
                     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, padding: 4 }}>
-                  <span style={{ fontSize: type.label, color: color.textOnLight.primary, fontWeight: isToday ? 600 : 400 }}>{day.getDate()}</span>
+                  <span style={{ fontSize: type.label, color: color.textOnLight.primary, fontWeight: isToday ? 600 : 400, fontFamily: font.mono }}>{day.getDate()}</span>
                   {types.length > 0 && (
                     <div style={{ display: 'flex', gap: 3 }}>
                       {types.map(t => (
@@ -1802,7 +1803,7 @@ const Toggle = ({ value, onChange, disabled }) => (
       position: 'relative', transition: 'background 0.2s ease', flexShrink: 0 }}>
     <div style={{ position: 'absolute', top: 3, left: value ? 23 : 3,
       width: 18, height: 18, borderRadius: '50%', background: color.surfaceLight,
-      transition: 'left 0.2s ease', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+      border: `0.5px solid ${color.borderLight}`, transition: 'left 0.2s ease' }} />
   </div>
 )
 
@@ -2182,15 +2183,16 @@ export default function CoachDashboard() {
                 </div>
               )}
               {isPastDue(profile) && (
-                <div style={{ background: '#FAEEDA', border: `1px solid ${color.gold}`, borderRadius: 10,
+                <div style={{ background: badge('warning').background, border: `1px solid ${color.gold}`, borderRadius: 10,
                   padding: '12px 16px', marginBottom: 20, display: 'flex', alignItems: 'center',
                   justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: type.body, color: '#633806' }}>
+                  <span style={{ fontSize: type.body, color: badge('warning').color }}>
                     Your last payment failed — update your card to avoid losing access.
                   </span>
                   <button onClick={openBillingPortal} disabled={portalLoading}
-                    style={{ padding: '6px 14px', borderRadius: 6, border: 'none', background: color.gold,
-                      color: '#fff', fontFamily: font.sans, fontSize: type.label, fontWeight: 500,
+                    style={{ padding: '6px 14px', borderRadius: 6, border: `1px solid ${color.textOnLight.secondary}`,
+                      background: 'transparent', color: color.textOnLight.secondary, fontFamily: font.sans,
+                      fontSize: type.label, fontWeight: 500,
                       cursor: portalLoading ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}>
                     {portalLoading ? 'Opening...' : 'Update payment method'}
                   </button>

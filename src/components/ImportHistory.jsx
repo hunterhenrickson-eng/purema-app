@@ -228,7 +228,7 @@ export default function ImportHistory({ client, coachId, existingCheckins, onClo
                       <tr key={i} style={{ borderTop: `0.5px solid ${color.borderLight}` }}>
                         {headers.map(h => (
                           <td key={h} style={{ padding: '8px', fontSize: type.label, color: color.textOnLight.primary,
-                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 140 }}>
+                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 140, fontFamily: font.mono }}>
                             {row[h]}
                           </td>
                         ))}
@@ -282,8 +282,8 @@ export default function ImportHistory({ client, coachId, existingCheckins, onClo
                   <div style={{ marginBottom: 16, maxHeight: 220, overflowY: 'auto' }}>
                     {plan.ready.map((r, i) => (
                       <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'center', fontSize: type.label,
-                        color: color.textOnLight.secondary, padding: '4px 0' }}>
-                        <span style={{ fontFamily: font.mono, color: color.textOnLight.faint, minWidth: 60 }}>Week {r.week_number}</span>
+                        color: color.textOnLight.secondary, padding: '4px 0', fontFamily: font.mono }}>
+                        <span style={{ color: color.textOnLight.faint, minWidth: 60 }}>Week {r.week_number}</span>
                         <span>{new Date(r.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
                         {r.weight != null && <span>· {r.weight} lbs</span>}
                         {r.calories != null && <span>· {r.calories} kcal</span>}

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { color, font, type, labelStyle } from '../lib/theme'
+import { color, font, type, labelStyle, badge } from '../lib/theme'
 
 // ─── Shared styles ────────────────────────────────────────────────────────────
 
@@ -33,7 +33,7 @@ const Toggle = ({ value, onChange, disabled }) => (
       position: 'relative', transition: 'background 0.2s ease', flexShrink: 0 }}>
     <div style={{ position: 'absolute', top: 3, left: value ? 23 : 3,
       width: 18, height: 18, borderRadius: '50%', background: color.surfaceLight,
-      transition: 'left 0.2s ease', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+      border: `0.5px solid ${color.borderLight}`, transition: 'left 0.2s ease' }} />
   </div>
 )
 
@@ -150,7 +150,7 @@ const SectionProfile = ({ profile, onProfileUpdate }) => {
               <input type="date" value={dateOfBirth} onChange={e => setDateOfBirth(e.target.value)}
                 style={S.input} />
               {age !== null && (
-                <div style={{ fontSize: type.label, color: color.textOnLight.secondary, marginTop: 4 }}>Age: {age}</div>
+                <div style={{ fontSize: type.label, color: color.textOnLight.secondary, marginTop: 4, fontFamily: font.mono }}>Age: {age}</div>
               )}
             </div>
           </div>
@@ -424,8 +424,7 @@ const SectionBilling = ({ profile }) => {
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
         <div style={S.sectionTitle}>Billing & Subscription</div>
-        <span style={{ fontSize: type.label, background: '#F0EDE8', color: color.textOnLight.secondary, padding: '3px 10px',
-          borderRadius: 999, fontFamily: font.mono }}>STRIPE PENDING</span>
+        <span style={badge('neutral')}>STRIPE PENDING</span>
       </div>
       <div style={S.sectionSub}>
         Your subscription details, payment method, and billing history.
@@ -439,16 +438,14 @@ const SectionBilling = ({ profile }) => {
             <div>
               <div style={{ fontSize: type.label, color: color.forest, fontFamily: font.mono,
                 letterSpacing: '0.08em', marginBottom: 6 }}>CURRENT PLAN</div>
-              <div style={{ fontSize: 22, fontWeight: 300, color: color.textOnDark.primary, letterSpacing: '-0.01em' }}>
+              <div style={{ fontSize: 22, fontWeight: 300, color: color.textOnDark.primary, letterSpacing: '-0.01em', fontFamily: font.mono }}>
                 —
               </div>
               <div style={{ fontSize: type.body, color: color.textOnDark.faint, marginTop: 4 }}>
                 Managed by your coach
               </div>
             </div>
-            <span style={{ fontSize: type.label, background: color.sage, color: '#1A5C0A',
-              padding: '4px 12px', borderRadius: 999, fontFamily: font.mono,
-              fontWeight: 500 }}>
+            <span style={badge('success')}>
               ACTIVE
             </span>
           </div>

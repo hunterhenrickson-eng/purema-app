@@ -2,9 +2,12 @@
 // Price IDs are Stripe Price object ids — not secret, safe to ship to the
 // client (Checkout Sessions are still created server-side, in /api).
 
+// `recommended` marks the single plan whose Subscribe button renders as the
+// filled primary action — every other plan's button is outlined, keeping
+// the pricing screen to one filled button at a time.
 export const PLANS = [
   { id: 'starter', label: 'Starter', price: 69, limit: 15, priceId: 'price_1Tp8OFAg1pLVKN0rn9wBk5C5' },
-  { id: 'pro', label: 'Pro', price: 119, limit: 40, priceId: 'price_1Tp8OUAg1pLVKN0rrdyiw6E7' },
+  { id: 'pro', label: 'Pro', price: 119, limit: 40, priceId: 'price_1Tp8OUAg1pLVKN0rrdyiw6E7', recommended: true },
   { id: 'agency', label: 'Agency', price: 349, limit: Infinity, priceId: 'price_1Tp8OrAg1pLVKN0rILd8ObRV' },
 ]
 

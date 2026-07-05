@@ -114,7 +114,7 @@ export default function MessageThread({ title, headerLeft, messages, currentUser
                 <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 3,
                   justifyContent: mine ? 'flex-end' : 'flex-start',
                   color: mine ? 'rgba(255,255,255,0.65)' : color.textOnLight.faint }}>
-                  <span style={{ fontSize: type.label }}>{formatTime(m.created_at)}</span>
+                  <span style={{ fontSize: type.label, fontFamily: font.mono }}>{formatTime(m.created_at)}</span>
                   {mine && (
                     <span style={{ fontSize: type.label, color: m.read_at ? color.sage : 'rgba(255,255,255,0.65)',
                       fontWeight: m.read_at ? 700 : 400 }}>

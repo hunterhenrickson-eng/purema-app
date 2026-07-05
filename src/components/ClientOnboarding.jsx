@@ -177,15 +177,16 @@ export default function ClientOnboarding({ profile, onComplete }) {
           </h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 8 }}>
             {[
-              ['Starting weight', weight ? `${weight} ${weightUnit}` : '—'],
-              ['Primary goal', goalLabel],
-              ...(goal === 'competition_prep' ? [['Competition date', competitionDate || 'Not set yet']] : []),
-              ['Dietary notes', dietary.trim() || 'None'],
-            ].map(([label, value]) => (
+              ['Starting weight', weight ? `${weight} ${weightUnit}` : '—', true],
+              ['Primary goal', goalLabel, false],
+              ...(goal === 'competition_prep' ? [['Competition date', competitionDate || 'Not set yet', true]] : []),
+              ['Dietary notes', dietary.trim() || 'None', false],
+            ].map(([label, value, isData]) => (
               <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: 12,
                 padding: '10px 0', borderBottom: `0.5px solid ${color.borderDark}` }}>
                 <span style={{ fontSize: type.body, color: color.textOnDark.secondary }}>{label}</span>
-                <span style={{ fontSize: type.body, color: color.textOnDark.primary, fontWeight: 500, textAlign: 'right' }}>{value}</span>
+                <span style={{ fontSize: type.body, color: color.textOnDark.primary, fontWeight: 500, textAlign: 'right',
+                  fontFamily: isData ? font.mono : font.sans }}>{value}</span>
               </div>
             ))}
           </div>
