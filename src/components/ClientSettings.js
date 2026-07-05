@@ -319,6 +319,7 @@ const NOTIFICATION_PREFS = [
   { key: 'notify_weekly_reminder', label: 'Weekly check-in reminder', sub: 'Remind me to submit my check-in' },
   { key: 'notify_show_day_countdown', label: 'Show day countdown', sub: 'Daily reminder as competition approaches' },
   { key: 'notify_macro_target_updates', label: 'Macro targets updated', sub: 'When your coach adjusts your targets' },
+  { key: 'notify_new_message', label: 'New message', sub: 'When your coach sends you a message' },
 ]
 
 const SectionNotifications = ({ profile, onProfileUpdate }) => {

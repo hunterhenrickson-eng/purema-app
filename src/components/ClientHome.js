@@ -4,6 +4,7 @@ import CheckInForm from './CheckInForm'
 import ClientSettings from './ClientSettings'
 import { color, font, type, labelStyle } from '../lib/theme'
 import { getEffectiveTargets } from '../lib/dietPlan'
+import MessageThread from './MessageThread'
 import '../styles/purema-responsive.css'
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
@@ -596,6 +597,7 @@ const TABS = [
   { id: 'home', label: 'Home' },
   { id: 'progress', label: 'Progress' },
   { id: 'checkin', label: 'Check-in' },
+  { id: 'messages', label: 'Messages' },
 ]
 
 export default function ClientHome() {
@@ -604,6 +606,8 @@ export default function ClientHome() {
   const [checkins, setCheckins] = useState([])
   const [dietPhases, setDietPhases] = useState([])
   const [targetOverrides, setTargetOverrides] = useState([])
+  const [messages, setMessages] = useState([])
+  const [coachName, setCoachName] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -611,22 +615,74 @@ export default function ClientHome() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      const [profileRes, checkinsRes, phasesRes, overridesRes] = await Promise.all([
+      const [profileRes, checkinsRes, phasesRes, overridesRes, messagesRes] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', user.id).single(),
         supabase.from('check_ins').select('*').eq('client_id', user.id)
           .order('submitted_at', { ascending: false }),
         supabase.from('diet_plan_phases').select('*').eq('client_id', user.id),
         supabase.from('weekly_target_overrides').select('*').eq('client_id', user.id),
+        supabase.from('messages').select('*').eq('client_id', user.id).order('created_at', { ascending: true }),
       ])
 
       if (!profileRes.error) setProfile(profileRes.data)
       if (!checkinsRes.error) setCheckins(checkinsRes.data || [])
       if (!phasesRes.error) setDietPhases(phasesRes.data || [])
       if (!overridesRes.error) setTargetOverrides(overridesRes.data || [])
+      if (!messagesRes.error) setMessages(messagesRes.data || [])
+
+      if (profileRes.data?.coach_id) {
+        const { data: coachProfile } = await supabase
+          .from('profiles').select('full_name').eq('id', profileRes.data.coach_id).single()
+        if (coachProfile) setCoachName(coachProfile.full_name)
+      }
+
       setLoading(false)
     }
     load()
   }, [])
+
+  // Same reasoning as CoachDashboard: lifted to the top level so the
+  // Messages nav badge is correct even while viewing a different tab.
+  useEffect(() => {
+    if (!profile?.id) return
+    const channel = supabase
+      .channel(`messages-client-${profile.id}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `client_id=eq.${profile.id}` }, payload => {
+        setMessages(prev => (prev.some(m => m.id === payload.new.id) ? prev : [...prev, payload.new]))
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter: `client_id=eq.${profile.id}` }, payload => {
+        setMessages(prev => prev.map(m => (m.id === payload.new.id ? payload.new : m)))
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [profile?.id])
+
+  // A client has exactly one thread (their own coach), so opening the
+  // Messages tab IS opening the thread — mark unread messages read here,
+  // re-checking whenever new ones arrive while the tab stays open.
+  useEffect(() => {
+    if (activeTab !== 'messages' || !profile?.id || !profile?.coach_id) return
+    const unread = messages.filter(m => m.sender_id === profile.coach_id && !m.read_at)
+    if (unread.length === 0) return
+    const nowIso = new Date().toISOString()
+    supabase.from('messages').update({ read_at: nowIso })
+      .eq('client_id', profile.id).eq('sender_id', profile.coach_id).is('read_at', null)
+      .select()
+      .then(({ data }) => {
+        if (data?.length) setMessages(prev => prev.map(m => data.find(d => d.id === m.id) || m))
+      })
+  }, [activeTab, messages, profile?.id, profile?.coach_id])
+
+  const handleSendMessage = async (body) => {
+    if (!profile?.coach_id) return { ok: false, message: 'No coach assigned yet.' }
+    const { error } = await supabase.from('messages').insert({
+      coach_id: profile.coach_id, client_id: profile.id, sender_id: profile.id, body,
+    })
+    if (error) return { ok: false, message: error.message }
+    return { ok: true }
+  }
+
+  const unreadMessageCount = messages.filter(m => m.sender_id === profile?.coach_id && !m.read_at).length
 
   const handleProfileUpdate = (updatedProfile) => {
     setProfile(updatedProfile)
@@ -684,6 +740,12 @@ export default function ClientHome() {
                   transition: 'all 0.15s ease' }}>
                 {item.id === 'settings' && <GearIcon />}
                 {item.label}
+                {item.id === 'messages' && unreadMessageCount > 0 && (
+                  <span style={{ background: color.forest, color: color.sage, fontSize: type.label,
+                    borderRadius: 999, padding: '1px 6px', fontFamily: font.mono }}>
+                    {unreadMessageCount}
+                  </span>
+                )}
               </button>
             ))}
           </nav>
@@ -747,6 +809,17 @@ export default function ClientHome() {
           {activeTab === 'checkin' && (
             <TabCheckIn onSuccess={handleCheckInSuccess} />
           )}
+          {activeTab === 'messages' && (
+            <div style={{ height: 'calc(100vh - 180px)', minHeight: 420 }}>
+              <MessageThread
+                title={coachName || 'Your coach'}
+                messages={messages}
+                currentUserId={profile?.id}
+                onSend={handleSendMessage}
+                emptyLabel="No messages yet — say hello to your coach."
+              />
+            </div>
+          )}
           {activeTab === 'settings' && (
             <ClientSettings profile={profile} onProfileUpdate={handleProfileUpdate} />
           )}
@@ -766,6 +839,12 @@ export default function ClientHome() {
                 color: activeTab === item.id ? color.textOnDark.primary : color.textOnDark.secondary }}>
               {item.id === 'settings' && <GearIcon />}
               {item.label}
+              {item.id === 'messages' && unreadMessageCount > 0 && (
+                <span style={{ background: color.forest, color: color.sage, fontSize: type.label,
+                  borderRadius: 999, padding: '1px 5px', fontFamily: font.mono }}>
+                  {unreadMessageCount}
+                </span>
+              )}
             </button>
           ))}
         </div>

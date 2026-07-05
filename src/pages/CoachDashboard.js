@@ -6,6 +6,7 @@ import InviteClient from '../components/InviteClient'
 import { PLANS, planById, tierLimit, isSubscribed, isPastDue, isSuspended } from '../lib/billing'
 import { getActivePhase } from '../lib/dietPlan'
 import ImportHistory from '../components/ImportHistory'
+import MessageThread from '../components/MessageThread'
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
@@ -1652,13 +1653,110 @@ const TabCalendar = ({ clients, checkins }) => {
 
 // ─── Tab: Messages (placeholder) ─────────────────────────────────────────────
 
-const TabMessages = () => (
-  <div style={{ ...S.card, textAlign: 'center', padding: '60px 20px' }}>
-    <div style={{ fontSize: 32, marginBottom: 12 }}>💬</div>
-    <div style={{ fontSize: type.bodyLg, fontWeight: 500, color: color.textOnLight.primary, marginBottom: 6 }}>Messages</div>
-    <div style={{ fontSize: type.body, color: color.textOnLight.secondary }}>Direct messaging with clients. Coming soon.</div>
-  </div>
-)
+const TabMessages = ({ clients, messages, coachId, onSendMessage, onMarkRead }) => {
+  const activeClients = clients.filter(c => !c.status || c.status === 'active')
+  const [selectedClientId, setSelectedClientId] = useState(null)
+
+  const threads = useMemo(() => {
+    const built = activeClients.map(client => {
+      const clientMessages = messages.filter(m => m.client_id === client.id)
+      const lastMessage = clientMessages[clientMessages.length - 1] || null
+      const unreadCount = clientMessages.filter(m => m.sender_id === client.id && !m.read_at).length
+      return { client, messages: clientMessages, lastMessage, unreadCount }
+    })
+    // Unread threads surface first (sorted by recency among themselves),
+    // then everything else by recency.
+    return built.sort((a, b) => {
+      const aUnread = a.unreadCount > 0 ? 1 : 0
+      const bUnread = b.unreadCount > 0 ? 1 : 0
+      if (aUnread !== bUnread) return bUnread - aUnread
+      const at = a.lastMessage ? new Date(a.lastMessage.created_at).getTime() : 0
+      const bt = b.lastMessage ? new Date(b.lastMessage.created_at).getTime() : 0
+      return bt - at
+    })
+  }, [activeClients, messages])
+
+  const selectedThread = threads.find(t => t.client.id === selectedClientId) || null
+
+  // Marks the open thread read both on first selecting it and whenever a
+  // new message arrives in it while it's still open.
+  useEffect(() => {
+    if (!selectedClientId) return
+    const thread = threads.find(t => t.client.id === selectedClientId)
+    if (thread && thread.unreadCount > 0) onMarkRead(selectedClientId)
+  }, [selectedClientId, threads, onMarkRead])
+
+  if (activeClients.length === 0) {
+    return (
+      <div style={{ ...S.card, textAlign: 'center', padding: '60px 20px' }}>
+        <div style={{ fontSize: 32, marginBottom: 12 }}>💬</div>
+        <div style={{ fontSize: type.bodyLg, fontWeight: 500, color: color.textOnLight.primary, marginBottom: 6 }}>No clients yet</div>
+        <div style={{ fontSize: type.body, color: color.textOnLight.secondary }}>Invite a client to start messaging.</div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="purema-messages-grid" data-pane={selectedClientId ? 'thread' : 'list'}
+      style={{ height: 'calc(100vh - 180px)', minHeight: 420 }}>
+      <div className="purema-messages-list" style={{ overflowY: 'auto' }}>
+        {threads.map(({ client, lastMessage, unreadCount }) => (
+          <button key={client.id} onClick={() => setSelectedClientId(client.id)}
+            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 10,
+              border: `0.5px solid ${color.borderLight}`, textAlign: 'left', cursor: 'pointer',
+              background: selectedClientId === client.id ? color.bone : color.surfaceLight }}>
+            <div style={{ width: 36, height: 36, borderRadius: '50%', background: color.sage,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 500,
+              color: color.forest, flexShrink: 0 }}>
+              {(client.full_name || client.email || '?').charAt(0).toUpperCase()}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                <span style={{ fontSize: type.body, fontWeight: 500, color: color.textOnLight.primary,
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {client.full_name || client.email}
+                </span>
+                {unreadCount > 0 && (
+                  <span style={{ background: color.forest, color: color.sage, fontSize: type.label,
+                    borderRadius: 999, padding: '1px 7px', fontFamily: font.mono, flexShrink: 0 }}>
+                    {unreadCount}
+                  </span>
+                )}
+              </div>
+              <div style={{ fontSize: type.label, color: color.textOnLight.faint, marginTop: 2,
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {lastMessage ? lastMessage.body : 'No messages yet'}
+              </div>
+            </div>
+          </button>
+        ))}
+      </div>
+
+      <div className="purema-messages-thread" style={{ minHeight: 0 }}>
+        {selectedThread ? (
+          <MessageThread
+            title={selectedThread.client.full_name || selectedThread.client.email}
+            headerLeft={
+              <button onClick={() => setSelectedClientId(null)} className="purema-messages-back"
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 18,
+                  color: color.textOnLight.secondary, padding: 0, alignItems: 'center' }}>
+                ‹
+              </button>
+            }
+            messages={selectedThread.messages}
+            currentUserId={coachId}
+            onSend={(body) => onSendMessage(selectedThread.client.id, body)}
+          />
+        ) : (
+          <div style={{ ...S.card, height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: color.textOnLight.faint, fontSize: type.body }}>
+            Select a client to view messages
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
 
 // ─── Tab definitions ──────────────────────────────────────────────────────────
 
@@ -1670,7 +1768,53 @@ const TABS = [
   { id: 'messages', label: 'Messages' },
   { id: 'overview', label: 'Overview' },
   { id: 'billing', label: 'Billing' },
+  { id: 'settings', label: 'Settings' },
 ]
+
+// Preferences storage only — same as the client-side notification toggles
+// in ClientSettings.js. No push/email delivery infrastructure exists yet;
+// this just persists the coach's choice on their own profile row.
+const Toggle = ({ value, onChange, disabled }) => (
+  <div onClick={() => !disabled && onChange(!value)}
+    style={{ width: 44, height: 24, borderRadius: 999,
+      background: value ? color.forest : color.borderLight, cursor: disabled ? 'default' : 'pointer',
+      opacity: disabled ? 0.6 : 1,
+      position: 'relative', transition: 'background 0.2s ease', flexShrink: 0 }}>
+    <div style={{ position: 'absolute', top: 3, left: value ? 23 : 3,
+      width: 18, height: 18, borderRadius: '50%', background: color.surfaceLight,
+      transition: 'left 0.2s ease', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+  </div>
+)
+
+const TabSettings = ({ profile, onToggleNotify }) => {
+  const [savingKey, setSavingKey] = useState(null)
+
+  const handleToggle = async (key, value) => {
+    setSavingKey(key)
+    await onToggleNotify(key, value)
+    setSavingKey(null)
+  }
+
+  return (
+    <div style={{ maxWidth: 480 }}>
+      <div style={S.sectionTitle}>Notifications</div>
+      <div style={{ fontSize: type.body, color: color.textOnLight.secondary, marginBottom: 16 }}>
+        Choose what you want to be notified about. (Delivery — push, email, or WhatsApp — isn't built yet; this just saves your preference.)
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '16px 0', borderBottom: '0.5px solid #F5F5F5' }}>
+        <div>
+          <div style={{ fontSize: type.body, color: color.textOnLight.primary }}>New message</div>
+          <div style={{ fontSize: type.label, color: color.textOnLight.secondary, marginTop: 2 }}>
+            When a client sends you a message
+          </div>
+        </div>
+        <Toggle value={!!profile?.notify_new_message} onChange={(v) => handleToggle('notify_new_message', v)}
+          disabled={savingKey === 'notify_new_message'} />
+      </div>
+    </div>
+  )
+}
 
 // ─── Main shell ───────────────────────────────────────────────────────────────
 
@@ -1679,6 +1823,7 @@ export default function CoachDashboard() {
   const [checkins, setCheckins] = useState([])
   const [clients, setClients] = useState([])
   const [profile, setProfile] = useState(null)
+  const [messages, setMessages] = useState([])
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState(null)
   const [portalLoading, setPortalLoading] = useState(false)
@@ -1728,16 +1873,66 @@ export default function CoachDashboard() {
   }
 
   const fetchAll = async (id) => {
-    const [checkinsRes, clientsRes, profileRes] = await Promise.all([
+    const [checkinsRes, clientsRes, profileRes, messagesRes] = await Promise.all([
       supabase.from('check_ins').select('*').eq('coach_id', id).order('submitted_at', { ascending: false }),
       supabase.from('profiles').select('*').eq('coach_id', id),
       supabase.from('profiles').select('*').eq('id', id).single(),
+      supabase.from('messages').select('*').eq('coach_id', id).order('created_at', { ascending: true }),
     ])
     if (!checkinsRes.error) setCheckins(checkinsRes.data || [])
     if (!clientsRes.error) setClients(clientsRes.data || [])
     if (!profileRes.error) setProfile(profileRes.data)
+    if (!messagesRes.error) setMessages(messagesRes.data || [])
     setLoading(false)
   }
+
+  // Lifted to the top level (not fetched lazily inside the Messages tab) so
+  // the unread badge on the nav item stays correct even while viewing a
+  // different tab — same reasoning as checkins/clients already living here.
+  useEffect(() => {
+    if (!profile?.id) return
+    const channel = supabase
+      .channel(`messages-coach-${profile.id}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `coach_id=eq.${profile.id}` }, payload => {
+        setMessages(prev => (prev.some(m => m.id === payload.new.id) ? prev : [...prev, payload.new]))
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter: `coach_id=eq.${profile.id}` }, payload => {
+        setMessages(prev => prev.map(m => (m.id === payload.new.id ? payload.new : m)))
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [profile?.id])
+
+  const handleSendMessage = async (clientId, body) => {
+    const { error } = await supabase.from('messages').insert({
+      coach_id: profile.id, client_id: clientId, sender_id: profile.id, body,
+    })
+    if (error) return { ok: false, message: error.message }
+    return { ok: true }
+  }
+
+  const handleMarkMessagesRead = async (clientId) => {
+    const nowIso = new Date().toISOString()
+    const { data, error } = await supabase
+      .from('messages')
+      .update({ read_at: nowIso })
+      .eq('coach_id', profile.id).eq('client_id', clientId).eq('sender_id', clientId).is('read_at', null)
+      .select()
+    if (!error && data?.length) {
+      setMessages(prev => prev.map(m => data.find(d => d.id === m.id) || m))
+    }
+  }
+
+  const handleToggleNotify = async (key, value) => {
+    const { data, error } = await supabase
+      .from('profiles').update({ [key]: value }).eq('id', profile.id).select().single()
+    if (!error && data) setProfile(data)
+  }
+
+  const unreadMessageCount = useMemo(
+    () => messages.filter(m => m.sender_id !== profile?.id && !m.read_at).length,
+    [messages, profile?.id]
+  )
 
   const handleFeedbackSave = (id, feedback, feedbackAt) => {
     setCheckins(prev => prev.map(c => c.id === id ? { ...c, coach_feedback: feedback, feedback_at: feedbackAt } : c))
@@ -1807,6 +2002,13 @@ export default function CoachDashboard() {
               fontSize: type.label, borderRadius: 999, padding: '1px 6px',
               fontFamily: font.mono, verticalAlign: 'middle' }}>
               {pendingCount}
+            </span>
+          )}
+          {tab.id === 'messages' && unreadMessageCount > 0 && (
+            <span style={{ marginLeft: 6, background: color.forest, color: color.sage,
+              fontSize: type.label, borderRadius: 999, padding: '1px 6px',
+              fontFamily: font.mono, verticalAlign: 'middle' }}>
+              {unreadMessageCount}
             </span>
           )}
         </button>
@@ -1947,9 +2149,10 @@ export default function CoachDashboard() {
               {activeTab === 'clients' && <TabClients clients={clients} checkins={checkins} profile={profile} onStatusChange={handleStatusChange} onTargetsSave={handleTargetsSave} onImportCheckins={handleImportCheckins} onGoToBilling={() => setActiveTab('billing')} />}
               {activeTab === 'checkins' && <TabCheckIns checkins={checkins} onSelectCheckin={setSelected} />}
               {activeTab === 'calendar' && <TabCalendar clients={clients} checkins={checkins} />}
-              {activeTab === 'messages' && <TabMessages />}
+              {activeTab === 'messages' && <TabMessages clients={clients} messages={messages} coachId={profile?.id} onSendMessage={handleSendMessage} onMarkRead={handleMarkMessagesRead} />}
               {activeTab === 'overview' && <TabOverview clients={clients} checkins={checkins} profile={profile} />}
               {activeTab === 'billing' && <TabBilling profile={profile} />}
+              {activeTab === 'settings' && <TabSettings profile={profile} onToggleNotify={handleToggleNotify} />}
             </>
           )}
         </div>
@@ -1973,6 +2176,13 @@ export default function CoachDashboard() {
                   fontSize: type.label, borderRadius: 999, padding: '1px 5px',
                   fontFamily: font.mono }}>
                   {pendingCount}
+                </span>
+              )}
+              {tab.id === 'messages' && unreadMessageCount > 0 && (
+                <span style={{ background: color.forest, color: color.sage,
+                  fontSize: type.label, borderRadius: 999, padding: '1px 5px',
+                  fontFamily: font.mono }}>
+                  {unreadMessageCount}
                 </span>
               )}
             </button>

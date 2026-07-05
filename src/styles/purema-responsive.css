@@ -46,6 +46,30 @@
   align-items: start;
 }
 
+/* ---- Messages two-pane layout (Coach + Client) ---- */
+/* Desktop: list + thread always side by side. Mobile: only one pane at a
+   time, switched via the data-pane attribute the component sets on state
+   rather than a JS viewport check, matching the CSS-drives-responsive
+   approach used everywhere else in this file. */
+.purema-messages-grid {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+  gap: 16px;
+}
+
+/* Layout lives here rather than as an inline style so the mobile
+   data-pane rule below (display: none) can actually win — an inline
+   style="display: flex" would otherwise always beat a CSS class. */
+.purema-messages-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.purema-messages-back {
+  display: none;
+}
+
 /* Mobile fallback: single column, bottom tab bar, no side nav */
 @media (max-width: 899px) {
   .purema-shell {
@@ -70,5 +94,18 @@
   }
   .purema-content-grid > * + * {
     margin-top: 16px;
+  }
+  .purema-messages-grid {
+    display: block;
+    height: auto !important;
+  }
+  .purema-messages-grid[data-pane="list"] .purema-messages-thread {
+    display: none;
+  }
+  .purema-messages-grid[data-pane="thread"] .purema-messages-list {
+    display: none;
+  }
+  .purema-messages-back {
+    display: inline-flex;
   }
 }
