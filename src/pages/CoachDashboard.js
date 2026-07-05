@@ -250,14 +250,18 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave, coachId }) => {
     let cancelled = false
     async function loadOverride() {
       setOverrideLoading(true)
-      const { data } = await supabase.from('weekly_target_overrides')
+      const { data, error: loadErr } = await supabase.from('weekly_target_overrides')
         .select('*').eq('client_id', checkin.client_id).eq('week_number', checkin.week_number).maybeSingle()
       if (cancelled) return
-      setOverride(data || null)
-      if (data) {
-        setOverrideForm({
-          calories: data.calories ?? '', protein: data.protein ?? '', carbs: data.carbs ?? '', fats: data.fats ?? '', note: '',
-        })
+      if (loadErr) {
+        setOverrideError("Couldn't load this week's override — try refreshing.")
+      } else {
+        setOverride(data || null)
+        if (data) {
+          setOverrideForm({
+            calories: data.calories ?? '', protein: data.protein ?? '', carbs: data.carbs ?? '', fats: data.fats ?? '', note: '',
+          })
+        }
       }
       setOverrideLoading(false)
     }
@@ -803,13 +807,17 @@ const DietPlanPanel = ({ client, coachId }) => {
     let cancelled = false
     async function load() {
       setLoading(true)
-      const [{ data: phaseRows }, { data: historyRows }] = await Promise.all([
+      const [{ data: phaseRows, error: phasesErr }, { data: historyRows, error: historyErr }] = await Promise.all([
         supabase.from('diet_plan_phases').select('*').eq('client_id', client.id).order('start_date', { ascending: true }),
         supabase.from('macro_adjustments').select('*').eq('client_id', client.id).order('created_at', { ascending: false }).limit(20),
       ])
       if (cancelled) return
-      setPhases(phaseRows || [])
-      setHistory(historyRows || [])
+      if (phasesErr || historyErr) {
+        setError("Couldn't load this client's diet plan — try refreshing.")
+      } else {
+        setPhases(phaseRows || [])
+        setHistory(historyRows || [])
+      }
       setLoading(false)
     }
     load()
@@ -884,6 +892,14 @@ const DietPlanPanel = ({ client, coachId }) => {
     return (
       <div style={{ marginTop: 10, paddingTop: 14, borderTop: '0.5px solid #F0F0F0', fontSize: type.body, color: color.textOnLight.secondary }}>
         Loading plan...
+      </div>
+    )
+  }
+
+  if (error && phases === null) {
+    return (
+      <div style={{ marginTop: 10, paddingTop: 14, borderTop: '0.5px solid #F0F0F0', fontSize: type.body, color: color.alert }}>
+        {error}
       </div>
     )
   }
@@ -1631,7 +1647,11 @@ const TabCalendar = ({ clients, checkins }) => {
       <div style={S.card}>
         <div style={{ ...S.label, marginBottom: 10 }}>Upcoming</div>
         {upcoming.length === 0 ? (
-          <div style={{ fontSize: type.body, color: color.textOnLight.secondary }}>No upcoming events.</div>
+          <div style={{ fontSize: type.body, color: color.textOnLight.secondary }}>
+            {clients.length === 0
+              ? 'No clients yet — invite one to start seeing check-ins, peak weeks, and show days here.'
+              : 'No upcoming events yet. They\'ll show up once a client sets a show date (in their Settings) and you set their peak week (in Targets).'}
+          </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {upcoming.map((e, i) => (
@@ -1828,6 +1848,8 @@ export default function CoachDashboard() {
   const [selected, setSelected] = useState(null)
   const [portalLoading, setPortalLoading] = useState(false)
   const [portalError, setPortalError] = useState(null)
+  const [criticalLoadError, setCriticalLoadError] = useState(null)
+  const [dataLoadError, setDataLoadError] = useState(null)
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -1879,9 +1901,21 @@ export default function CoachDashboard() {
       supabase.from('profiles').select('*').eq('id', id).single(),
       supabase.from('messages').select('*').eq('coach_id', id).order('created_at', { ascending: true }),
     ])
+
+    // Profile drives billing/access gating below, so a failure here can't
+    // just be swallowed — nothing meaningful can render without it.
+    if (profileRes.error) {
+      setCriticalLoadError("Couldn't load your account — try refreshing.")
+      setLoading(false)
+      return
+    }
+    setProfile(profileRes.data)
+
+    const secondaryFailed = checkinsRes.error || clientsRes.error || messagesRes.error
+    setDataLoadError(secondaryFailed ? "Couldn't load some of your data — try refreshing." : null)
+
     if (!checkinsRes.error) setCheckins(checkinsRes.data || [])
     if (!clientsRes.error) setClients(clientsRes.data || [])
-    if (!profileRes.error) setProfile(profileRes.data)
     if (!messagesRes.error) setMessages(messagesRes.data || [])
     setLoading(false)
   }
@@ -2045,6 +2079,21 @@ export default function CoachDashboard() {
     </div>
   )
 
+  if (!loading && criticalLoadError) {
+    return (
+      <div style={{ minHeight: '100vh', background: color.void, display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center', padding: 24, fontFamily: font.sans, gap: 16, textAlign: 'center' }}>
+        <Mark size={40} />
+        <div style={{ fontSize: type.bodyLg, fontWeight: 500, color: color.textOnDark.primary }}>{criticalLoadError}</div>
+        <button onClick={() => window.location.reload()}
+          style={{ padding: '10px 22px', borderRadius: 8, border: 'none', background: color.forest, color: color.sage,
+            fontFamily: font.sans, fontSize: type.body, fontWeight: 500, cursor: 'pointer' }}>
+          Try again
+        </button>
+      </div>
+    )
+  }
+
   // Payment retries were exhausted (or the subscription was canceled outright)
   // — block everything except a read-only screen pointing back to Stripe's
   // billing portal. Nothing is deleted; this just gates access until the
@@ -2127,6 +2176,11 @@ export default function CoachDashboard() {
               fontSize: type.label, fontFamily: font.mono, letterSpacing: '0.1em' }}>LOADING...</div>
           ) : (
             <>
+              {dataLoadError && (
+                <div style={{ fontSize: type.body, color: color.alert, marginBottom: 20 }}>
+                  {dataLoadError}
+                </div>
+              )}
               {isPastDue(profile) && (
                 <div style={{ background: '#FAEEDA', border: `1px solid ${color.gold}`, borderRadius: 10,
                   padding: '12px 16px', marginBottom: 20, display: 'flex', alignItems: 'center',

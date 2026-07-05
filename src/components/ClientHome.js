@@ -609,6 +609,8 @@ export default function ClientHome() {
   const [messages, setMessages] = useState([])
   const [coachName, setCoachName] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [criticalLoadError, setCriticalLoadError] = useState(null)
+  const [dataLoadError, setDataLoadError] = useState(null)
 
   useEffect(() => {
     async function load() {
@@ -624,7 +626,18 @@ export default function ClientHome() {
         supabase.from('messages').select('*').eq('client_id', user.id).order('created_at', { ascending: true }),
       ])
 
-      if (!profileRes.error) setProfile(profileRes.data)
+      // Profile drives basically everything rendered below, so a failure
+      // here can't just be swallowed like the others can.
+      if (profileRes.error) {
+        setCriticalLoadError("Couldn't load your account — try refreshing.")
+        setLoading(false)
+        return
+      }
+      setProfile(profileRes.data)
+
+      const secondaryFailed = checkinsRes.error || phasesRes.error || overridesRes.error || messagesRes.error
+      setDataLoadError(secondaryFailed ? "Couldn't load your data — try refreshing." : null)
+
       if (!checkinsRes.error) setCheckins(checkinsRes.data || [])
       if (!phasesRes.error) setDietPhases(phasesRes.data || [])
       if (!overridesRes.error) setTargetOverrides(overridesRes.data || [])
@@ -707,6 +720,20 @@ export default function ClientHome() {
       alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ fontFamily: font.mono, fontSize: type.label,
         color: color.forest, letterSpacing: '0.1em' }}>LOADING...</div>
+    </div>
+  )
+
+  if (criticalLoadError) return (
+    <div style={{ minHeight: '100vh', background: color.void, display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center', padding: 24, gap: 16, textAlign: 'center' }}>
+      <div style={{ fontFamily: font.sans, fontSize: type.bodyLg, fontWeight: 500, color: color.textOnDark.primary }}>
+        {criticalLoadError}
+      </div>
+      <button onClick={() => window.location.reload()}
+        style={{ padding: '10px 22px', borderRadius: 8, border: 'none', background: color.forest, color: color.sage,
+          fontFamily: font.sans, fontSize: type.body, fontWeight: 500, cursor: 'pointer' }}>
+        Try again
+      </button>
     </div>
   )
 
@@ -794,6 +821,11 @@ export default function ClientHome() {
 
         {/* Page content */}
         <div className="purema-content" style={{ padding: '32px 32px 100px', boxSizing: 'border-box' }}>
+          {dataLoadError && (
+            <div style={{ fontSize: type.body, color: color.alert, marginBottom: 20 }}>
+              {dataLoadError}
+            </div>
+          )}
           {activeTab === 'home' && (
             <TabHome
               profile={profile}
