@@ -6,6 +6,7 @@ import ClientHome from './components/ClientHome'
 import ClientOnboarding from './components/ClientOnboarding'
 import AcceptInvite from './components/AcceptInvite'
 import ResetPassword from './components/ResetPassword'
+import PublicApply from './components/PublicApply'
 
 function AuthRoutes() {
   const [session, setSession] = useState(null)
@@ -76,6 +77,11 @@ function App() {
 
   if (path === '/reset-password') {
     return <ResetPassword />
+  }
+
+  if (path.startsWith('/apply/')) {
+    const slug = path.split('/apply/')[1]
+    return <PublicApply slug={slug} />
   }
 
   return <AuthRoutes />

@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { supabase } from '../lib/supabase'
-import { color, font, type, labelStyle, badge } from '../lib/theme'
+import { color, font, type, labelStyle, badge, navItemStyle } from '../lib/theme'
 import '../styles/purema-responsive.css'
-import InviteClient from '../components/InviteClient'
+import InviteClient, { createInvite } from '../components/InviteClient'
 import { PLANS, planById, tierLimit, isSubscribed, isPastDue, isSuspended } from '../lib/billing'
 import { getActivePhase } from '../lib/dietPlan'
 import ImportHistory from '../components/ImportHistory'
@@ -1239,6 +1239,107 @@ const TabCheckIns = ({ checkins, onSelectCheckin }) => {
   )
 }
 
+// ─── Tab: Requests ────────────────────────────────────────────────────────────
+
+// A row stays visible after Approve (even though its status flips away from
+// 'pending') so the just-generated invite link doesn't vanish out from under
+// the coach — it only drops off once the tab is left and applications are
+// refetched. Decline has no such need and disappears immediately.
+const TabRequests = ({ applications, onApprove, onDecline }) => {
+  const [busyId, setBusyId] = useState(null)
+  const [linkById, setLinkById] = useState({})
+  const [errorById, setErrorById] = useState({})
+  const formatDate = ts => new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+
+  const visible = applications.filter(a => a.status === 'pending' || linkById[a.id])
+
+  const handleApprove = async (application) => {
+    setBusyId(application.id)
+    setErrorById(prev => ({ ...prev, [application.id]: null }))
+    const result = await onApprove(application)
+    setBusyId(null)
+    if (!result.ok) {
+      setErrorById(prev => ({ ...prev, [application.id]: result.message }))
+      return
+    }
+    setLinkById(prev => ({ ...prev, [application.id]: result.link }))
+  }
+
+  const handleDecline = async (application) => {
+    setBusyId(application.id)
+    setErrorById(prev => ({ ...prev, [application.id]: null }))
+    const result = await onDecline(application)
+    setBusyId(null)
+    if (!result.ok) {
+      setErrorById(prev => ({ ...prev, [application.id]: result.message }))
+    }
+  }
+
+  if (visible.length === 0) {
+    return (
+      <div style={{ ...S.card, textAlign: 'center', padding: '40px 20px', color: color.textOnLight.secondary, fontSize: type.body }}>
+        No pending applications.
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {visible.map(application => (
+        <div key={application.id} style={{ ...S.card, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+            <div>
+              <div style={{ fontSize: type.body, fontWeight: 500, color: color.textOnLight.primary }}>{application.name}</div>
+              <div style={{ fontSize: type.label, color: color.textOnLight.secondary, marginTop: 2 }}>
+                {application.email}{application.phone ? ` · ${application.phone}` : ''}
+              </div>
+            </div>
+            <span style={{ fontSize: type.label, color: color.textOnLight.faint, fontFamily: font.mono, whiteSpace: 'nowrap' }}>
+              {formatDate(application.submitted_at)}
+            </span>
+          </div>
+
+          {application.notes && (
+            <div style={{ fontSize: type.body, color: color.textOnLight.secondary, lineHeight: 1.5 }}>
+              {application.notes}
+            </div>
+          )}
+
+          {linkById[application.id] ? (
+            <div style={{ background: badge('success').background, borderRadius: 8, padding: 12 }}>
+              <div style={{ fontSize: type.label, color: color.textOnLight.secondary, marginBottom: 6 }}>
+                Approved — share this invite link:
+              </div>
+              <code style={{ fontSize: type.label, wordBreak: 'break-all', color: color.textOnLight.primary }}>
+                {linkById[application.id]}
+              </code>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => handleApprove(application)} disabled={busyId === application.id}
+                style={{ padding: '8px 16px', borderRadius: 6, border: 'none', cursor: busyId === application.id ? 'not-allowed' : 'pointer',
+                  background: busyId === application.id ? color.textOnLight.faint : color.forest, color: color.textOnDark.primary,
+                  fontFamily: font.sans, fontSize: type.label, fontWeight: 500 }}>
+                {busyId === application.id ? 'Working...' : 'Approve'}
+              </button>
+              <button onClick={() => handleDecline(application)} disabled={busyId === application.id}
+                style={{ padding: '8px 16px', borderRadius: 6, border: `1px solid ${color.borderLight}`, cursor: busyId === application.id ? 'not-allowed' : 'pointer',
+                  background: 'transparent', color: color.textOnLight.secondary,
+                  fontFamily: font.sans, fontSize: type.label, fontWeight: 500 }}>
+                Decline
+              </button>
+            </div>
+          )}
+
+          {errorById[application.id] && (
+            <div style={{ fontSize: type.label, color: color.alert }}>{errorById[application.id]}</div>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // ─── Tab: Overview ────────────────────────────────────────────────────────────
 
 const TabOverview = ({ clients, checkins, profile }) => {
@@ -1784,6 +1885,7 @@ const TabMessages = ({ clients, messages, coachId, onSendMessage, onMarkRead }) 
 const TABS = [
   { id: 'dashboard', label: 'Dashboard' },
   { id: 'clients', label: 'Clients' },
+  { id: 'requests', label: 'Requests' },
   { id: 'checkins', label: 'Check-ins' },
   { id: 'calendar', label: 'Calendar' },
   { id: 'messages', label: 'Messages' },
@@ -1807,8 +1909,18 @@ const Toggle = ({ value, onChange, disabled }) => (
   </div>
 )
 
+const NAV_LAYOUTS = [
+  { value: 'sidebar', label: 'Sidebar', desc: 'Nav on the left, always visible' },
+  { value: 'top_tabs', label: 'Top tabs', desc: 'Nav across the top, full-width content' },
+]
+
 const TabSettings = ({ profile, onToggleNotify }) => {
   const [savingKey, setSavingKey] = useState(null)
+  const [slugInput, setSlugInput] = useState(profile?.slug || '')
+  const [slugError, setSlugError] = useState(null)
+  const [copied, setCopied] = useState(false)
+
+  useEffect(() => { setSlugInput(profile?.slug || '') }, [profile?.slug])
 
   const handleToggle = async (key, value) => {
     setSavingKey(key)
@@ -1816,22 +1928,106 @@ const TabSettings = ({ profile, onToggleNotify }) => {
     setSavingKey(null)
   }
 
+  const handleSlugSave = async (e) => {
+    e.preventDefault()
+    setSlugError(null)
+    const normalized = slugInput.trim().toLowerCase().replace(/[^a-z0-9-]/g, '')
+    if (!normalized) {
+      setSlugError('Enter a URL-safe username (letters, numbers, hyphens).')
+      return
+    }
+    setSavingKey('slug')
+    const result = await onToggleNotify('slug', normalized)
+    setSavingKey(null)
+    if (result && !result.ok) setSlugError(result.message)
+  }
+
+  const applyLink = profile?.slug ? `${window.location.origin}/apply/${profile.slug}` : null
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(applyLink)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const navLayout = profile?.nav_layout === 'top_tabs' ? 'top_tabs' : 'sidebar'
+
   return (
-    <div style={{ maxWidth: 480 }}>
-      <div style={S.sectionTitle}>Notifications</div>
-      <div style={{ fontSize: type.body, color: color.textOnLight.secondary, marginBottom: 16 }}>
-        Choose what you want to be notified about. (Delivery — push, email, or WhatsApp — isn't built yet; this just saves your preference.)
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '16px 0', borderBottom: '0.5px solid #F5F5F5' }}>
-        <div>
-          <div style={{ fontSize: type.body, color: color.textOnLight.primary }}>New message</div>
-          <div style={{ fontSize: type.label, color: color.textOnLight.secondary, marginTop: 2 }}>
-            When a client sends you a message
-          </div>
+    <div style={{ maxWidth: 480, display: 'flex', flexDirection: 'column', gap: 32 }}>
+      <div>
+        <div style={S.sectionTitle}>Application link</div>
+        <div style={{ fontSize: type.body, color: color.textOnLight.secondary, marginBottom: 16 }}>
+          Share this link so prospective clients can apply to work with you. Approved applications land in your Requests tab.
         </div>
-        <Toggle value={!!profile?.notify_new_message} onChange={(v) => handleToggle('notify_new_message', v)}
-          disabled={savingKey === 'notify_new_message'} />
+        <form onSubmit={handleSlugSave} style={{ display: 'flex', gap: 8 }}>
+          <input
+            type="text"
+            value={slugInput}
+            onChange={(e) => setSlugInput(e.target.value)}
+            placeholder="yourname"
+            style={{ flex: 1, padding: '10px 12px', borderRadius: 8,
+              border: `1px solid ${color.borderLight}`, fontFamily: font.sans,
+              fontSize: type.body, outline: 'none', color: color.textOnLight.primary }}
+          />
+          <button type="submit" disabled={savingKey === 'slug'}
+            style={{ padding: '10px 18px', borderRadius: 8, border: 'none',
+              background: savingKey === 'slug' ? color.textOnLight.faint : color.forest, color: color.textOnDark.primary,
+              fontFamily: font.sans, fontWeight: 500, cursor: savingKey === 'slug' ? 'not-allowed' : 'pointer',
+              fontSize: type.body, whiteSpace: 'nowrap' }}>
+            {savingKey === 'slug' ? 'Saving...' : 'Save'}
+          </button>
+        </form>
+        {slugError && <p style={{ color: color.alert, marginTop: 8, fontSize: type.body }}>{slugError}</p>}
+        {applyLink && (
+          <div style={{ marginTop: 12, display: 'flex', gap: 8, alignItems: 'center' }}>
+            <code style={{ fontSize: type.label, wordBreak: 'break-all', flex: 1, color: color.textOnLight.secondary }}>
+              {applyLink}
+            </code>
+            <button onClick={handleCopyLink}
+              style={{ padding: '6px 10px', borderRadius: 6, border: `1px solid ${color.forest}`,
+                background: 'transparent', color: color.forest, fontSize: type.label,
+                cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              {copied ? 'Copied!' : 'Copy'}
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div>
+        <div style={S.sectionTitle}>Navigation</div>
+        <div style={{ fontSize: type.body, color: color.textOnLight.secondary, marginBottom: 16 }}>
+          Choose how the dashboard nav is laid out on desktop. Mobile stays the same either way.
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {NAV_LAYOUTS.map(opt => (
+            <button key={opt.value} type="button" onClick={() => handleToggle('nav_layout', opt.value)}
+              disabled={savingKey === 'nav_layout'}
+              style={{ flex: 1, textAlign: 'left', padding: '12px 14px', borderRadius: 8, cursor: 'pointer',
+                border: `1px solid ${navLayout === opt.value ? color.forest : color.borderLight}`,
+                background: navLayout === opt.value ? color.sage : 'transparent' }}>
+              <div style={{ fontSize: type.body, fontWeight: 500, color: color.textOnLight.primary }}>{opt.label}</div>
+              <div style={{ fontSize: type.label, color: color.textOnLight.secondary, marginTop: 2 }}>{opt.desc}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <div style={S.sectionTitle}>Notifications</div>
+        <div style={{ fontSize: type.body, color: color.textOnLight.secondary, marginBottom: 16 }}>
+          Choose what you want to be notified about. (Delivery — push, email, or WhatsApp — isn't built yet; this just saves your preference.)
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '16px 0', borderBottom: '0.5px solid #F5F5F5' }}>
+          <div>
+            <div style={{ fontSize: type.body, color: color.textOnLight.primary }}>New message</div>
+            <div style={{ fontSize: type.label, color: color.textOnLight.secondary, marginTop: 2 }}>
+              When a client sends you a message
+            </div>
+          </div>
+          <Toggle value={!!profile?.notify_new_message} onChange={(v) => handleToggle('notify_new_message', v)}
+            disabled={savingKey === 'notify_new_message'} />
+        </div>
       </div>
     </div>
   )
@@ -1843,6 +2039,7 @@ export default function CoachDashboard() {
   const [activeTab, setActiveTab] = useState('dashboard')
   const [checkins, setCheckins] = useState([])
   const [clients, setClients] = useState([])
+  const [applications, setApplications] = useState([])
   const [profile, setProfile] = useState(null)
   const [messages, setMessages] = useState([])
   const [loading, setLoading] = useState(true)
@@ -1896,11 +2093,12 @@ export default function CoachDashboard() {
   }
 
   const fetchAll = async (id) => {
-    const [checkinsRes, clientsRes, profileRes, messagesRes] = await Promise.all([
+    const [checkinsRes, clientsRes, profileRes, messagesRes, applicationsRes] = await Promise.all([
       supabase.from('check_ins').select('*').eq('coach_id', id).order('submitted_at', { ascending: false }),
       supabase.from('profiles').select('*').eq('coach_id', id),
       supabase.from('profiles').select('*').eq('id', id).single(),
       supabase.from('messages').select('*').eq('coach_id', id).order('created_at', { ascending: true }),
+      supabase.from('client_applications').select('*').eq('coach_id', id).order('submitted_at', { ascending: false }),
     ])
 
     // Profile drives billing/access gating below, so a failure here can't
@@ -1912,12 +2110,13 @@ export default function CoachDashboard() {
     }
     setProfile(profileRes.data)
 
-    const secondaryFailed = checkinsRes.error || clientsRes.error || messagesRes.error
+    const secondaryFailed = checkinsRes.error || clientsRes.error || messagesRes.error || applicationsRes.error
     setDataLoadError(secondaryFailed ? "Couldn't load some of your data — try refreshing." : null)
 
     if (!checkinsRes.error) setCheckins(checkinsRes.data || [])
     if (!clientsRes.error) setClients(clientsRes.data || [])
     if (!messagesRes.error) setMessages(messagesRes.data || [])
+    if (!applicationsRes.error) setApplications(applicationsRes.data || [])
     setLoading(false)
   }
 
@@ -1961,7 +2160,11 @@ export default function CoachDashboard() {
   const handleToggleNotify = async (key, value) => {
     const { data, error } = await supabase
       .from('profiles').update({ [key]: value }).eq('id', profile.id).select().single()
-    if (!error && data) setProfile(data)
+    if (error || !data) {
+      return { ok: false, message: error?.message || "Update didn't apply — check permissions." }
+    }
+    setProfile(data)
+    return { ok: true }
   }
 
   const unreadMessageCount = useMemo(
@@ -2008,30 +2211,64 @@ export default function CoachDashboard() {
     setCheckins(prev => [...prev, ...newRows].sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at)))
   }
 
+  // Reuses the same invite-generation logic InviteClient uses, so an
+  // approved applicant lands in the identical accept-invite path a
+  // manually-invited client does — no second implementation of invite creation.
+  const handleApproveApplication = async (application) => {
+    const invite = await createInvite(profile.id, application.email, 'client')
+    if (!invite.ok) return { ok: false, message: invite.message }
+
+    const { data, error } = await supabase
+      .from('client_applications')
+      .update({ status: 'approved' })
+      .eq('id', application.id)
+      .select()
+      .single()
+    if (error || !data) {
+      return { ok: false, message: error?.message || "Update didn't apply — check permissions." }
+    }
+    setApplications(prev => prev.map(a => a.id === data.id ? data : a))
+    return { ok: true, link: invite.link }
+  }
+
+  const handleDeclineApplication = async (application) => {
+    const { data, error } = await supabase
+      .from('client_applications')
+      .update({ status: 'declined' })
+      .eq('id', application.id)
+      .select()
+      .single()
+    if (error || !data) {
+      return { ok: false, message: error?.message || "Update didn't apply — check permissions." }
+    }
+    setApplications(prev => prev.map(a => a.id === data.id ? data : a))
+    return { ok: true }
+  }
+
   const pendingCount = checkins.filter(c => !c.coach_feedback).length
+  const pendingApplicationsCount = applications.filter(a => a.status === 'pending').length
   const attentionCount = useMemo(() => buildAttentionQueue(clients, checkins).length, [clients, checkins])
 
   const NavList = ({ vertical }) => (
-    <nav style={{ display: 'flex', flexDirection: vertical ? 'column' : 'row', gap: vertical ? 4 : 0 }}>
+    <nav style={{ display: 'flex', flexDirection: vertical ? 'column' : 'row', gap: vertical ? 4 : 4 }}>
       {TABS.map(tab => (
         <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-          style={vertical ? {
-            display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px',
-            border: 'none', borderRadius: 8, textAlign: 'left', cursor: 'pointer',
+          style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: vertical ? '10px 12px' : '8px 14px',
+            border: 'none', textAlign: 'left', cursor: 'pointer',
             fontFamily: font.sans, fontSize: type.body,
-            fontWeight: activeTab === tab.id ? 500 : 400,
-            background: activeTab === tab.id ? color.surfaceDarkRaised : 'transparent',
-            color: activeTab === tab.id ? color.textOnDark.primary : color.textOnDark.secondary,
             transition: 'all 0.15s ease',
-          } : {
-            padding: '10px 18px', border: 'none', background: 'transparent', cursor: 'pointer',
-            fontFamily: font.sans, fontSize: type.body,
-            fontWeight: activeTab === tab.id ? 500 : 400,
-            color: activeTab === tab.id ? color.textOnDark.primary : color.textOnDark.secondary,
-            borderBottom: activeTab === tab.id ? `2px solid ${color.forest}` : '2px solid transparent',
-            transition: 'color 0.15s ease, border-bottom 0.15s ease',
+            ...navItemStyle(activeTab === tab.id, true),
           }}>
           {tab.label}
+          {tab.id === 'requests' && pendingApplicationsCount > 0 && (
+            <span style={{ marginLeft: 6, background: color.gold, color: color.surfaceLight,
+              fontSize: type.label, borderRadius: 999, padding: '1px 6px',
+              fontFamily: font.mono, verticalAlign: 'middle' }}>
+              {pendingApplicationsCount}
+            </span>
+          )}
           {tab.id === 'checkins' && pendingCount > 0 && (
             <span style={{ marginLeft: 6, background: color.gold, color: color.surfaceLight,
               fontSize: type.label, borderRadius: 999, padding: '1px 6px',
@@ -2128,28 +2365,61 @@ export default function CoachDashboard() {
     )
   }
 
-  return (
-    <div className="purema-shell" style={{ background: color.bone, fontFamily: font.sans }}>
+  const navLayout = profile?.nav_layout === 'top_tabs' ? 'top_tabs' : 'sidebar'
 
-      {/* Desktop sidebar nav (900px+) */}
-      <div className="purema-nav-desktop" style={{ flexDirection: 'column', justifyContent: 'space-between',
-        background: color.void, padding: '28px 20px', position: 'sticky', top: 0, height: '100vh',
-        boxSizing: 'border-box' }}>
-        <div>
-          <div style={{ padding: '0 4px', marginBottom: 28 }}><Logo /></div>
-          <NavList vertical />
+  return (
+    <div className={navLayout === 'top_tabs' ? 'purema-shell purema-shell--top-tabs' : 'purema-shell'}
+      style={{ background: color.bone, fontFamily: font.sans }}>
+
+      {/* Desktop sidebar nav (900px+) — the default layout */}
+      {navLayout === 'sidebar' && (
+        <div className="purema-nav-desktop" style={{ flexDirection: 'column', justifyContent: 'space-between',
+          background: color.void, padding: '28px 20px', position: 'sticky', top: 0, height: '100vh',
+          boxSizing: 'border-box' }}>
+          <div>
+            <div style={{ padding: '0 4px', marginBottom: 20 }}><Logo /></div>
+            <div style={{ marginBottom: 20 }}>
+              <SearchBar
+                clients={clients}
+                checkins={checkins}
+                onSelectCheckin={setSelected}
+                onSelectClient={() => setActiveTab('clients')}
+              />
+            </div>
+            <NavList vertical />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <AttentionAlert />
+            <SignOutButton />
+          </div>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <SearchBar
-            clients={clients}
-            checkins={checkins}
-            onSelectCheckin={setSelected}
-            onSelectClient={() => setActiveTab('clients')}
-          />
-          <AttentionAlert />
-          <SignOutButton />
+      )}
+
+      {/* Desktop top-tabs nav (900px+) — opt-in alternative, same nav
+          items/active-state/badges as the sidebar, just laid out
+          horizontally with full-width content below. */}
+      {navLayout === 'top_tabs' && (
+        <div className="purema-nav-top-desktop" style={{ background: color.void,
+          borderBottom: `1px solid ${color.borderDark}`, alignItems: 'center', justifyContent: 'space-between',
+          padding: '0 24px', height: 64, position: 'sticky', top: 0, zIndex: 100, gap: 20, boxSizing: 'border-box' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 28, minWidth: 0 }}>
+            <Logo />
+            <NavList vertical={false} />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
+            <div style={{ width: 220 }}>
+              <SearchBar
+                clients={clients}
+                checkins={checkins}
+                onSelectCheckin={setSelected}
+                onSelectClient={() => setActiveTab('clients')}
+              />
+            </div>
+            <AttentionAlert />
+            <SignOutButton />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Mobile header + page content + mobile bottom tab bar */}
       <div>
@@ -2203,6 +2473,7 @@ export default function CoachDashboard() {
               )}
               {activeTab === 'dashboard' && <TabDashboard checkins={checkins} clients={clients} onSelectCheckin={setSelected} />}
               {activeTab === 'clients' && <TabClients clients={clients} checkins={checkins} profile={profile} onStatusChange={handleStatusChange} onTargetsSave={handleTargetsSave} onImportCheckins={handleImportCheckins} onGoToBilling={() => setActiveTab('billing')} />}
+              {activeTab === 'requests' && <TabRequests applications={applications} onApprove={handleApproveApplication} onDecline={handleDeclineApplication} />}
               {activeTab === 'checkins' && <TabCheckIns checkins={checkins} onSelectCheckin={setSelected} />}
               {activeTab === 'calendar' && <TabCalendar clients={clients} checkins={checkins} />}
               {activeTab === 'messages' && <TabMessages clients={clients} messages={messages} coachId={profile?.id} onSendMessage={handleSendMessage} onMarkRead={handleMarkMessagesRead} />}

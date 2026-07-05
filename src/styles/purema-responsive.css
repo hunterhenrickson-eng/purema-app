@@ -46,6 +46,32 @@
   align-items: start;
 }
 
+/* ---- Alternate top-tabs desktop nav (CoachDashboard, opt-in via
+   profile.nav_layout) ---- */
+/* Overrides the sidebar's 2-column grid with a single column — the
+   top-tabs bar and the mobile header/content/tabbar wrapper just stack
+   in normal flow, no grid needed. Mobile behavior (<900px) is
+   untouched: it already falls back to display:block below regardless
+   of which desktop nav layout is chosen. */
+.purema-shell.purema-shell--top-tabs {
+  display: block;
+}
+
+.purema-nav-top-desktop {
+  display: none;
+}
+
+@media (min-width: 900px) {
+  .purema-nav-top-desktop {
+    display: flex;
+  }
+  /* Top-tabs nav frees up the space a sidebar would otherwise take, so
+     content goes full-width instead of staying capped at 720px. */
+  .purema-shell--top-tabs .purema-content {
+    max-width: none;
+  }
+}
+
 /* ---- Messages two-pane layout (Coach + Client) ---- */
 /* Desktop: list + thread always side by side. Mobile: only one pane at a
    time, switched via the data-pane attribute the component sets on state

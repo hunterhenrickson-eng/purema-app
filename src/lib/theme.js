@@ -100,6 +100,21 @@ export function badge(kind = 'neutral') {
   }
 }
 
+// Standard active/inactive treatment for any nav item (sidebar, top tabs,
+// mobile tab bar) — one shared style so every nav surface in the app reads
+// the same way instead of each screen inventing its own indicator (a gray
+// background pill, a border-bottom underline, a border-top tick, etc).
+// `color` alone is enough to tint both an icon (via stroke="currentColor")
+// and its label, since both use the same hue in either state.
+export function navItemStyle(active, onDark = true) {
+  return {
+    color: active ? color.forest : (onDark ? color.textOnDark.faint : color.textOnLight.secondary),
+    fontWeight: active ? 500 : 400,
+    background: active ? (onDark ? 'rgba(15,110,86,0.16)' : 'rgba(15,110,86,0.10)') : 'transparent',
+    borderRadius: 8,
+  }
+}
+
 export const inputStyle = {
   width: '100%',
   padding: '12px 14px',

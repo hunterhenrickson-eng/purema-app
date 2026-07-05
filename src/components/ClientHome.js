@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import CheckInForm from './CheckInForm'
 import ClientSettings from './ClientSettings'
-import { color, font, type, labelStyle, badge } from '../lib/theme'
+import { color, font, type, labelStyle, badge, navItemStyle } from '../lib/theme'
 import { getEffectiveTargets } from '../lib/dietPlan'
 import MessageThread from './MessageThread'
 import '../styles/purema-responsive.css'
@@ -757,12 +757,10 @@ export default function ClientHome() {
             {navItems.map(item => (
               <button key={item.id} onClick={() => setActiveTab(item.id)}
                 style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
-                  border: 'none', borderRadius: 8, textAlign: 'left', cursor: 'pointer',
+                  border: 'none', textAlign: 'left', cursor: 'pointer',
                   fontFamily: font.sans, fontSize: type.body,
-                  fontWeight: activeTab === item.id ? 500 : 400,
-                  background: activeTab === item.id ? color.surfaceDarkRaised : 'transparent',
-                  color: activeTab === item.id ? color.textOnDark.primary : color.textOnDark.secondary,
-                  transition: 'all 0.15s ease' }}>
+                  transition: 'all 0.15s ease',
+                  ...navItemStyle(activeTab === item.id, true) }}>
                 {item.id === 'settings' && <GearIcon />}
                 {item.label}
                 {item.id === 'messages' && unreadMessageCount > 0 && (
@@ -862,11 +860,9 @@ export default function ClientHome() {
           {navItems.map(item => (
             <button key={item.id} onClick={() => setActiveTab(item.id)}
               style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-                background: 'transparent', cursor: 'pointer', padding: '8px 10px 6px',
-                border: 'none', borderTop: activeTab === item.id ? `2px solid ${color.forest}` : '2px solid transparent',
-                fontFamily: font.sans, fontSize: type.label,
-                fontWeight: activeTab === item.id ? 500 : 400,
-                color: activeTab === item.id ? color.textOnDark.primary : color.textOnDark.secondary }}>
+                cursor: 'pointer', padding: '6px 10px',
+                border: 'none', fontFamily: font.sans, fontSize: type.label,
+                ...navItemStyle(activeTab === item.id, true) }}>
               {item.id === 'settings' && <GearIcon />}
               {item.label}
               {item.id === 'messages' && unreadMessageCount > 0 && (

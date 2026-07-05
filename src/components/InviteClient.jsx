@@ -2,6 +2,20 @@ import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { color, font, type, labelStyle, badge } from '../lib/theme';
 
+// Shared with the Requests tab's Approve action, so an approved applicant
+// lands in the exact same invite/accept-invite path a manually-invited
+// client does, rather than a second parallel implementation.
+export async function createInvite(coachId, email, role) {
+  const { data, error } = await supabase
+    .from('invites')
+    .insert({ coach_id: coachId, email, role })
+    .select('token')
+    .single();
+
+  if (error) return { ok: false, message: error.message };
+  return { ok: true, link: `${window.location.origin}/invite/${data.token}` };
+}
+
 export default function InviteClient({ atLimit = false, onUpgradeClick } = {}) {
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('client');
@@ -29,20 +43,15 @@ export default function InviteClient({ atLimit = false, onUpgradeClick } = {}) {
       return;
     }
 
-    const { data, error: insertError } = await supabase
-      .from('invites')
-      .insert({ coach_id: user.id, email, role })
-      .select('token')
-      .single();
-
+    const result = await createInvite(user.id, email, role);
     setLoading(false);
 
-    if (insertError) {
-      setError(insertError.message);
+    if (!result.ok) {
+      setError(result.message);
       return;
     }
 
-    setLink(`${window.location.origin}/invite/${data.token}`);
+    setLink(result.link);
     setEmail('');
   }
 
