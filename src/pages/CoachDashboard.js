@@ -303,9 +303,10 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave, coachId }) => {
 
   const saveFeedback = async () => {
     setSaving(true)
-    const { error } = await supabase.from('check_ins').update({ coach_feedback: feedback }).eq('id', checkin.id)
+    const feedbackAt = new Date().toISOString()
+    const { error } = await supabase.from('check_ins').update({ coach_feedback: feedback, feedback_at: feedbackAt }).eq('id', checkin.id)
     setSaving(false)
-    if (!error) { setSaved(true); onFeedbackSave(checkin.id, feedback); setTimeout(() => setSaved(false), 2000) }
+    if (!error) { setSaved(true); onFeedbackSave(checkin.id, feedback, feedbackAt); setTimeout(() => setSaved(false), 2000) }
   }
 
   const Row = ({ label, value, unit }) => value ? (
@@ -603,6 +604,12 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave, coachId }) => {
 
 // ─── Tab: Dashboard ───────────────────────────────────────────────────────────
 
+// Rough estimate of how long a manual spreadsheet/DM-based review would take
+// per check-in without Purema — not a measured value, just a reasonable
+// assumption for the "time saved" framing. Named here so it's a one-line
+// change if that assumption ever needs adjusting.
+const MINUTES_SAVED_PER_REVIEW = 3
+
 const TabDashboard = ({ checkins, clients, onSelectCheckin }) => {
   const attentionItems = useMemo(() => buildAttentionQueue(clients, checkins), [clients, checkins])
   const activeClients = clients.filter(c => !c.status || c.status === 'active')
@@ -615,6 +622,15 @@ const TabDashboard = ({ checkins, clients, onSelectCheckin }) => {
       )
     ).length / activeClients.length) * 100
   )
+
+  // Only counts real reviews (feedback_at is set the moment a coach saves
+  // feedback) on real submissions — backfilled history was never actually
+  // reviewed by hand, so it shouldn't inflate this.
+  const reviewedThisWeek = checkins.filter(c =>
+    !c.imported_backfill && c.feedback_at &&
+    (new Date() - new Date(c.feedback_at)) / (1000 * 60 * 60 * 24) <= 7
+  ).length
+  const minutesSaved = reviewedThisWeek * MINUTES_SAVED_PER_REVIEW
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
@@ -631,6 +647,13 @@ const TabDashboard = ({ checkins, clients, onSelectCheckin }) => {
           </div>
         ))}
       </div>
+
+      {reviewedThisWeek > 0 && (
+        <div style={{ fontSize: type.label, color: color.textOnLight.faint, fontFamily: font.mono }}>
+          You reviewed {reviewedThisWeek} check-in{reviewedThisWeek === 1 ? '' : 's'} this week — that's roughly{' '}
+          {minutesSaved} minute{minutesSaved === 1 ? '' : 's'} of manual review Purema handled for you.
+        </div>
+      )}
 
       {attentionItems.length > 0 ? (
         <div>
@@ -1716,8 +1739,8 @@ export default function CoachDashboard() {
     setLoading(false)
   }
 
-  const handleFeedbackSave = (id, feedback) => {
-    setCheckins(prev => prev.map(c => c.id === id ? { ...c, coach_feedback: feedback } : c))
+  const handleFeedbackSave = (id, feedback, feedbackAt) => {
+    setCheckins(prev => prev.map(c => c.id === id ? { ...c, coach_feedback: feedback, feedback_at: feedbackAt } : c))
   }
 
   // .select().single() forces a real row back — if RLS silently filters the
