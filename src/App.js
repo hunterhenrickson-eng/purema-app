@@ -3,6 +3,7 @@ import { supabase } from './lib/supabase'
 import Auth from './pages/Auth'
 import CoachDashboard from './pages/CoachDashboard'
 import ClientHome from './components/ClientHome'
+import ClientOnboarding from './components/ClientOnboarding'
 import AcceptInvite from './components/AcceptInvite'
 import ResetPassword from './components/ResetPassword'
 
@@ -59,6 +60,9 @@ function AuthRoutes() {
 
   if (!session) return <Auth />
   if (profile?.role === 'coach') return <CoachDashboard />
+  if (!profile?.onboarding_completed) {
+    return <ClientOnboarding profile={profile} onComplete={(updated) => setProfile(updated)} />
+  }
   return <ClientHome />
 }
 
