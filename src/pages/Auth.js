@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { color, font, type, labelStyle, inputStyle } from '../lib/theme'
+import { color, font, type, labelStyle, inputStyle, displayStyle } from '../lib/theme'
 import '../styles/purema-responsive.css'
 
 const Mark = ({ size = 32 }) => (
@@ -69,8 +69,7 @@ export default function Auth() {
       {/* Logo */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 40 }}>
         <Mark size={40} />
-        <div style={{ fontSize: type.display, fontWeight: 300, letterSpacing: '-0.03em',
-          color: color.textOnDark.primary, marginTop: 12 }}>
+        <div style={{ ...displayStyle, fontSize: type.display, color: color.textOnDark.primary, marginTop: 12 }}>
           purema<span style={{ color: color.forest }}>.</span>
         </div>
         <div style={{ fontSize: type.label, color: color.textOnDark.label, letterSpacing: '0.18em',

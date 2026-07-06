@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import CheckInForm from './CheckInForm'
 import ClientSettings from './ClientSettings'
-import { color, font, type, labelStyle, badge, navItemStyle } from '../lib/theme'
+import { color, font, type, labelStyle, badge, navItemStyle, displayStyle } from '../lib/theme'
 import { getEffectiveTargets } from '../lib/dietPlan'
 import MessageThread from './MessageThread'
 import '../styles/purema-responsive.css'
@@ -127,7 +127,7 @@ const TabHome = ({ profile, checkins, dietPhases, targetOverrides, onGoToCheckin
       {/* Greeting + CTA row */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
         <div>
-          <div style={{ fontSize: type.display, fontWeight: 300, color: color.textOnLight.primary, letterSpacing: '-0.02em' }}>
+          <div style={{ ...displayStyle, fontSize: type.display, color: color.textOnLight.primary }}>
             {greeting(profile?.full_name)}
           </div>
           <div style={{ fontSize: type.body, color: color.textOnLight.secondary, marginTop: 4 }}>
@@ -747,7 +747,7 @@ export default function ClientHome() {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 4px', marginBottom: 36 }}>
             <Mark size={20} />
-            <span style={{ fontSize: 18, fontWeight: 300, letterSpacing: '-0.03em', color: color.textOnLight.primary }}>
+            <span style={{ ...displayStyle, fontSize: 18, color: color.textOnLight.primary }}>
               purema<span style={{ color: color.forest }}>.</span>
             </span>
           </div>
@@ -794,7 +794,7 @@ export default function ClientHome() {
           zIndex: 100, alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', height: 56 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <Mark size={20} />
-            <span style={{ fontSize: 18, fontWeight: 300, letterSpacing: '-0.03em', color: color.textOnLight.primary }}>
+            <span style={{ ...displayStyle, fontSize: 18, color: color.textOnLight.primary }}>
               purema<span style={{ color: color.forest }}>.</span>
             </span>
           </div>

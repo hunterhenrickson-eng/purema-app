@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { supabase } from '../lib/supabase'
-import { color, font, type, labelStyle, badge, navItemStyle } from '../lib/theme'
+import { color, font, type, labelStyle, badge, navItemStyle, displayStyle } from '../lib/theme'
 import '../styles/purema-responsive.css'
 import InviteClient, { createInvite } from '../components/InviteClient'
 import { PLANS, planById, tierLimit, isSubscribed, isPastDue, isSuspended } from '../lib/billing'
@@ -2297,20 +2297,78 @@ export default function CoachDashboard() {
     </div>
   ) : null
 
-  const SignOutButton = () => (
-    <button onClick={() => supabase.auth.signOut()}
-      style={{ fontSize: type.label, color: color.textOnLight.secondary, fontFamily: font.mono, letterSpacing: '0.1em',
-        background: 'transparent', border: `1px solid ${color.borderLight}`, cursor: 'pointer',
-        padding: '5px 12px', borderRadius: 6, whiteSpace: 'nowrap' }}>
-      SIGN OUT
-    </button>
-  )
+  // Replaces the old standalone Sign Out button everywhere it appeared —
+  // Settings/Reset Password/Sign Out all live in one place now instead of
+  // sign-out being its own floating action.
+  const ProfileMenu = () => {
+    const [open, setOpen] = useState(false)
+    const [resetSent, setResetSent] = useState(false)
+    const menuRef = useRef(null)
+
+    useEffect(() => {
+      const handler = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setOpen(false) }
+      document.addEventListener('mousedown', handler)
+      return () => document.removeEventListener('mousedown', handler)
+    }, [])
+
+    const initials = (profile?.full_name || profile?.email || '?')
+      .split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
+
+    const handleReset = async () => {
+      await supabase.auth.resetPasswordForEmail(profile.email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      })
+      setResetSent(true)
+      setTimeout(() => { setResetSent(false); setOpen(false) }, 1500)
+    }
+
+    const MenuItem = ({ onClick, children, danger }) => (
+      <button onClick={onClick}
+        style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 14px', border: 'none',
+          background: 'transparent', cursor: 'pointer', fontFamily: font.sans, fontSize: type.body,
+          color: danger ? color.alert : color.textOnLight.primary, transition: 'background 0.1s ease' }}
+        onMouseEnter={e => { e.currentTarget.style.background = color.bone }}
+        onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
+        {children}
+      </button>
+    )
+
+    return (
+      <div ref={menuRef} style={{ position: 'relative', flexShrink: 0 }}>
+        <button onClick={() => setOpen(o => !o)}
+          style={{ width: 34, height: 34, borderRadius: '50%', background: color.sage, border: 'none',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+            fontSize: type.label, fontWeight: 500, color: color.forest, fontFamily: font.sans }}>
+          {initials}
+        </button>
+        {open && (
+          <div style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, minWidth: 190,
+            background: color.surfaceLight, borderRadius: 10, border: `0.5px solid ${color.borderLight}`,
+            zIndex: 300, overflow: 'hidden' }}>
+            <div style={{ padding: '10px 14px', borderBottom: `0.5px solid ${color.borderLight}` }}>
+              <div style={{ fontSize: type.body, fontWeight: 500, color: color.textOnLight.primary,
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {profile?.full_name || 'Account'}
+              </div>
+              <div style={{ fontSize: type.label, color: color.textOnLight.secondary, marginTop: 2,
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {profile?.email}
+              </div>
+            </div>
+            <MenuItem onClick={() => { setActiveTab('settings'); setOpen(false) }}>Settings</MenuItem>
+            <MenuItem onClick={handleReset}>{resetSent ? 'Reset link sent ✓' : 'Reset password'}</MenuItem>
+            <MenuItem danger onClick={() => supabase.auth.signOut()}>Sign out</MenuItem>
+          </div>
+        )}
+      </div>
+    )
+  }
 
   const Logo = () => (
     <div onClick={() => setActiveTab('dashboard')}
       style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
       <Mark size={20} />
-      <span style={{ fontSize: 18, fontWeight: 300, letterSpacing: '-0.03em', color: color.textOnLight.primary }}>
+      <span style={{ ...displayStyle, fontSize: 18, color: color.textOnLight.primary }}>
         purema<span style={{ color: color.forest }}>.</span>
       </span>
     </div>
@@ -2340,7 +2398,7 @@ export default function CoachDashboard() {
       <div style={{ minHeight: '100vh', background: color.bone, display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center', padding: 24, fontFamily: font.sans, gap: 20, textAlign: 'center' }}>
         <Mark size={40} />
-        <div style={{ fontSize: type.heading, fontWeight: 300, color: color.textOnLight.primary, maxWidth: 480 }}>
+        <div style={{ ...displayStyle, fontSize: type.heading, color: color.textOnLight.primary, maxWidth: 480 }}>
           Your subscription is past due
         </div>
         <div style={{ fontSize: type.body, color: color.textOnLight.secondary, maxWidth: 420, lineHeight: 1.6 }}>
@@ -2370,33 +2428,28 @@ export default function CoachDashboard() {
     <div className={navLayout === 'top_tabs' ? 'purema-shell purema-shell--top-tabs' : 'purema-shell'}
       style={{ background: color.bone, fontFamily: font.sans }}>
 
-      {/* Desktop sidebar nav (900px+) — the default layout */}
+      {/* Desktop sidebar nav (900px+) — the default layout. Nav only —
+          search and account actions live in the content-column top bar
+          below instead, not inside the sidebar. */}
       {navLayout === 'sidebar' && (
         <div className="purema-nav-desktop" style={{ flexDirection: 'column', justifyContent: 'space-between',
           background: color.surfaceNav, borderRight: `0.5px solid ${color.borderLight}`, padding: '28px 20px',
           position: 'sticky', top: 0, height: '100vh', boxSizing: 'border-box' }}>
           <div>
             <div style={{ padding: '0 4px', marginBottom: 20 }}><Logo /></div>
-            <div style={{ marginBottom: 20 }}>
-              <SearchBar
-                clients={clients}
-                checkins={checkins}
-                onSelectCheckin={setSelected}
-                onSelectClient={() => setActiveTab('clients')}
-              />
-            </div>
             <NavList vertical />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <AttentionAlert />
-            <SignOutButton />
           </div>
         </div>
       )}
 
       {/* Desktop top-tabs nav (900px+) — opt-in alternative, same nav
           items/active-state/badges as the sidebar, just laid out
-          horizontally with full-width content below. */}
+          horizontally with full-width content below. This bar already
+          spans the full width (there's no separate sidebar to keep search
+          out of), so search and the profile menu stay here. */}
       {navLayout === 'top_tabs' && (
         <div className="purema-nav-top-desktop" style={{ background: color.surfaceNav,
           borderBottom: `0.5px solid ${color.borderLight}`, alignItems: 'center', justifyContent: 'space-between',
@@ -2415,7 +2468,7 @@ export default function CoachDashboard() {
               />
             </div>
             <AttentionAlert />
-            <SignOutButton />
+            <ProfileMenu />
           </div>
         </div>
       )}
@@ -2427,7 +2480,7 @@ export default function CoachDashboard() {
           zIndex: 100, flexDirection: 'column', gap: 10, padding: '12px 20px', boxSizing: 'border-box' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <Logo />
-            <SignOutButton />
+            <ProfileMenu />
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <SearchBar
@@ -2439,6 +2492,26 @@ export default function CoachDashboard() {
             <AttentionAlert />
           </div>
         </div>
+
+        {/* Content-column top bar (900px+, sidebar layout only) — spans
+            the main content column, not the sidebar. Holds search (moved
+            out of the sidebar) and the profile menu (replaces the old
+            standalone Sign Out button). */}
+        {navLayout === 'sidebar' && (
+          <div className="purema-topbar-desktop" style={{ alignItems: 'center', justifyContent: 'space-between',
+            gap: 16, padding: '14px 32px', borderBottom: `0.5px solid ${color.borderLight}`,
+            position: 'sticky', top: 0, background: color.bone, zIndex: 90 }}>
+            <div style={{ maxWidth: 340, width: '100%' }}>
+              <SearchBar
+                clients={clients}
+                checkins={checkins}
+                onSelectCheckin={setSelected}
+                onSelectClient={() => setActiveTab('clients')}
+              />
+            </div>
+            <ProfileMenu />
+          </div>
+        )}
 
         {/* Page content */}
         <div className="purema-content" style={{ padding: '32px 32px 100px', boxSizing: 'border-box' }}>

@@ -23,6 +23,14 @@
   display: flex;
 }
 
+/* Content-column top bar (search + profile menu) — sidebar layout only,
+   sits above .purema-content instead of inside the sidebar. Desktop
+   default like .purema-nav-desktop; hidden at the mobile breakpoint since
+   .purema-header-mobile already covers search/profile there. */
+.purema-topbar-desktop {
+  display: flex;
+}
+
 .purema-tabbar-mobile {
   display: none;
 }
@@ -104,6 +112,9 @@
     margin: 0 auto;
   }
   .purema-nav-desktop {
+    display: none;
+  }
+  .purema-topbar-desktop {
     display: none;
   }
   .purema-tabbar-mobile {

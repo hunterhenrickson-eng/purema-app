@@ -63,6 +63,16 @@ export const type = {
   display: 'clamp(26px, 1.6vw + 19px, 34px)',
 }
 
+// Shared treatment for the "purema." wordmark and any large heading that
+// should read as part of the same type family — DM Sans at a light weight
+// with tightened tracking. Font-size isn't baked in here (the wordmark and
+// page headings use different sizes) — spread this and set fontSize per use.
+export const displayStyle = {
+  fontFamily: font.sans,
+  fontWeight: 300,
+  letterSpacing: '-0.03em',
+}
+
 // Shared style for any field label / section eyebrow — use this instead
 // of redefining label styling per-component.
 export const labelStyle = (onDark = true) => ({
