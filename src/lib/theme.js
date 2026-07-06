@@ -23,6 +23,10 @@ export const color = {
   surfaceDarkRaised: '#1A1A1A',
   borderDark: '#2A2A2A',
   surfaceLight: '#FFFFFF',
+  // One shade darker than bone/the main content background — used for nav
+  // surfaces on light dashboards so the nav still visually separates from
+  // content even though neither is a dark fill anymore.
+  surfaceNav: '#EEEBE4',
   borderLight: '#E8E8E8',
 
   // Text on dark backgrounds (Void / surfaceDark / surfaceDarkRaised)

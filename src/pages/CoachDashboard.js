@@ -116,20 +116,20 @@ const SearchBar = ({ clients, checkins, onSelectCheckin, onSelectClient }) => {
   return (
     <div ref={ref} style={{ position: 'relative', width: '100%' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8,
-        background: color.surfaceDarkRaised, borderRadius: 8, padding: '7px 12px',
-        border: `1px solid ${color.borderDark}` }}>
-        <span style={{ color: color.textOnDark.secondary }}><SearchIcon /></span>
+        background: color.surfaceLight, borderRadius: 8, padding: '7px 12px',
+        border: `1px solid ${color.borderLight}` }}>
+        <span style={{ color: color.textOnLight.secondary }}><SearchIcon /></span>
         <input
           value={query}
           onChange={e => { setQuery(e.target.value); setOpen(true) }}
           onFocus={() => setOpen(true)}
           placeholder="Search clients or check-ins..."
           style={{ background: 'transparent', border: 'none', outline: 'none',
-            color: color.textOnDark.primary, fontSize: type.body, fontFamily: font.sans, width: '100%' }}
+            color: color.textOnLight.primary, fontSize: type.body, fontFamily: font.sans, width: '100%' }}
         />
         {query && (
           <button onClick={() => { setQuery(''); setOpen(false) }}
-            style={{ background: 'none', border: 'none', color: color.textOnDark.secondary, cursor: 'pointer', fontSize: 16, lineHeight: 1 }}>
+            style={{ background: 'none', border: 'none', color: color.textOnLight.secondary, cursor: 'pointer', fontSize: 16, lineHeight: 1 }}>
             ×
           </button>
         )}
@@ -322,15 +322,15 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave, coachId }) => {
       <div style={{ background: color.bone, borderRadius: 16, width: '100%', maxWidth: isNewFormat ? 1100 : 600, maxHeight: '92vh', overflowY: 'auto', margin: '0 20px' }} onClick={e => e.stopPropagation()}>
 
         {/* Header */}
-        <div style={{ position: 'sticky', top: 0, background: color.void, padding: '16px 24px', borderRadius: '16px 16px 0 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 }}>
+        <div style={{ position: 'sticky', top: 0, background: color.surfaceLight, borderBottom: `0.5px solid ${color.borderLight}`, padding: '16px 24px', borderRadius: '16px 16px 0 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 }}>
           <div>
-            <div style={{ fontSize: 17, fontWeight: 500, color: color.textOnDark.primary }}>{checkin.client_name}</div>
+            <div style={{ fontSize: 17, fontWeight: 500, color: color.textOnLight.primary }}>{checkin.client_name}</div>
             <div style={{ fontSize: type.label, color: color.forest, fontFamily: font.mono, marginTop: 2, display: 'flex', alignItems: 'center', gap: 8 }}>
               WEEK {checkin.week_number}
               {checkin.imported_backfill && <ImportedTag />}
             </div>
           </div>
-          <button onClick={onClose} style={{ background: color.surfaceDarkRaised, border: 'none', color: color.textOnDark.secondary, width: 32, height: 32, borderRadius: '50%', cursor: 'pointer', fontSize: 16 }}>×</button>
+          <button onClick={onClose} style={{ background: '#F0EDE8', border: 'none', color: color.textOnLight.secondary, width: 32, height: 32, borderRadius: '50%', cursor: 'pointer', fontSize: 16 }}>×</button>
         </div>
 
         <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -346,9 +346,9 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave, coachId }) => {
                   { label: 'AVG STEPS', value: checkin.steps ? checkin.steps.toLocaleString() : null, unit: '' },
                   { label: 'WEEK', value: checkin.week_number, unit: '' },
                 ].map(({ label, value, unit }) => value ? (
-                  <div key={label} style={{ background: color.void, borderRadius: 10, padding: '12px 16px' }}>
-                    <div style={{ fontSize: 20, fontWeight: 300, color: color.textOnDark.primary }}>{value}<span style={{ fontSize: type.label, color: color.textOnDark.faint, marginLeft: 3 }}>{unit}</span></div>
-                    <div style={{ ...S.label, color: color.textOnDark.label, marginTop: 4 }}>{label}</div>
+                  <div key={label} style={{ background: color.surfaceLight, border: `0.5px solid ${color.borderLight}`, borderRadius: 10, padding: '12px 16px' }}>
+                    <div style={{ fontSize: 20, fontWeight: 300, color: color.textOnLight.primary }}>{value}<span style={{ fontSize: type.label, color: color.textOnLight.faint, marginLeft: 3 }}>{unit}</span></div>
+                    <div style={{ ...S.label, marginTop: 4 }}>{label}</div>
                   </div>
                 ) : null)}
               </div>
@@ -583,12 +583,12 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave, coachId }) => {
           </div>
 
           {/* Coach feedback — always shown */}
-          <div style={{ background: color.void, borderRadius: 12, padding: 16 }}>
+          <div style={{ background: color.surfaceLight, border: `0.5px solid ${color.borderLight}`, borderRadius: 12, padding: 16 }}>
             <div style={{ ...S.label, color: color.forest, marginBottom: 8 }}>Coach feedback</div>
             <textarea value={feedback} onChange={e => setFeedback(e.target.value)}
               placeholder="Leave feedback for this client..." rows={5}
-              style={{ width: '100%', background: color.surfaceDarkRaised, border: `1px solid ${color.borderDark}`, borderRadius: 8,
-                color: color.textOnDark.primary, padding: '10px 12px', fontSize: type.body, fontFamily: font.sans,
+              style={{ width: '100%', background: color.surfaceLight, border: `1px solid ${color.borderLight}`, borderRadius: 8,
+                color: color.textOnLight.primary, padding: '10px 12px', fontSize: type.body, fontFamily: font.sans,
                 lineHeight: 1.6, resize: 'none', outline: 'none', boxSizing: 'border-box' }} />
             <button onClick={saveFeedback} disabled={saving}
               style={{ marginTop: 8, width: '100%', height: 44, background: saved ? '#0D5E49' : color.forest,
@@ -638,14 +638,14 @@ const TabDashboard = ({ checkins, clients, onSelectCheckin }) => {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
         {[
-          { label: 'Active clients', value: activeClients.length, color: color.textOnDark.primary },
-          { label: 'This week', value: `${weeklyRate}%`, color: weeklyRate >= 80 ? color.forest : weeklyRate >= 50 ? color.gold : activeClients.length === 0 ? color.textOnDark.secondary : color.alert },
-          { label: 'Pending', value: checkins.filter(c => !c.coach_feedback).length, color: checkins.filter(c => !c.coach_feedback).length > 0 ? color.gold : color.textOnDark.secondary },
-          { label: 'Needs attention', value: attentionItems.length, color: attentionItems.length > 0 ? color.alert : color.textOnDark.secondary },
+          { label: 'Active clients', value: activeClients.length, color: color.textOnLight.primary },
+          { label: 'This week', value: `${weeklyRate}%`, color: weeklyRate >= 80 ? color.forest : weeklyRate >= 50 ? color.gold : activeClients.length === 0 ? color.textOnLight.secondary : color.alert },
+          { label: 'Pending', value: checkins.filter(c => !c.coach_feedback).length, color: checkins.filter(c => !c.coach_feedback).length > 0 ? color.gold : color.textOnLight.secondary },
+          { label: 'Needs attention', value: attentionItems.length, color: attentionItems.length > 0 ? color.alert : color.textOnLight.secondary },
         ].map(({ label, value, color: statColor }) => (
-          <div key={label} style={{ background: color.void, borderRadius: 12, padding: '18px 20px' }}>
+          <div key={label} style={{ background: color.surfaceLight, border: `0.5px solid ${color.borderLight}`, borderRadius: 12, padding: '18px 20px' }}>
             <div style={{ fontSize: 28, fontWeight: 300, color: statColor, letterSpacing: '-0.02em', fontFamily: font.mono }}>{value}</div>
-            <div style={{ ...S.label, color: color.textOnDark.label, marginTop: 6 }}>{label}</div>
+            <div style={{ ...S.label, marginTop: 6 }}>{label}</div>
           </div>
         ))}
       </div>
@@ -1182,10 +1182,9 @@ const TabCheckIns = ({ checkins, onSelectCheckin }) => {
 
   const FilterBtn = ({ value, label, count }) => (
     <button onClick={() => setFilter(value)}
-      style={{ padding: '6px 14px', borderRadius: 6, border: 'none', cursor: 'pointer',
+      style={{ padding: '6px 14px', border: 'none', cursor: 'pointer',
         fontFamily: font.mono, fontSize: type.label, letterSpacing: '0.06em',
-        background: filter === value ? color.void : 'transparent',
-        color: filter === value ? color.textOnDark.primary : color.textOnLight.secondary }}>
+        ...navItemStyle(filter === value, false), borderRadius: 6 }}>
       {label}{count > 0 ? ` · ${count}` : ''}
     </button>
   )
@@ -1359,11 +1358,11 @@ const TabOverview = ({ clients, checkins, profile }) => {
     ).length / activeClients.length) * 100
   )
 
-  const StatCard = ({ label, value, sub, color: accentColor = color.textOnDark.primary }) => (
-    <div style={{ background: color.void, borderRadius: 12, padding: '18px 20px' }}>
+  const StatCard = ({ label, value, sub, color: accentColor = color.textOnLight.primary }) => (
+    <div style={{ background: color.surfaceLight, border: `0.5px solid ${color.borderLight}`, borderRadius: 12, padding: '18px 20px' }}>
       <div style={{ fontSize: 28, fontWeight: 300, color: accentColor, letterSpacing: '-0.02em', fontFamily: font.mono }}>{value}</div>
-      <div style={{ ...S.label, color: color.textOnDark.label, marginTop: 6 }}>{label}</div>
-      {sub && <div style={{ fontSize: type.label, color: color.textOnDark.faint, marginTop: 4 }}>{sub}</div>}
+      <div style={{ ...S.label, marginTop: 6 }}>{label}</div>
+      {sub && <div style={{ fontSize: type.label, color: color.textOnLight.faint, marginTop: 4 }}>{sub}</div>}
     </div>
   )
 
@@ -1374,9 +1373,9 @@ const TabOverview = ({ clients, checkins, profile }) => {
       <div>
         <div style={S.sectionTitle}>Business</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-          <StatCard label="Active clients" value={activeClients.length} color={color.textOnDark.primary} />
-          <StatCard label="Paused" value={pausedClients.length} color={pausedClients.length > 0 ? color.gold : color.textOnDark.secondary} />
-          <StatCard label="Archived" value={archivedClients.length} color={color.textOnDark.secondary} />
+          <StatCard label="Active clients" value={activeClients.length} color={color.textOnLight.primary} />
+          <StatCard label="Paused" value={pausedClients.length} color={pausedClients.length > 0 ? color.gold : color.textOnLight.secondary} />
+          <StatCard label="Archived" value={archivedClients.length} color={color.textOnLight.secondary} />
         </div>
       </div>
 
@@ -1384,20 +1383,20 @@ const TabOverview = ({ clients, checkins, profile }) => {
       <div>
         <div style={S.sectionTitle}>Revenue</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-          <div style={{ background: color.void, borderRadius: 12, padding: '18px 20px' }}>
-            <div style={{ fontSize: 28, fontWeight: 300, color: color.textOnDark.secondary, letterSpacing: '-0.02em' }}>—</div>
-            <div style={{ ...S.label, color: color.textOnDark.label, marginTop: 6 }}>MRR</div>
-            <div style={{ fontSize: type.label, color: color.textOnDark.faint, marginTop: 4 }}>Connect Stripe to unlock</div>
+          <div style={{ background: color.surfaceLight, border: `0.5px solid ${color.borderLight}`, borderRadius: 12, padding: '18px 20px' }}>
+            <div style={{ fontSize: 28, fontWeight: 300, color: color.textOnLight.secondary, letterSpacing: '-0.02em' }}>—</div>
+            <div style={{ ...S.label, marginTop: 6 }}>MRR</div>
+            <div style={{ fontSize: type.label, color: color.textOnLight.faint, marginTop: 4 }}>Connect Stripe to unlock</div>
           </div>
-          <div style={{ background: color.void, borderRadius: 12, padding: '18px 20px' }}>
-            <div style={{ fontSize: 28, fontWeight: 300, color: color.textOnDark.secondary, letterSpacing: '-0.02em' }}>—</div>
-            <div style={{ ...S.label, color: color.textOnDark.label, marginTop: 6 }}>Avg. per client</div>
-            <div style={{ fontSize: type.label, color: color.textOnDark.faint, marginTop: 4 }}>Connect Stripe to unlock</div>
+          <div style={{ background: color.surfaceLight, border: `0.5px solid ${color.borderLight}`, borderRadius: 12, padding: '18px 20px' }}>
+            <div style={{ fontSize: 28, fontWeight: 300, color: color.textOnLight.secondary, letterSpacing: '-0.02em' }}>—</div>
+            <div style={{ ...S.label, marginTop: 6 }}>Avg. per client</div>
+            <div style={{ fontSize: type.label, color: color.textOnLight.faint, marginTop: 4 }}>Connect Stripe to unlock</div>
           </div>
-          <div style={{ background: color.void, borderRadius: 12, padding: '18px 20px' }}>
-            <div style={{ fontSize: 28, fontWeight: 300, color: color.textOnDark.secondary, letterSpacing: '-0.02em' }}>—</div>
-            <div style={{ ...S.label, color: color.textOnDark.label, marginTop: 6 }}>Churn this month</div>
-            <div style={{ fontSize: type.label, color: color.textOnDark.faint, marginTop: 4 }}>Connect Stripe to unlock</div>
+          <div style={{ background: color.surfaceLight, border: `0.5px solid ${color.borderLight}`, borderRadius: 12, padding: '18px 20px' }}>
+            <div style={{ fontSize: 28, fontWeight: 300, color: color.textOnLight.secondary, letterSpacing: '-0.02em' }}>—</div>
+            <div style={{ ...S.label, marginTop: 6 }}>Churn this month</div>
+            <div style={{ fontSize: type.label, color: color.textOnLight.faint, marginTop: 4 }}>Connect Stripe to unlock</div>
           </div>
         </div>
       </div>
@@ -1407,10 +1406,10 @@ const TabOverview = ({ clients, checkins, profile }) => {
         <div style={S.sectionTitle}>Engagement</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
           <StatCard label="Weekly check-in rate" value={`${weeklyRate}%`}
-            color={weeklyRate >= 80 ? color.forest : weeklyRate >= 50 ? color.gold : activeClients.length === 0 ? color.textOnDark.secondary : color.alert} />
+            color={weeklyRate >= 80 ? color.forest : weeklyRate >= 50 ? color.gold : activeClients.length === 0 ? color.textOnLight.secondary : color.alert} />
           <StatCard label="Feedback response rate" value={`${responseRate}%`}
-            color={responseRate >= 80 ? color.forest : responseRate >= 50 ? color.gold : totalCheckins === 0 ? color.textOnDark.secondary : color.alert} />
-          <StatCard label="Total check-ins" value={totalCheckins} color={color.textOnDark.primary} />
+            color={responseRate >= 80 ? color.forest : responseRate >= 50 ? color.gold : totalCheckins === 0 ? color.textOnLight.secondary : color.alert} />
+          <StatCard label="Total check-ins" value={totalCheckins} color={color.textOnLight.primary} />
         </div>
       </div>
 
@@ -1516,20 +1515,20 @@ const TabBilling = ({ profile, onProfileRefresh }) => {
       </div>
 
       {subscribed && currentPlan && (
-        <div style={{ background: color.void, borderRadius: 12, padding: 20,
+        <div style={{ background: color.surfaceLight, border: `0.5px solid ${color.borderLight}`, borderRadius: 12, padding: 20,
           display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
           <div>
-            <div style={{ ...labelStyle(true), color: color.forest }}>Current plan</div>
-            <div style={{ fontSize: 22, fontWeight: 300, color: color.textOnDark.primary }}>
+            <div style={{ ...labelStyle(false), color: color.forest }}>Current plan</div>
+            <div style={{ fontSize: 22, fontWeight: 300, color: color.textOnLight.primary }}>
               {currentPlan.label} · <span style={{ fontFamily: font.mono }}>${currentPlan.price}/mo</span>
             </div>
-            <div style={{ fontSize: type.label, color: color.textOnDark.faint, marginTop: 2 }}>
+            <div style={{ fontSize: type.label, color: color.textOnLight.faint, marginTop: 2 }}>
               {currentPlan.limit === Infinity ? 'Unlimited clients' : `${currentPlan.limit} client max`}
             </div>
           </div>
           <button onClick={handleManage} disabled={portalLoading}
-            style={{ padding: '10px 18px', borderRadius: 8, border: `1px solid ${color.borderDark}`,
-              background: 'transparent', color: color.textOnDark.primary, fontFamily: font.sans,
+            style={{ padding: '10px 18px', borderRadius: 8, border: `1px solid ${color.borderLight}`,
+              background: 'transparent', color: color.textOnLight.primary, fontFamily: font.sans,
               fontSize: type.body, fontWeight: 500, cursor: portalLoading ? 'not-allowed' : 'pointer' }}>
             {portalLoading ? 'Opening...' : 'Manage subscription'}
           </button>
@@ -2259,7 +2258,7 @@ export default function CoachDashboard() {
             border: 'none', textAlign: 'left', cursor: 'pointer',
             fontFamily: font.sans, fontSize: type.body,
             transition: 'all 0.15s ease',
-            ...navItemStyle(activeTab === tab.id, true),
+            ...navItemStyle(activeTab === tab.id, false),
           }}>
           {tab.label}
           {tab.id === 'requests' && pendingApplicationsCount > 0 && (
@@ -2300,8 +2299,8 @@ export default function CoachDashboard() {
 
   const SignOutButton = () => (
     <button onClick={() => supabase.auth.signOut()}
-      style={{ fontSize: type.label, color: color.textOnDark.secondary, fontFamily: font.mono, letterSpacing: '0.1em',
-        background: 'transparent', border: `1px solid ${color.borderDark}`, cursor: 'pointer',
+      style={{ fontSize: type.label, color: color.textOnLight.secondary, fontFamily: font.mono, letterSpacing: '0.1em',
+        background: 'transparent', border: `1px solid ${color.borderLight}`, cursor: 'pointer',
         padding: '5px 12px', borderRadius: 6, whiteSpace: 'nowrap' }}>
       SIGN OUT
     </button>
@@ -2311,7 +2310,7 @@ export default function CoachDashboard() {
     <div onClick={() => setActiveTab('dashboard')}
       style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
       <Mark size={20} />
-      <span style={{ fontSize: 18, fontWeight: 300, letterSpacing: '-0.03em', color: color.textOnDark.primary }}>
+      <span style={{ fontSize: 18, fontWeight: 300, letterSpacing: '-0.03em', color: color.textOnLight.primary }}>
         purema<span style={{ color: color.forest }}>.</span>
       </span>
     </div>
@@ -2319,10 +2318,10 @@ export default function CoachDashboard() {
 
   if (!loading && criticalLoadError) {
     return (
-      <div style={{ minHeight: '100vh', background: color.void, display: 'flex', flexDirection: 'column',
+      <div style={{ minHeight: '100vh', background: color.bone, display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center', padding: 24, fontFamily: font.sans, gap: 16, textAlign: 'center' }}>
         <Mark size={40} />
-        <div style={{ fontSize: type.bodyLg, fontWeight: 500, color: color.textOnDark.primary }}>{criticalLoadError}</div>
+        <div style={{ fontSize: type.bodyLg, fontWeight: 500, color: color.textOnLight.primary }}>{criticalLoadError}</div>
         <button onClick={() => window.location.reload()}
           style={{ padding: '10px 22px', borderRadius: 8, border: 'none', background: color.forest, color: color.sage,
             fontFamily: font.sans, fontSize: type.body, fontWeight: 500, cursor: 'pointer' }}>
@@ -2338,26 +2337,26 @@ export default function CoachDashboard() {
   // coach fixes their card and the webhook flips payment_status back.
   if (!loading && isSuspended(profile)) {
     return (
-      <div style={{ minHeight: '100vh', background: color.void, display: 'flex', flexDirection: 'column',
+      <div style={{ minHeight: '100vh', background: color.bone, display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center', padding: 24, fontFamily: font.sans, gap: 20, textAlign: 'center' }}>
         <Mark size={40} />
-        <div style={{ fontSize: type.heading, fontWeight: 300, color: color.textOnDark.primary, maxWidth: 480 }}>
+        <div style={{ fontSize: type.heading, fontWeight: 300, color: color.textOnLight.primary, maxWidth: 480 }}>
           Your subscription is past due
         </div>
-        <div style={{ fontSize: type.body, color: color.textOnDark.secondary, maxWidth: 420, lineHeight: 1.6 }}>
+        <div style={{ fontSize: type.body, color: color.textOnLight.secondary, maxWidth: 420, lineHeight: 1.6 }}>
           Payment retries were unsuccessful, so access to your dashboard is paused. Nothing has been deleted —
           update your payment method to pick up right where you left off.
         </div>
         {portalError && <div style={{ fontSize: type.body, color: color.alert }}>{portalError}</div>}
         <button onClick={openBillingPortal} disabled={portalLoading}
           style={{ padding: '12px 24px', borderRadius: 8, border: 'none',
-            background: portalLoading ? color.textOnDark.faint : color.forest, color: color.sage,
+            background: portalLoading ? color.textOnLight.faint : color.forest, color: color.sage,
             fontFamily: font.sans, fontSize: type.body, fontWeight: 500,
             cursor: portalLoading ? 'not-allowed' : 'pointer' }}>
           {portalLoading ? 'Opening...' : 'Update payment method'}
         </button>
         <button onClick={() => supabase.auth.signOut()}
-          style={{ fontSize: type.label, color: color.textOnDark.faint, fontFamily: font.mono, letterSpacing: '0.1em',
+          style={{ fontSize: type.label, color: color.textOnLight.faint, fontFamily: font.mono, letterSpacing: '0.1em',
             background: 'transparent', border: 'none', cursor: 'pointer' }}>
           SIGN OUT
         </button>
@@ -2374,8 +2373,8 @@ export default function CoachDashboard() {
       {/* Desktop sidebar nav (900px+) — the default layout */}
       {navLayout === 'sidebar' && (
         <div className="purema-nav-desktop" style={{ flexDirection: 'column', justifyContent: 'space-between',
-          background: color.void, padding: '28px 20px', position: 'sticky', top: 0, height: '100vh',
-          boxSizing: 'border-box' }}>
+          background: color.surfaceNav, borderRight: `0.5px solid ${color.borderLight}`, padding: '28px 20px',
+          position: 'sticky', top: 0, height: '100vh', boxSizing: 'border-box' }}>
           <div>
             <div style={{ padding: '0 4px', marginBottom: 20 }}><Logo /></div>
             <div style={{ marginBottom: 20 }}>
@@ -2399,8 +2398,8 @@ export default function CoachDashboard() {
           items/active-state/badges as the sidebar, just laid out
           horizontally with full-width content below. */}
       {navLayout === 'top_tabs' && (
-        <div className="purema-nav-top-desktop" style={{ background: color.void,
-          borderBottom: `1px solid ${color.borderDark}`, alignItems: 'center', justifyContent: 'space-between',
+        <div className="purema-nav-top-desktop" style={{ background: color.surfaceNav,
+          borderBottom: `0.5px solid ${color.borderLight}`, alignItems: 'center', justifyContent: 'space-between',
           padding: '0 24px', height: 64, position: 'sticky', top: 0, zIndex: 100, gap: 20, boxSizing: 'border-box' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 28, minWidth: 0 }}>
             <Logo />
@@ -2423,7 +2422,8 @@ export default function CoachDashboard() {
 
       {/* Mobile header + page content + mobile bottom tab bar */}
       <div>
-        <div className="purema-header-mobile" style={{ background: color.void, position: 'sticky', top: 0,
+        <div className="purema-header-mobile" style={{ background: color.surfaceNav,
+          borderBottom: `0.5px solid ${color.borderLight}`, position: 'sticky', top: 0,
           zIndex: 100, flexDirection: 'column', gap: 10, padding: '12px 20px', boxSizing: 'border-box' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <Logo />
@@ -2486,7 +2486,7 @@ export default function CoachDashboard() {
 
         {/* Mobile bottom tab bar (below 900px) */}
         <div className="purema-tabbar-mobile" style={{ position: 'fixed', bottom: 0, left: 0, right: 0,
-          background: color.void, borderTop: `1px solid ${color.borderDark}`, zIndex: 100,
+          background: color.surfaceNav, borderTop: `0.5px solid ${color.borderLight}`, zIndex: 100,
           justifyContent: 'flex-start', gap: 4, overflowX: 'auto', padding: '0 8px', WebkitOverflowScrolling: 'touch' }}>
           {TABS.map(tab => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
@@ -2495,7 +2495,7 @@ export default function CoachDashboard() {
                 border: 'none', borderTop: activeTab === tab.id ? `2px solid ${color.forest}` : '2px solid transparent',
                 fontFamily: font.sans, fontSize: type.label,
                 fontWeight: activeTab === tab.id ? 500 : 400,
-                color: activeTab === tab.id ? color.textOnDark.primary : color.textOnDark.secondary,
+                color: activeTab === tab.id ? color.textOnLight.primary : color.textOnLight.secondary,
                 whiteSpace: 'nowrap' }}>
               {tab.label}
               {tab.id === 'checkins' && pendingCount > 0 && (
