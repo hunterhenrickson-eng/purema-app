@@ -906,6 +906,7 @@ const DietPlanPanel = ({ client, coachId }) => {
   const [editingId, setEditingId] = useState(null)
   const [editForm, setEditForm] = useState(emptyPhaseForm())
   const [editSaving, setEditSaving] = useState(false)
+  const [lastDiff, setLastDiff] = useState(null)
 
   useEffect(() => {
     let cancelled = false
@@ -921,6 +922,15 @@ const DietPlanPanel = ({ client, coachId }) => {
       } else {
         setPhases(phaseRows || [])
         setHistory(historyRows || [])
+        // Pre-fill "Add phase" with the active phase's own values, since a
+        // coach adjusting an existing plan is usually tweaking one or two
+        // numbers, not starting from a blank form every time.
+        const active = getActivePhase(phaseRows || [])
+        if (active) {
+          setForm(f => ({ ...f,
+            calories: active.calories ?? '', protein: active.protein ?? '',
+            carbs: active.carbs ?? '', fats: active.fats ?? '' }))
+        }
       }
       setLoading(false)
     }
@@ -955,6 +965,7 @@ const DietPlanPanel = ({ client, coachId }) => {
       planId = newPlan.id
     }
 
+    const previousActive = getActivePhase(phases)
     const values = phaseValuesFromForm(form)
     const { data: phase, error: phaseError } = await supabase.from('diet_plan_phases')
       .insert({ plan_id: planId, client_id: client.id, coach_id: coachId, start_date: form.start_date, ...values })
@@ -965,6 +976,15 @@ const DietPlanPanel = ({ client, coachId }) => {
 
     setPhases(prev => [...(prev || []), phase].sort((a, b) => (a.start_date < b.start_date ? -1 : 1)))
     await logAdjustment(phase.id, values, form.note)
+
+    if (previousActive) {
+      const diffs = MACRO_PHASE_FIELDS
+        .map(f => (previousActive[f.key] === values[f.key] ? null : `${f.label}: ${previousActive[f.key] ?? '—'} → ${values[f.key] ?? '—'}${f.unit === 'kcal' ? '' : f.unit}`))
+        .filter(Boolean)
+      setLastDiff(diffs.length > 0 ? diffs : null)
+    } else {
+      setLastDiff(null)
+    }
     setForm(emptyPhaseForm())
   }
 
@@ -1085,7 +1105,18 @@ const DietPlanPanel = ({ client, coachId }) => {
             fontFamily: font.sans, fontSize: type.label, fontWeight: 500, cursor: adding ? 'not-allowed' : 'pointer' }}>
           {adding ? 'Adding...' : 'Add phase'}
         </button>
+        {lastDiff && (
+          <div style={{ marginTop: 10, padding: 10, background: color.sage, borderRadius: 6 }}>
+            {lastDiff.map((line, i) => (
+              <div key={i} style={{ fontSize: type.label, color: '#1A5C0A', fontFamily: font.mono }}>{line}</div>
+            ))}
+          </div>
+        )}
       </div>
+
+      {activePhase && (
+        <MealStructureSection phase={activePhase} clientId={client.id} coachId={coachId} />
+      )}
 
       {error && <div style={{ fontSize: type.body, color: color.alert, marginBottom: 10 }}>{error}</div>}
 
@@ -1112,6 +1143,390 @@ const DietPlanPanel = ({ client, coachId }) => {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+const round1 = (n) => (n == null ? null : Math.round(n * 10) / 10)
+
+// Searches Nutritionix (via the /api proxy — credentials never reach the
+// client) for a food, then lets the coach pick a servings multiplier before
+// adding it. Macros are cached into diet_plan_meal_items at add-time, never
+// re-queried live for display, per the spec's caching rationale.
+const FoodSearchPicker = ({ onAdd, onCancel }) => {
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState(null)
+  const [searching, setSearching] = useState(false)
+  const [error, setError] = useState(null)
+  const [selected, setSelected] = useState(null)
+  const [servings, setServings] = useState(1)
+  const [loadingNutrients, setLoadingNutrients] = useState(false)
+
+  const search = async (e) => {
+    e?.preventDefault()
+    if (query.trim().length < 2) return
+    setSearching(true)
+    setError(null)
+    setSelected(null)
+    try {
+      const res = await fetch(`/api/nutritionix-search?query=${encodeURIComponent(query)}`)
+      if (!res.headers.get('content-type')?.includes('application/json')) {
+        // Local `npm start` doesn't serve /api/* at all (only a Vercel
+        // deploy does) — surface that plainly instead of a raw JSON parse error.
+        throw new Error('Food search is only available on a deployed environment, not local dev.')
+      }
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Search failed')
+      setResults(data)
+    } catch (err) {
+      setError(err.message)
+      setResults(null)
+    }
+    setSearching(false)
+  }
+
+  const pickFood = async (food) => {
+    setLoadingNutrients(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/nutritionix-nutrients', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(food.is_branded
+          ? { nix_item_id: food.nix_item_id }
+          : { food_name: food.food_name }),
+      })
+      if (!res.headers.get('content-type')?.includes('application/json')) {
+        throw new Error('Food search is only available on a deployed environment, not local dev.')
+      }
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Could not get nutrition info')
+      setSelected(data)
+      setServings(1)
+    } catch (err) {
+      setError(err.message)
+    }
+    setLoadingNutrients(false)
+  }
+
+  const handleAdd = () => {
+    if (!selected) return
+    onAdd({
+      food_name: selected.food_name,
+      quantity: round1((selected.serving_qty || 1) * servings),
+      unit: selected.serving_unit || 'serving',
+      calories: round1((selected.calories || 0) * servings),
+      protein: round1((selected.protein || 0) * servings),
+      carbs: round1((selected.carbs || 0) * servings),
+      fats: round1((selected.fats || 0) * servings),
+      nutritionix_food_id: selected.nutritionix_food_id || null,
+    })
+  }
+
+  const allResults = results ? [...results.common, ...results.branded] : []
+
+  return (
+    <div style={{ marginTop: 8, padding: 10, background: color.surfaceLight, border: `0.5px solid ${color.borderLight}`, borderRadius: 8 }}>
+      <form onSubmit={search} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+        <input type="text" placeholder="Search a food (e.g. chicken breast)" value={query}
+          onChange={e => setQuery(e.target.value)} autoFocus
+          style={{ flex: 1, padding: '7px 10px', borderRadius: 6, border: `1px solid ${color.borderLight}`,
+            fontFamily: font.sans, fontSize: type.body, boxSizing: 'border-box', color: color.textOnLight.primary }} />
+        <button type="submit" disabled={searching || query.trim().length < 2}
+          style={{ padding: '7px 14px', borderRadius: 6, border: `1px solid ${color.borderLight}`,
+            background: 'transparent', color: color.textOnLight.secondary, fontFamily: font.sans,
+            fontSize: type.label, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+          {searching ? 'Searching...' : 'Search'}
+        </button>
+        <button type="button" onClick={onCancel}
+          style={{ padding: '7px 14px', borderRadius: 6, border: 'none', background: 'transparent',
+            color: color.textOnLight.faint, fontFamily: font.sans, fontSize: type.label, cursor: 'pointer' }}>
+          Cancel
+        </button>
+      </form>
+
+      {error && <div style={{ fontSize: type.label, color: color.alert, marginBottom: 8 }}>{error}</div>}
+
+      {!selected && results && (
+        allResults.length === 0 ? (
+          <div style={{ fontSize: type.label, color: color.textOnLight.secondary }}>No results for "{query}".</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 200, overflowY: 'auto' }}>
+            {allResults.map((food, i) => (
+              <button key={i} onClick={() => pickFood(food)} disabled={loadingNutrients}
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', textAlign: 'left',
+                  padding: '6px 10px', border: 'none', background: 'transparent', borderRadius: 6, cursor: 'pointer',
+                  fontFamily: font.sans, fontSize: type.body, color: color.textOnLight.primary, width: '100%' }}
+                onMouseEnter={e => { e.currentTarget.style.background = color.bone }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
+                <span>{food.food_name}{food.brand_name ? ` (${food.brand_name})` : ''}</span>
+                {food.is_branded && <span style={badge('neutral')}>Branded</span>}
+              </button>
+            ))}
+          </div>
+        )
+      )}
+
+      {loadingNutrients && <div style={{ fontSize: type.label, color: color.textOnLight.secondary }}>Loading nutrition info...</div>}
+
+      {selected && (
+        <div style={{ background: color.bone, borderRadius: 8, padding: 10 }}>
+          <div style={{ fontSize: type.body, fontWeight: 500, color: color.textOnLight.primary, marginBottom: 6 }}>
+            {selected.food_name}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+            <label style={{ fontSize: type.label, color: color.textOnLight.secondary }}>Servings</label>
+            <input type="number" step={0.25} min={0.25} value={servings}
+              onChange={e => setServings(parseFloat(e.target.value) || 0)}
+              style={{ width: 70, padding: '5px 8px', borderRadius: 6, border: `1px solid ${color.borderLight}`,
+                fontFamily: font.mono, fontSize: type.body, color: color.textOnLight.primary, boxSizing: 'border-box' }} />
+            <span style={{ fontSize: type.label, color: color.textOnLight.faint, fontFamily: font.mono }}>
+              × {selected.serving_qty}{selected.serving_unit} serving
+            </span>
+          </div>
+          <div style={{ fontSize: type.label, color: color.textOnLight.secondary, fontFamily: font.mono, marginBottom: 10 }}>
+            {round1((selected.calories || 0) * servings)} kcal · {round1((selected.protein || 0) * servings)}g P ·{' '}
+            {round1((selected.carbs || 0) * servings)}g C · {round1((selected.fats || 0) * servings)}g F
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={handleAdd}
+              style={{ padding: '7px 16px', borderRadius: 6, border: `1px solid ${color.forest}`,
+                background: 'transparent', color: color.forest, fontFamily: font.sans, fontSize: type.label,
+                fontWeight: 500, cursor: 'pointer' }}>
+              Add to meal
+            </button>
+            <button onClick={() => setSelected(null)}
+              style={{ padding: '7px 16px', borderRadius: 6, border: 'none', background: 'transparent',
+                color: color.textOnLight.faint, fontFamily: font.sans, fontSize: type.label, cursor: 'pointer' }}>
+              Back to search
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Optional per-phase layer — a phase either has meal rows or it doesn't, so
+// "on/off" is just whether any meals exist yet, no separate schema flag.
+// Meal/plan totals are always computed from item-level data here, never
+// stored redundantly, so they can't drift out of sync with their items.
+const MealStructureSection = ({ phase, clientId, coachId }) => {
+  const [meals, setMeals] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [showBuilder, setShowBuilder] = useState(false)
+  const [newMealName, setNewMealName] = useState('')
+  const [newMealTime, setNewMealTime] = useState('')
+  const [addingMeal, setAddingMeal] = useState(false)
+  const [addingFoodToMealId, setAddingFoodToMealId] = useState(null)
+
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      setLoading(true)
+      const { data: mealRows, error: mealsErr } = await supabase
+        .from('diet_plan_meals').select('*, diet_plan_meal_items(*)')
+        .eq('phase_id', phase.id).order('sort_order', { ascending: true })
+      if (cancelled) return
+      if (mealsErr) setError("Couldn't load meals — try refreshing.")
+      else {
+        setMeals(mealRows || [])
+        if ((mealRows || []).length > 0) setShowBuilder(true)
+      }
+      setLoading(false)
+    }
+    load()
+    return () => { cancelled = true }
+  }, [phase.id])
+
+  const addMeal = async () => {
+    if (!newMealName.trim()) return
+    setAddingMeal(true)
+    setError(null)
+    const { data, error: insertError } = await supabase.from('diet_plan_meals').insert({
+      phase_id: phase.id, client_id: clientId, coach_id: coachId,
+      name: newMealName.trim(), sort_order: meals?.length || 0,
+      target_time: newMealTime || null,
+    }).select().single()
+    setAddingMeal(false)
+    if (insertError || !data) { setError(insertError?.message || "Couldn't add meal."); return }
+    setMeals(prev => [...(prev || []), { ...data, diet_plan_meal_items: [] }])
+    setNewMealName('')
+    setNewMealTime('')
+  }
+
+  const deleteMeal = async (mealId) => {
+    setError(null)
+    const { error: deleteError } = await supabase.from('diet_plan_meals').delete().eq('id', mealId)
+    if (deleteError) { setError(deleteError.message); return }
+    setMeals(prev => prev.filter(m => m.id !== mealId))
+  }
+
+  const addItemToMeal = async (mealId, item) => {
+    setError(null)
+    const meal = meals.find(m => m.id === mealId)
+    const { data, error: insertError } = await supabase.from('diet_plan_meal_items').insert({
+      meal_id: mealId, client_id: clientId, coach_id: coachId,
+      sort_order: meal?.diet_plan_meal_items?.length || 0,
+      ...item,
+    }).select().single()
+    if (insertError || !data) { setError(insertError?.message || "Couldn't add food."); return }
+    setMeals(prev => prev.map(m => (m.id === mealId ? { ...m, diet_plan_meal_items: [...(m.diet_plan_meal_items || []), data] } : m)))
+    setAddingFoodToMealId(null)
+  }
+
+  const deleteItem = async (mealId, itemId) => {
+    setError(null)
+    const { error: deleteError } = await supabase.from('diet_plan_meal_items').delete().eq('id', itemId)
+    if (deleteError) { setError(deleteError.message); return }
+    setMeals(prev => prev.map(m => (m.id === mealId ? { ...m, diet_plan_meal_items: (m.diet_plan_meal_items || []).filter(i => i.id !== itemId) } : m)))
+  }
+
+  const mealTotals = (meal) => {
+    const items = meal.diet_plan_meal_items || []
+    return {
+      calories: round1(items.reduce((s, i) => s + (i.calories || 0), 0)),
+      protein: round1(items.reduce((s, i) => s + (i.protein || 0), 0)),
+      carbs: round1(items.reduce((s, i) => s + (i.carbs || 0), 0)),
+      fats: round1(items.reduce((s, i) => s + (i.fats || 0), 0)),
+    }
+  }
+
+  const planTotals = useMemo(() => {
+    if (!meals || meals.length === 0) return null
+    return meals.reduce((acc, m) => {
+      const t = mealTotals(m)
+      return {
+        calories: acc.calories + (t.calories || 0), protein: acc.protein + (t.protein || 0),
+        carbs: acc.carbs + (t.carbs || 0), fats: acc.fats + (t.fats || 0),
+      }
+    }, { calories: 0, protein: 0, carbs: 0, fats: 0 })
+  }, [meals])
+
+  if (loading) {
+    return <div style={{ fontSize: type.body, color: color.textOnLight.secondary, marginTop: 14 }}>Loading meals...</div>
+  }
+
+  return (
+    <div style={{ marginTop: 14, paddingTop: 14, borderTop: '0.5px solid #F0F0F0' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <div style={S.label}>Meal structure</div>
+        <div onClick={() => setShowBuilder(v => !v)}
+          style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+          <span style={{ fontSize: type.label, color: color.textOnLight.secondary }}>{showBuilder ? 'On' : 'Off'}</span>
+          <Toggle value={showBuilder} onChange={setShowBuilder} />
+        </div>
+      </div>
+
+      {showBuilder && (
+        <>
+          {meals.length === 0 && (
+            <div style={{ fontSize: type.body, color: color.textOnLight.secondary, marginBottom: 12 }}>
+              No meals yet — add one below.
+            </div>
+          )}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14 }}>
+            {meals.map(meal => {
+              const totals = mealTotals(meal)
+              return (
+                <div key={meal.id} style={{ background: color.bone, borderRadius: 8, padding: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                    <div>
+                      <div style={{ fontSize: type.body, fontWeight: 500, color: color.textOnLight.primary }}>
+                        {meal.name}
+                        {meal.target_time && (
+                          <span style={{ marginLeft: 8, fontSize: type.label, color: color.textOnLight.faint, fontFamily: font.mono }}>
+                            {meal.target_time.slice(0, 5)}
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: type.label, color: color.textOnLight.secondary, marginTop: 2, fontFamily: font.mono }}>
+                        {[
+                          totals.calories > 0 && `${totals.calories} kcal`,
+                          totals.protein > 0 && `${totals.protein}g P`,
+                          totals.carbs > 0 && `${totals.carbs}g C`,
+                          totals.fats > 0 && `${totals.fats}g F`,
+                        ].filter(Boolean).join(' · ') || 'No foods added'}
+                      </div>
+                    </div>
+                    <button onClick={() => deleteMeal(meal.id)}
+                      style={{ fontSize: type.label, padding: '4px 10px', borderRadius: 6, border: 'none',
+                        background: 'transparent', color: color.alert, cursor: 'pointer', fontFamily: font.mono }}>
+                      Remove
+                    </button>
+                  </div>
+
+                  {(meal.diet_plan_meal_items || []).length > 0 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8 }}>
+                      {meal.diet_plan_meal_items.map(item => (
+                        <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                          padding: '6px 10px', background: color.surfaceLight, borderRadius: 6 }}>
+                          <div style={{ fontSize: type.label, color: color.textOnLight.primary }}>
+                            {item.food_name} <span style={{ color: color.textOnLight.faint }}>· {item.quantity}{item.unit}</span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <span style={{ fontSize: type.label, color: color.textOnLight.secondary, fontFamily: font.mono }}>
+                              {item.calories != null ? `${Math.round(item.calories)} kcal` : ''}
+                            </span>
+                            <button onClick={() => deleteItem(meal.id, item.id)}
+                              style={{ background: 'none', border: 'none', color: color.textOnLight.faint, cursor: 'pointer', fontSize: 14, lineHeight: 1 }}>×</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {addingFoodToMealId === meal.id ? (
+                    <FoodSearchPicker
+                      onAdd={(item) => addItemToMeal(meal.id, item)}
+                      onCancel={() => setAddingFoodToMealId(null)}
+                    />
+                  ) : (
+                    <button onClick={() => setAddingFoodToMealId(meal.id)}
+                      style={{ fontSize: type.label, padding: '5px 12px', borderRadius: 6, border: `1px solid ${color.borderLight}`,
+                        background: 'transparent', color: color.textOnLight.secondary, cursor: 'pointer', fontFamily: font.mono }}>
+                      + Add food
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          {planTotals && (
+            <div style={{ display: 'flex', gap: 14, marginBottom: 14, fontSize: type.label, color: color.forest, fontFamily: font.mono, flexWrap: 'wrap' }}>
+              <span>TOTAL</span>
+              <span>{planTotals.calories} kcal</span>
+              <span>{planTotals.protein}g P</span>
+              <span>{planTotals.carbs}g C</span>
+              <span>{planTotals.fats}g F</span>
+            </div>
+          )}
+
+          <div style={{ background: color.bone, borderRadius: 8, padding: 12 }}>
+            <div style={{ ...S.label, fontSize: type.label, marginBottom: 8 }}>Add meal</div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <input type="text" placeholder="Meal name (e.g. Breakfast)" value={newMealName}
+                onChange={e => setNewMealName(e.target.value)}
+                style={{ flex: 1, minWidth: 160, padding: '7px 10px', borderRadius: 6, border: `1px solid ${color.borderLight}`,
+                  fontFamily: font.sans, fontSize: type.body, boxSizing: 'border-box', color: color.textOnLight.primary }} />
+              <input type="time" value={newMealTime} onChange={e => setNewMealTime(e.target.value)}
+                style={{ padding: '7px 10px', borderRadius: 6, border: `1px solid ${color.borderLight}`,
+                  fontFamily: font.sans, fontSize: type.body, color: color.textOnLight.primary }} />
+              <button onClick={addMeal} disabled={addingMeal || !newMealName.trim()}
+                style={{ padding: '7px 16px', borderRadius: 6, border: `1px solid ${color.forest}`,
+                  background: 'transparent', color: color.forest, fontFamily: font.sans, fontSize: type.label,
+                  fontWeight: 500, cursor: (addingMeal || !newMealName.trim()) ? 'not-allowed' : 'pointer' }}>
+                {addingMeal ? 'Adding...' : 'Add'}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {error && <div style={{ fontSize: type.body, color: color.alert, marginTop: 10 }}>{error}</div>}
     </div>
   )
 }

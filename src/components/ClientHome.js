@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import CheckInForm from './CheckInForm'
 import ClientSettings from './ClientSettings'
 import { color, font, type, labelStyle, badge, navItemStyle, displayStyle } from '../lib/theme'
-import { getEffectiveTargets } from '../lib/dietPlan'
+import { getEffectiveTargets, getActivePhase } from '../lib/dietPlan'
 import MessageThread from './MessageThread'
 import '../styles/purema-responsive.css'
 
@@ -114,12 +114,15 @@ const MacroBar = ({ label, value, unit, color: barColor, target }) => {
 
 // ─── Home tab ─────────────────────────────────────────────────────────────────
 
-const TabHome = ({ profile, checkins, dietPhases, targetOverrides, onGoToCheckin }) => {
+const TabHome = ({ profile, checkins, dietPhases, targetOverrides, mealPlan, onGoToCheckin }) => {
+  const [mealPlanExpanded, setMealPlanExpanded] = useState(false)
   const latest = checkins[0]
   const nextWeek = latest ? latest.week_number + 1 : 1
   const targets = latest ? getEffectiveTargets(dietPhases, targetOverrides, latest.week_number, profile) : null
   const hasCheckedInThisWeek = latest &&
     (new Date() - new Date(latest.submitted_at)) / (1000 * 60 * 60 * 24) < 7
+  const activePhase = getActivePhase(dietPhases)
+  const phaseMeals = activePhase ? mealPlan.filter(m => m.phase_id === activePhase.id) : []
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -212,6 +215,60 @@ const TabHome = ({ profile, checkins, dietPhases, targetOverrides, onGoToCheckin
           </div>
         )}
       </div>
+
+      {/* Meal plan — the coach's prescribed meal-by-meal structure for the
+          active phase, when one exists. Independent of check-in data, since
+          it's what the client should be eating, not what they logged. */}
+      {phaseMeals.length > 0 && (
+        <div style={S.card}>
+          <div onClick={() => setMealPlanExpanded(v => !v)}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
+            <div style={{ ...S.label, marginBottom: 0 }}>Meal plan</div>
+            <span style={{ fontSize: type.label, color: color.textOnLight.faint, fontFamily: font.mono }}>
+              {mealPlanExpanded ? 'Hide' : 'Show'} {phaseMeals.length} meal{phaseMeals.length === 1 ? '' : 's'}
+            </span>
+          </div>
+          {mealPlanExpanded && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 14 }}>
+              {phaseMeals.map(meal => {
+                const items = meal.diet_plan_meal_items || []
+                const totals = items.reduce((acc, i) => ({
+                  calories: acc.calories + (i.calories || 0), protein: acc.protein + (i.protein || 0),
+                  carbs: acc.carbs + (i.carbs || 0), fats: acc.fats + (i.fats || 0),
+                }), { calories: 0, protein: 0, carbs: 0, fats: 0 })
+                return (
+                  <div key={meal.id} style={{ background: color.bone, borderRadius: 10, padding: 12 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: items.length > 0 ? 8 : 0 }}>
+                      <div style={{ fontSize: type.body, fontWeight: 500, color: color.textOnLight.primary }}>
+                        {meal.name}
+                        {meal.target_time && (
+                          <span style={{ marginLeft: 8, fontSize: type.label, color: color.textOnLight.faint, fontFamily: font.mono }}>
+                            {meal.target_time.slice(0, 5)}
+                          </span>
+                        )}
+                      </div>
+                      {items.length > 0 && (
+                        <span style={{ fontSize: type.label, color: color.textOnLight.secondary, fontFamily: font.mono, whiteSpace: 'nowrap' }}>
+                          {Math.round(totals.calories)} kcal
+                        </span>
+                      )}
+                    </div>
+                    {items.map(item => (
+                      <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: type.label,
+                        color: color.textOnLight.secondary, padding: '3px 0' }}>
+                        <span>{item.food_name} <span style={{ color: color.textOnLight.faint, fontFamily: font.mono }}>· {item.quantity}{item.unit}</span></span>
+                        <span style={{ fontFamily: font.mono, whiteSpace: 'nowrap' }}>
+                          {item.protein != null ? `${item.protein}g P` : ''}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Check-in history */}
       {checkins.length > 1 && (
@@ -602,6 +659,7 @@ export default function ClientHome() {
   const [checkins, setCheckins] = useState([])
   const [dietPhases, setDietPhases] = useState([])
   const [targetOverrides, setTargetOverrides] = useState([])
+  const [mealPlan, setMealPlan] = useState([])
   const [messages, setMessages] = useState([])
   const [coachName, setCoachName] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -613,13 +671,14 @@ export default function ClientHome() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      const [profileRes, checkinsRes, phasesRes, overridesRes, messagesRes] = await Promise.all([
+      const [profileRes, checkinsRes, phasesRes, overridesRes, messagesRes, mealsRes] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', user.id).single(),
         supabase.from('check_ins').select('*').eq('client_id', user.id)
           .order('submitted_at', { ascending: false }),
         supabase.from('diet_plan_phases').select('*').eq('client_id', user.id),
         supabase.from('weekly_target_overrides').select('*').eq('client_id', user.id),
         supabase.from('messages').select('*').eq('client_id', user.id).order('created_at', { ascending: true }),
+        supabase.from('diet_plan_meals').select('*, diet_plan_meal_items(*)').eq('client_id', user.id).order('sort_order', { ascending: true }),
       ])
 
       // Profile drives basically everything rendered below, so a failure
@@ -638,6 +697,7 @@ export default function ClientHome() {
       if (!phasesRes.error) setDietPhases(phasesRes.data || [])
       if (!overridesRes.error) setTargetOverrides(overridesRes.data || [])
       if (!messagesRes.error) setMessages(messagesRes.data || [])
+      if (!mealsRes.error) setMealPlan(mealsRes.data || [])
 
       if (profileRes.data?.coach_id) {
         const { data: coachProfile } = await supabase
@@ -827,6 +887,7 @@ export default function ClientHome() {
               checkins={checkins}
               dietPhases={dietPhases}
               targetOverrides={targetOverrides}
+              mealPlan={mealPlan}
               onGoToCheckin={() => setActiveTab('checkin')}
             />
           )}
