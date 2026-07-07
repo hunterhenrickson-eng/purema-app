@@ -24,6 +24,102 @@ const SearchIcon = () => (
   </svg>
 )
 
+const HamburgerIcon = () => (
+  <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+  </svg>
+)
+
+const BellIcon = () => (
+  <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/>
+    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+  </svg>
+)
+
+const PlusIcon = () => (
+  <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+  </svg>
+)
+
+// Same 24x24 stroke-icon style ClientHome.js's GearIcon uses (each page
+// defines its own local copies rather than sharing a module — matches the
+// existing convention where Mark/SearchIcon etc. are also duplicated
+// per-file instead of extracted).
+const GearIcon = () => (
+  <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="3"/>
+    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+  </svg>
+)
+
+const DashboardIcon = () => (
+  <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+    <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+  </svg>
+)
+
+const ClientsIcon = () => (
+  <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+  </svg>
+)
+
+const RequestsIcon = () => (
+  <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/>
+    <line x1="20" y1="8" x2="20" y2="14"/><line x1="17" y1="11" x2="23" y2="11"/>
+  </svg>
+)
+
+const CheckInsIcon = () => (
+  <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
+    <rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 14l2 2 4-4"/>
+  </svg>
+)
+
+const CalendarIcon = () => (
+  <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/>
+    <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+  </svg>
+)
+
+const MessagesIcon = () => (
+  <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+  </svg>
+)
+
+const OverviewIcon = () => (
+  <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+  </svg>
+)
+
+const BillingIcon = () => (
+  <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/>
+  </svg>
+)
+
+// Small hover-only label for icon-only UI (collapsed sidebar nav items,
+// collapsed mini-client-list avatars) — required whenever a text label is
+// hidden, per the app's readability standard.
+const IconTooltip = ({ label, show }) => !show ? null : (
+  <div style={{ position: 'absolute', left: '100%', top: '50%', transform: 'translateY(-50%)',
+    marginLeft: 10, background: color.void, color: color.textOnDark.primary, fontSize: type.label,
+    fontFamily: font.sans, padding: '5px 10px', borderRadius: 6, whiteSpace: 'nowrap', zIndex: 500,
+    pointerEvents: 'none' }}>
+    {label}
+  </div>
+)
+
 // ─── Shared styles ────────────────────────────────────────────────────────────
 
 const S = {
@@ -43,6 +139,17 @@ const ImportedTag = () => (
 )
 
 // ─── Attention queue logic ────────────────────────────────────────────────────
+
+function timeAgo(ts) {
+  if (!ts) return ''
+  const mins = Math.floor((new Date() - new Date(ts)) / 60000)
+  if (mins < 1) return 'Just now'
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  const days = Math.floor(hrs / 24)
+  return `${days}d ago`
+}
 
 function buildAttentionQueue(clients, checkins) {
   const now = new Date()
@@ -1009,7 +1116,7 @@ const DietPlanPanel = ({ client, coachId }) => {
   )
 }
 
-const TabClients = ({ clients, checkins, profile, onStatusChange, onTargetsSave, onGoToBilling, onImportCheckins }) => {
+const TabClients = ({ clients, checkins, profile, onStatusChange, onTargetsSave, onGoToBilling, onImportCheckins, focusClientId, onFocusHandled }) => {
   const [expandedId, setExpandedId] = useState(null)
   const [expandedPlanId, setExpandedPlanId] = useState(null)
   const [importingClient, setImportingClient] = useState(null)
@@ -1018,6 +1125,17 @@ const TabClients = ({ clients, checkins, profile, onStatusChange, onTargetsSave,
   const atLimit = activeClients.length >= limit
   const pausedClients = clients.filter(c => c.status === 'paused')
   const archivedClients = clients.filter(c => c.status === 'archived')
+
+  // Sidebar mini-client-list entries "jump to detail" by expanding that
+  // client's Targets panel here and scrolling their row into view, rather
+  // than a separate client-detail page that doesn't exist in this app.
+  useEffect(() => {
+    if (!focusClientId) return
+    setExpandedId(focusClientId)
+    const el = document.getElementById(`client-row-${focusClientId}`)
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    onFocusHandled?.()
+  }, [focusClientId, onFocusHandled])
 
   const ClientRow = ({ client }) => {
     const [statusError, setStatusError] = useState(null)
@@ -1029,7 +1147,7 @@ const TabClients = ({ clients, checkins, profile, onStatusChange, onTargetsSave,
     }
 
     return (
-    <div style={S.card}>
+    <div id={`client-row-${client.id}`} style={S.card}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
         <div style={{ width: 40, height: 40, borderRadius: '50%',
           background: client.status === 'paused' ? '#F0EDE8' : client.status === 'archived' ? '#F0EDE8' : color.sage,
@@ -1882,15 +2000,15 @@ const TabMessages = ({ clients, messages, coachId, onSendMessage, onMarkRead }) 
 // ─── Tab definitions ──────────────────────────────────────────────────────────
 
 const TABS = [
-  { id: 'dashboard', label: 'Dashboard' },
-  { id: 'clients', label: 'Clients' },
-  { id: 'requests', label: 'Requests' },
-  { id: 'checkins', label: 'Check-ins' },
-  { id: 'calendar', label: 'Calendar' },
-  { id: 'messages', label: 'Messages' },
-  { id: 'overview', label: 'Overview' },
-  { id: 'billing', label: 'Billing' },
-  { id: 'settings', label: 'Settings' },
+  { id: 'dashboard', label: 'Dashboard', Icon: DashboardIcon },
+  { id: 'clients', label: 'Clients', Icon: ClientsIcon },
+  { id: 'requests', label: 'Requests', Icon: RequestsIcon },
+  { id: 'checkins', label: 'Check-ins', Icon: CheckInsIcon },
+  { id: 'calendar', label: 'Calendar', Icon: CalendarIcon },
+  { id: 'messages', label: 'Messages', Icon: MessagesIcon },
+  { id: 'overview', label: 'Overview', Icon: OverviewIcon },
+  { id: 'billing', label: 'Billing', Icon: BillingIcon },
+  { id: 'settings', label: 'Settings', Icon: GearIcon },
 ]
 
 // Preferences storage only — same as the client-side notification toggles
@@ -2047,6 +2165,17 @@ export default function CoachDashboard() {
   const [portalError, setPortalError] = useState(null)
   const [criticalLoadError, setCriticalLoadError] = useState(null)
   const [dataLoadError, setDataLoadError] = useState(null)
+  const [showInviteModal, setShowInviteModal] = useState(false)
+  const [focusClientId, setFocusClientId] = useState(null)
+  // Pure UI preference, not account data — localStorage is enough, no need
+  // to sync across devices.
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try { return localStorage.getItem('purema_sidebar_collapsed') === 'true' } catch { return false }
+  })
+
+  useEffect(() => {
+    try { localStorage.setItem('purema_sidebar_collapsed', String(sidebarCollapsed)) } catch {}
+  }, [sidebarCollapsed])
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -2246,56 +2375,170 @@ export default function CoachDashboard() {
 
   const pendingCount = checkins.filter(c => !c.coach_feedback).length
   const pendingApplicationsCount = applications.filter(a => a.status === 'pending').length
-  const attentionCount = useMemo(() => buildAttentionQueue(clients, checkins).length, [clients, checkins])
+  const attentionItems = useMemo(() => buildAttentionQueue(clients, checkins), [clients, checkins])
+  const attentionCount = attentionItems.length
+  const attentionClientIds = useMemo(() => new Set(attentionItems.map(i => i.client.id)), [attentionItems])
+  const activeClientsCount = clients.filter(c => !c.status || c.status === 'active').length
+  const atInviteLimit = activeClientsCount >= tierLimit(profile?.subscription_tier)
 
-  const NavList = ({ vertical }) => (
-    <nav style={{ display: 'flex', flexDirection: vertical ? 'column' : 'row', gap: vertical ? 4 : 4 }}>
-      {TABS.map(tab => (
-        <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            padding: vertical ? '10px 12px' : '8px 14px',
-            border: 'none', textAlign: 'left', cursor: 'pointer',
-            fontFamily: font.sans, fontSize: type.body,
-            transition: 'all 0.15s ease',
-            ...navItemStyle(activeTab === tab.id, false),
-          }}>
-          {tab.label}
-          {tab.id === 'requests' && pendingApplicationsCount > 0 && (
-            <span style={{ marginLeft: 6, background: color.gold, color: color.surfaceLight,
-              fontSize: type.label, borderRadius: 999, padding: '1px 6px',
-              fontFamily: font.mono, verticalAlign: 'middle' }}>
-              {pendingApplicationsCount}
-            </span>
-          )}
-          {tab.id === 'checkins' && pendingCount > 0 && (
-            <span style={{ marginLeft: 6, background: color.gold, color: color.surfaceLight,
-              fontSize: type.label, borderRadius: 999, padding: '1px 6px',
-              fontFamily: font.mono, verticalAlign: 'middle' }}>
-              {pendingCount}
-            </span>
-          )}
-          {tab.id === 'messages' && unreadMessageCount > 0 && (
-            <span style={{ marginLeft: 6, background: color.forest, color: color.sage,
-              fontSize: type.label, borderRadius: 999, padding: '1px 6px',
-              fontFamily: font.mono, verticalAlign: 'middle' }}>
-              {unreadMessageCount}
-            </span>
-          )}
-        </button>
-      ))}
-    </nav>
-  )
+  const goToClient = (clientId) => {
+    setActiveTab('clients')
+    setFocusClientId(clientId)
+  }
 
-  const AttentionAlert = () => attentionCount > 0 ? (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
-      onClick={() => setActiveTab('dashboard')}>
-      <div style={{ width: 7, height: 7, borderRadius: '50%', background: color.alert, flexShrink: 0 }} />
-      <span style={{ fontSize: type.label, color: color.alert, fontFamily: font.mono, whiteSpace: 'nowrap' }}>
-        {attentionCount} need{attentionCount === 1 ? 's' : ''} attention
-      </span>
-    </div>
-  ) : null
+  // Green = active and not flagged in the attention queue, amber = flagged
+  // (feedback needed or gone quiet — same signal buildAttentionQueue already
+  // computes for the dashboard's "Needs your attention" list), gray = paused.
+  const clientDotColor = (client) => {
+    if (client.status === 'paused') return color.textOnLight.faint
+    if (attentionClientIds.has(client.id)) return color.gold
+    return color.forest
+  }
+
+  const MINI_LIST_VISIBLE = 6
+
+  const MiniClientList = ({ collapsed }) => {
+    const [expanded, setExpanded] = useState(false)
+    const [hoveredId, setHoveredId] = useState(null)
+    const visible = clients.filter(c => c.status !== 'archived')
+    const shown = expanded ? visible : visible.slice(0, MINI_LIST_VISIBLE)
+    const hiddenCount = visible.length - shown.length
+
+    if (visible.length === 0) return null
+
+    return (
+      <div style={{ marginTop: 20, paddingTop: 16, borderTop: `0.5px solid ${color.borderLight}` }}>
+        {!collapsed && (
+          <div style={{ ...labelStyle(false), padding: '0 4px', marginBottom: 8 }}>Clients</div>
+        )}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {shown.map(client => {
+            const initials = (client.full_name || client.email || '?')
+              .split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
+            return (
+              <button key={client.id} onClick={() => goToClient(client.id)}
+                onMouseEnter={() => setHoveredId(client.id)} onMouseLeave={() => setHoveredId(null)}
+                style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8,
+                  justifyContent: collapsed ? 'center' : 'flex-start',
+                  padding: collapsed ? '6px 0' : '6px 8px', border: 'none', background: 'transparent',
+                  borderRadius: 8, cursor: 'pointer', fontFamily: font.sans, textAlign: 'left', width: '100%' }}>
+                <span style={{ position: 'relative', width: 24, height: 24, borderRadius: '50%', background: color.sage,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                  fontSize: 10, fontWeight: 500, color: color.forest }}>
+                  {initials}
+                  <span style={{ position: 'absolute', bottom: -1, right: -1, width: 7, height: 7, borderRadius: '50%',
+                    background: clientDotColor(client), border: `1.5px solid ${color.surfaceNav}` }} />
+                </span>
+                {!collapsed && (
+                  <span style={{ fontSize: type.label, color: color.textOnLight.primary,
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {client.full_name || client.email}
+                  </span>
+                )}
+                <IconTooltip label={client.full_name || client.email} show={collapsed && hoveredId === client.id} />
+              </button>
+            )
+          })}
+        </div>
+        {hiddenCount > 0 && (
+          <button onClick={() => setExpanded(true)}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'flex-start',
+              width: '100%', marginTop: 4, padding: collapsed ? '6px 0' : '6px 8px', border: 'none',
+              background: 'transparent', borderRadius: 8, cursor: 'pointer', fontFamily: font.mono,
+              fontSize: type.label, color: color.textOnLight.secondary }}>
+            {collapsed ? `+${hiddenCount}` : `Show ${hiddenCount} more`}
+          </button>
+        )}
+        {expanded && visible.length > MINI_LIST_VISIBLE && !collapsed && (
+          <button onClick={() => setExpanded(false)}
+            style={{ display: 'block', width: '100%', marginTop: 4, padding: '6px 8px', border: 'none',
+              background: 'transparent', borderRadius: 8, cursor: 'pointer', fontFamily: font.mono,
+              fontSize: type.label, color: color.textOnLight.secondary, textAlign: 'left' }}>
+            Show less
+          </button>
+        )}
+      </div>
+    )
+  }
+
+  // `collapsed` only ever applies to the vertical sidebar render (there's
+  // nothing to collapse in the horizontal top-tabs layout) — badges stay
+  // visible either way, just repositioned to the icon's corner instead of
+  // inline after a now-hidden label, and a hover tooltip stands in for the
+  // hidden label per the icon-only readability requirement.
+  const NavList = ({ vertical, collapsed = false }) => {
+    const [hoveredTab, setHoveredTab] = useState(null)
+
+    const badgeFor = (tab) => {
+      if (tab.id === 'requests' && pendingApplicationsCount > 0) return { count: pendingApplicationsCount, bg: color.gold, fg: color.surfaceLight }
+      if (tab.id === 'checkins' && pendingCount > 0) return { count: pendingCount, bg: color.gold, fg: color.surfaceLight }
+      if (tab.id === 'messages' && unreadMessageCount > 0) return { count: unreadMessageCount, bg: color.forest, fg: color.sage }
+      return null
+    }
+
+    return (
+      <nav style={{ display: 'flex', flexDirection: vertical ? 'column' : 'row', gap: vertical ? 4 : 4 }}>
+        {TABS.map(tab => {
+          const badgeInfo = badgeFor(tab)
+          return (
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+              onMouseEnter={() => setHoveredTab(tab.id)}
+              onMouseLeave={() => setHoveredTab(null)}
+              style={{
+                position: 'relative',
+                display: 'flex', alignItems: 'center', gap: 10,
+                justifyContent: collapsed ? 'center' : 'flex-start',
+                padding: vertical ? (collapsed ? '10px 0' : '10px 12px') : '8px 14px',
+                border: 'none', textAlign: 'left', cursor: 'pointer',
+                fontFamily: font.sans, fontSize: type.body,
+                transition: 'all 0.15s ease',
+                ...navItemStyle(activeTab === tab.id, false),
+              }}>
+              <span style={{ width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <tab.Icon />
+              </span>
+              {!collapsed && tab.label}
+              {!collapsed && badgeInfo && (
+                <span style={{ marginLeft: 6, background: badgeInfo.bg, color: badgeInfo.fg,
+                  fontSize: type.label, borderRadius: 999, padding: '1px 6px',
+                  fontFamily: font.mono, verticalAlign: 'middle' }}>
+                  {badgeInfo.count}
+                </span>
+              )}
+              {collapsed && badgeInfo && (
+                <span style={{ position: 'absolute', top: 2, right: 10, background: badgeInfo.bg, color: badgeInfo.fg,
+                  fontSize: 9, borderRadius: 999, padding: '1px 4px', minWidth: 14, textAlign: 'center',
+                  fontFamily: font.mono, lineHeight: 1.4 }}>
+                  {badgeInfo.count}
+                </span>
+              )}
+              <IconTooltip label={tab.label} show={collapsed && hoveredTab === tab.id} />
+            </button>
+          )
+        })}
+      </nav>
+    )
+  }
+
+  const AttentionAlert = ({ collapsed = false }) => {
+    const [hovered, setHovered] = useState(false)
+    if (attentionCount === 0) return null
+    const label = `${attentionCount} need${attentionCount === 1 ? 's' : ''} attention`
+    return (
+      <div style={{ position: 'relative', display: 'flex', alignItems: 'center',
+        justifyContent: collapsed ? 'center' : 'flex-start', gap: 6, cursor: 'pointer' }}
+        onClick={() => setActiveTab('dashboard')}
+        onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}>
+        <div style={{ width: 7, height: 7, borderRadius: '50%', background: color.alert, flexShrink: 0 }} />
+        {!collapsed && (
+          <span style={{ fontSize: type.label, color: color.alert, fontFamily: font.mono, whiteSpace: 'nowrap' }}>
+            {label}
+          </span>
+        )}
+        <IconTooltip label={label} show={collapsed && hovered} />
+      </div>
+    )
+  }
 
   // Replaces the old standalone Sign Out button everywhere it appeared —
   // Settings/Reset Password/Sign Out all live in one place now instead of
@@ -2374,6 +2617,113 @@ export default function CoachDashboard() {
     </div>
   )
 
+  // One unified feed across every alert type this dashboard already tracks
+  // separately elsewhere (unread messages, pending applications, a failed
+  // subscription payment, check-ins awaiting feedback) — same underlying
+  // data each already has its own badge/count for, just merged and
+  // timestamp-sorted here rather than re-fetched.
+  const notifications = useMemo(() => {
+    const items = []
+    messages.filter(m => m.sender_id !== profile?.id && !m.read_at).forEach(m => {
+      const client = clients.find(c => c.id === m.client_id)
+      items.push({
+        id: `msg-${m.id}`, ts: m.created_at,
+        label: `New message from ${client?.full_name || 'a client'}`,
+        sub: m.body,
+        onSelect: () => setActiveTab('messages'),
+      })
+    })
+    applications.filter(a => a.status === 'pending').forEach(a => {
+      items.push({
+        id: `app-${a.id}`, ts: a.submitted_at,
+        label: `New application from ${a.name}`,
+        sub: a.email,
+        onSelect: () => setActiveTab('requests'),
+      })
+    })
+    if (isPastDue(profile)) {
+      items.push({
+        id: 'payment-failed', ts: profile?.payment_failed_at || profile?.created_at,
+        label: 'Your last payment failed',
+        sub: 'Update your payment method to avoid losing access.',
+        onSelect: () => setActiveTab('billing'),
+      })
+    }
+    // Backfilled history was never a live submission needing review — same
+    // exclusion the "time saved" stat already applies.
+    checkins.filter(c => !c.coach_feedback && !c.imported_backfill).forEach(c => {
+      items.push({
+        id: `checkin-${c.id}`, ts: c.submitted_at,
+        label: `${c.client_name}'s Week ${c.week_number} check-in needs review`,
+        sub: null,
+        onSelect: () => setSelected(c),
+      })
+    })
+    return items.sort((a, b) => new Date(b.ts) - new Date(a.ts))
+  }, [messages, applications, checkins, profile, clients])
+
+  const NotificationBell = () => {
+    const [open, setOpen] = useState(false)
+    const ref = useRef(null)
+
+    useEffect(() => {
+      const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+      document.addEventListener('mousedown', handler)
+      return () => document.removeEventListener('mousedown', handler)
+    }, [])
+
+    return (
+      <div ref={ref} style={{ position: 'relative', flexShrink: 0 }}>
+        <button onClick={() => setOpen(o => !o)}
+          style={{ position: 'relative', width: 34, height: 34, borderRadius: '50%', border: 'none',
+            background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer', color: color.textOnLight.secondary }}>
+          <BellIcon />
+          {notifications.length > 0 && (
+            <span style={{ position: 'absolute', top: 2, right: 2, background: color.gold, color: color.surfaceLight,
+              fontSize: 9, borderRadius: 999, padding: '1px 4px', minWidth: 14, textAlign: 'center',
+              fontFamily: font.mono, lineHeight: 1.4 }}>
+              {notifications.length}
+            </span>
+          )}
+        </button>
+        {open && (
+          <div style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, width: 320, maxHeight: 400,
+            overflowY: 'auto', background: color.surfaceLight, borderRadius: 10, border: `0.5px solid ${color.borderLight}`,
+            zIndex: 300 }}>
+            <div style={{ padding: '10px 14px', borderBottom: `0.5px solid ${color.borderLight}`,
+              ...labelStyle(false), marginBottom: 0 }}>
+              Notifications
+            </div>
+            {notifications.length === 0 ? (
+              <div style={{ padding: '24px 14px', textAlign: 'center', color: color.textOnLight.secondary, fontSize: type.body }}>
+                You're all caught up.
+              </div>
+            ) : notifications.map(n => (
+              <button key={n.id} onClick={() => { n.onSelect(); setOpen(false) }}
+                style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 14px', border: 'none',
+                  borderBottom: `0.5px solid ${color.borderLight}`, background: 'transparent', cursor: 'pointer',
+                  fontFamily: font.sans }}
+                onMouseEnter={e => { e.currentTarget.style.background = color.bone }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
+                <div style={{ fontSize: type.body, color: color.textOnLight.primary }}>{n.label}</div>
+                {n.sub && (
+                  <div style={{ fontSize: type.label, color: color.textOnLight.secondary, marginTop: 2,
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {n.sub}
+                  </div>
+                )}
+                <div style={{ fontSize: type.label, color: color.textOnLight.faint, fontFamily: font.mono, marginTop: 4 }}>
+                  {timeAgo(n.ts)}
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
+
   if (!loading && criticalLoadError) {
     return (
       <div style={{ minHeight: '100vh', background: color.bone, display: 'flex', flexDirection: 'column',
@@ -2423,24 +2773,45 @@ export default function CoachDashboard() {
   }
 
   const navLayout = profile?.nav_layout === 'top_tabs' ? 'top_tabs' : 'sidebar'
+  const isCollapsedSidebar = navLayout === 'sidebar' && sidebarCollapsed
+
+  const InviteButton = ({ compact = false }) => (
+    <button onClick={() => setShowInviteModal(true)}
+      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+        padding: compact ? 0 : '8px 14px', width: compact ? 34 : 'auto', height: compact ? 34 : 'auto',
+        borderRadius: compact ? '50%' : 8, border: 'none', background: color.forest, color: color.sage,
+        fontFamily: font.sans, fontSize: type.label, fontWeight: 500, cursor: 'pointer',
+        whiteSpace: 'nowrap', flexShrink: 0 }}>
+      <PlusIcon />{!compact && ' Invite Client'}
+    </button>
+  )
 
   return (
     <div className={navLayout === 'top_tabs' ? 'purema-shell purema-shell--top-tabs' : 'purema-shell'}
+      data-sidebar={isCollapsedSidebar ? 'collapsed' : undefined}
       style={{ background: color.bone, fontFamily: font.sans }}>
 
       {/* Desktop sidebar nav (900px+) — the default layout. Nav only —
           search and account actions live in the content-column top bar
-          below instead, not inside the sidebar. */}
+          below instead, not inside the sidebar. Collapses to icon-only
+          width via the hamburger toggle in that top bar. */}
       {navLayout === 'sidebar' && (
         <div className="purema-nav-desktop" style={{ flexDirection: 'column', justifyContent: 'space-between',
-          background: color.surfaceNav, borderRight: `0.5px solid ${color.borderLight}`, padding: '28px 20px',
-          position: 'sticky', top: 0, height: '100vh', boxSizing: 'border-box' }}>
+          background: color.surfaceNav, borderRight: `0.5px solid ${color.borderLight}`,
+          padding: sidebarCollapsed ? '28px 10px' : '28px 20px',
+          position: 'sticky', top: 0, height: '100vh', boxSizing: 'border-box', overflowY: 'auto' }}>
           <div>
-            <div style={{ padding: '0 4px', marginBottom: 20 }}><Logo /></div>
-            <NavList vertical />
+            <div style={{ padding: '0 4px', marginBottom: 20, display: 'flex',
+              justifyContent: sidebarCollapsed ? 'center' : 'flex-start' }}>
+              {sidebarCollapsed ? (
+                <div onClick={() => setActiveTab('dashboard')} style={{ cursor: 'pointer' }}><Mark size={20} /></div>
+              ) : <Logo />}
+            </div>
+            <NavList vertical collapsed={sidebarCollapsed} />
+            <MiniClientList collapsed={sidebarCollapsed} />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <AttentionAlert />
+            <AttentionAlert collapsed={sidebarCollapsed} />
           </div>
         </div>
       )}
@@ -2449,7 +2820,8 @@ export default function CoachDashboard() {
           items/active-state/badges as the sidebar, just laid out
           horizontally with full-width content below. This bar already
           spans the full width (there's no separate sidebar to keep search
-          out of), so search and the profile menu stay here. */}
+          out of, and nothing to collapse), so search, notifications,
+          invite, and the profile menu all stay here. */}
       {navLayout === 'top_tabs' && (
         <div className="purema-nav-top-desktop" style={{ background: color.surfaceNav,
           borderBottom: `0.5px solid ${color.borderLight}`, alignItems: 'center', justifyContent: 'space-between',
@@ -2458,7 +2830,7 @@ export default function CoachDashboard() {
             <Logo />
             <NavList vertical={false} />
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0 }}>
             <div style={{ width: 220 }}>
               <SearchBar
                 clients={clients}
@@ -2468,6 +2840,8 @@ export default function CoachDashboard() {
               />
             </div>
             <AttentionAlert />
+            <InviteButton />
+            <NotificationBell />
             <ProfileMenu />
           </div>
         </div>
@@ -2480,7 +2854,11 @@ export default function CoachDashboard() {
           zIndex: 100, flexDirection: 'column', gap: 10, padding: '12px 20px', boxSizing: 'border-box' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <Logo />
-            <ProfileMenu />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <InviteButton compact />
+              <NotificationBell />
+              <ProfileMenu />
+            </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <SearchBar
@@ -2494,22 +2872,35 @@ export default function CoachDashboard() {
         </div>
 
         {/* Content-column top bar (900px+, sidebar layout only) — spans
-            the main content column, not the sidebar. Holds search (moved
-            out of the sidebar) and the profile menu (replaces the old
+            the main content column, not the sidebar. Holds the sidebar
+            collapse toggle, search (moved out of the sidebar), invite,
+            notifications, and the profile menu (replaces the old
             standalone Sign Out button). */}
         {navLayout === 'sidebar' && (
           <div className="purema-topbar-desktop" style={{ alignItems: 'center', justifyContent: 'space-between',
             gap: 16, padding: '14px 32px', borderBottom: `0.5px solid ${color.borderLight}`,
             position: 'sticky', top: 0, background: color.bone, zIndex: 90 }}>
-            <div style={{ maxWidth: 340, width: '100%' }}>
-              <SearchBar
-                clients={clients}
-                checkins={checkins}
-                onSelectCheckin={setSelected}
-                onSelectClient={() => setActiveTab('clients')}
-              />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, flex: 1, minWidth: 0 }}>
+              <button onClick={() => setSidebarCollapsed(c => !c)}
+                style={{ width: 34, height: 34, borderRadius: 8, border: `1px solid ${color.borderLight}`,
+                  background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer', color: color.textOnLight.secondary, flexShrink: 0 }}>
+                <HamburgerIcon />
+              </button>
+              <div style={{ maxWidth: 340, width: '100%' }}>
+                <SearchBar
+                  clients={clients}
+                  checkins={checkins}
+                  onSelectCheckin={setSelected}
+                  onSelectClient={() => setActiveTab('clients')}
+                />
+              </div>
             </div>
-            <ProfileMenu />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+              <InviteButton />
+              <NotificationBell />
+              <ProfileMenu />
+            </div>
           </div>
         )}
 
@@ -2545,7 +2936,7 @@ export default function CoachDashboard() {
                 <div style={{ fontSize: type.body, color: color.alert, marginBottom: 20 }}>{portalError}</div>
               )}
               {activeTab === 'dashboard' && <TabDashboard checkins={checkins} clients={clients} onSelectCheckin={setSelected} />}
-              {activeTab === 'clients' && <TabClients clients={clients} checkins={checkins} profile={profile} onStatusChange={handleStatusChange} onTargetsSave={handleTargetsSave} onImportCheckins={handleImportCheckins} onGoToBilling={() => setActiveTab('billing')} />}
+              {activeTab === 'clients' && <TabClients clients={clients} checkins={checkins} profile={profile} onStatusChange={handleStatusChange} onTargetsSave={handleTargetsSave} onImportCheckins={handleImportCheckins} onGoToBilling={() => setActiveTab('billing')} focusClientId={focusClientId} onFocusHandled={() => setFocusClientId(null)} />}
               {activeTab === 'requests' && <TabRequests applications={applications} onApprove={handleApproveApplication} onDecline={handleDeclineApplication} />}
               {activeTab === 'checkins' && <TabCheckIns checkins={checkins} onSelectCheckin={setSelected} />}
               {activeTab === 'calendar' && <TabCalendar clients={clients} checkins={checkins} />}
@@ -2592,6 +2983,27 @@ export default function CoachDashboard() {
 
       {selected && (
         <CheckInDetail checkin={selected} onClose={() => setSelected(null)} onFeedbackSave={handleFeedbackSave} coachId={profile?.id} />
+      )}
+
+      {/* Top-bar "+ Invite Client" reuses the exact same InviteClient
+          component TabClients already renders inline — just wrapped in a
+          modal shell so it's reachable from anywhere, not a second
+          implementation of invite creation. */}
+      {showInviteModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 400,
+          display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={() => setShowInviteModal(false)}>
+          <div style={{ background: color.surfaceLight, borderRadius: 16, padding: 24, maxWidth: 480,
+            width: '100%', margin: '0 20px' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div style={{ ...displayStyle, fontSize: type.heading, color: color.textOnLight.primary }}>Invite a client</div>
+              <button onClick={() => setShowInviteModal(false)}
+                style={{ background: '#F0EDE8', border: 'none', color: color.textOnLight.secondary,
+                  width: 32, height: 32, borderRadius: '50%', cursor: 'pointer', fontSize: 16, flexShrink: 0 }}>×</button>
+            </div>
+            <InviteClient atLimit={atInviteLimit} onUpgradeClick={() => { setShowInviteModal(false); setActiveTab('billing') }} />
+          </div>
+        </div>
       )}
     </div>
   )

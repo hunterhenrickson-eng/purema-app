@@ -19,6 +19,15 @@
   grid-template-columns: 232px minmax(0, 1fr);
 }
 
+/* Collapsed sidebar (icon-only) — toggled by the hamburger button in the
+   content-column top bar, state persisted in localStorage. Only meaningful
+   for the sidebar layout's grid; the top-tabs layout already overrides
+   display:block below so this has no effect there, and the mobile
+   breakpoint further below overrides display:block too. */
+.purema-shell[data-sidebar="collapsed"] {
+  grid-template-columns: 68px minmax(0, 1fr);
+}
+
 .purema-nav-desktop {
   display: flex;
 }
