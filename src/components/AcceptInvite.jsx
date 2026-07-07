@@ -73,7 +73,10 @@ export default function AcceptInvite({ token }) {
     }
 
     const newUserId = signUpData.user.id;
-    const role = invite.role === 'coach' ? 'coach' : 'client';
+    // Previously collapsed anything non-'coach' to 'client', which would
+    // have silently mis-provisioned an employee invite as a client account
+    // — role must pass through all three values now that 'admin' exists.
+    const role = invite.role === 'coach' ? 'coach' : invite.role === 'admin' ? 'admin' : 'client';
 
     const { error: profileError } = await supabase.from('profiles').insert({
       id: newUserId,
@@ -81,8 +84,9 @@ export default function AcceptInvite({ token }) {
       full_name: fullName,
       email: invite.email,
       // coach_id links a client to the coach who invited them — a new coach
-      // isn't anyone's client, so this stays null for coach invites.
+      // or employee isn't anyone's client, so this stays null for those.
       coach_id: role === 'client' ? invite.coach_id : null,
+      admin_role_id: role === 'admin' ? invite.admin_role_id : null,
     });
 
     if (profileError) {
@@ -106,7 +110,7 @@ export default function AcceptInvite({ token }) {
     <Shell>
       <h2 style={{ fontWeight: 500, fontSize: type.heading, color: color.textOnDark.primary, margin: '0 0 8px' }}>Welcome to Purema</h2>
       <p style={{ marginBottom: 24, color: color.textOnDark.secondary, fontSize: type.body }}>
-        You've been invited to join as a {invite.role === 'coach' ? 'coach' : 'client'}. Set a password to finish
+        You've been invited to join as a {invite.role === 'coach' ? 'coach' : invite.role === 'admin' ? 'team member' : 'client'}. Set a password to finish
         creating your account for <strong style={{ color: color.textOnDark.primary }}>{invite.email}</strong>.
       </p>
 

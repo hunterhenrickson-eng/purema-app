@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './lib/supabase'
+import { color, font, type } from './lib/theme'
 import Auth from './pages/Auth'
 import CoachDashboard from './pages/CoachDashboard'
+import AdminDashboard from './pages/AdminDashboard'
 import ClientHome from './components/ClientHome'
 import ClientOnboarding from './components/ClientOnboarding'
 import AcceptInvite from './components/AcceptInvite'
@@ -60,6 +62,31 @@ function AuthRoutes() {
   )
 
   if (!session) return <Auth />
+
+  // Same pathname-check pattern as every other route here — /admin needs
+  // the session/profile already loaded above to decide access, so it's
+  // gated here rather than in App()'s pre-auth path checks.
+  if (window.location.pathname.startsWith('/admin')) {
+    if (profile?.role !== 'admin') {
+      return (
+        <div style={{ minHeight: '100vh', background: color.bone, display: 'flex',
+          flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+          <div style={{ fontFamily: font.sans, fontSize: type.bodyLg, color: color.textOnLight.primary }}>
+            You don't have access to this area.
+          </div>
+          <a href="/" style={{ fontFamily: font.mono, fontSize: type.label,
+            color: color.forest, letterSpacing: '0.1em' }}>← BACK TO PUREMA</a>
+        </div>
+      )
+    }
+    return <AdminDashboard />
+  }
+
+  // An admin landing anywhere other than /admin (e.g. the post-signup
+  // redirect to '/', or a bookmarked root URL) still belongs in the admin
+  // area, not the client-onboarding/ClientHome fallback below — that
+  // fallback is only meaningful for non-admin profiles.
+  if (profile?.role === 'admin') return <AdminDashboard />
   if (profile?.role === 'coach') return <CoachDashboard />
   if (!profile?.onboarding_completed) {
     return <ClientOnboarding profile={profile} onComplete={(updated) => setProfile(updated)} />
