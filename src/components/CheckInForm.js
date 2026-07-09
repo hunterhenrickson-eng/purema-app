@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { color, font, type, labelStyle as themeLabelStyle } from '../lib/theme'
+import { weightUnitLabel, measurementUnitLabel, toCanonicalWeight, toCanonicalMeasurement } from '../lib/units'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -44,6 +45,22 @@ const emptyDay = () => ({
 })
 
 const initialDailyLog = () => DAYS.map(() => emptyDay())
+
+// Shared by the submit-time payload and the live "this week so far" summary
+// so both always agree on what counts as a loggable value — filter(Boolean)
+// deliberately excludes '' (NaN) same as the original submit-only version.
+function computeWeeklyAverages(dailyLog) {
+  const weights = dailyLog.map(d => parseFloat(d.weight)).filter(Boolean)
+  const avgWeight = weights.length ? (weights.reduce((a, b) => a + b, 0) / weights.length).toFixed(1) : null
+  const steps = dailyLog.map(d => parseInt(d.steps)).filter(Boolean)
+  const avgSteps = steps.length ? Math.round(steps.reduce((a, b) => a + b, 0) / steps.length) : null
+  const sleeps = dailyLog.map(d => parseFloat(d.sleep)).filter(Boolean)
+  const avgSleep = sleeps.length ? (sleeps.reduce((a, b) => a + b, 0) / sleeps.length).toFixed(1) : null
+  const waters = dailyLog.map(d => parseFloat(d.water)).filter(Boolean)
+  const avgWater = waters.length ? (waters.reduce((a, b) => a + b, 0) / waters.length).toFixed(1) : null
+  const daysLogged = dailyLog.filter(d => d.weight || d.sleep || d.steps || d.water).length
+  return { avgWeight, avgSteps, avgSleep, avgWater, daysLogged }
+}
 
 // ─── Mark ─────────────────────────────────────────────────────────────────────
 
@@ -95,6 +112,53 @@ const SectionHeader = ({ number, title, subtitle }) => (
   </div>
 )
 
+// ─── Weekly average strip ──────────────────────────────────────────────────────
+// Live, in-progress preview of the same averages handleSubmit calculates —
+// deliberately styled as provisional (muted/outline) rather than matching the
+// confirmed post-submit stat treatment elsewhere in the app, so it doesn't
+// read as a final number mid-week.
+
+const AvgStat = ({ label, value, unit }) => (
+  <div style={{ textAlign: 'center' }}>
+    <div style={{ fontSize: type.label, color: color.textOnLight.faint, fontFamily: font.mono,
+      letterSpacing: '0.06em', marginBottom: 2 }}>
+      {label}
+    </div>
+    <div style={{ fontSize: 15, fontWeight: 500, color: value ? color.textOnLight.primary : color.textOnLight.faint,
+      fontFamily: font.mono }}>
+      {value ?? '—'}{value && unit ? <span style={{ fontSize: type.label, marginLeft: 2 }}>{unit}</span> : null}
+    </div>
+  </div>
+)
+
+const WeeklyAverageStrip = ({ dailyLog, weightUnit }) => {
+  // dailyLog.weight is whatever the client is currently typing, in the
+  // currently-selected display unit — this preview intentionally averages
+  // that as-is rather than converting, since it's not persisted here.
+  const { avgWeight, avgSteps, avgSleep, avgWater, daysLogged } = useMemo(
+    () => computeWeeklyAverages(dailyLog),
+    [dailyLog]
+  )
+
+  return (
+    <div style={{ position: 'sticky', top: 0, zIndex: 1, background: color.bone,
+      border: `0.5px solid ${color.borderLight}`, borderRadius: 10, padding: '10px 16px',
+      marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      gap: 12, flexWrap: 'wrap' }}>
+      <div style={{ fontSize: type.label, color: color.textOnLight.secondary, fontFamily: font.sans,
+        whiteSpace: 'nowrap' }}>
+        This week so far <span style={{ color: color.textOnLight.faint }}>· {daysLogged} of 7 days logged</span>
+      </div>
+      <div style={{ display: 'flex', gap: 20 }}>
+        <AvgStat label="AVG WEIGHT" value={avgWeight} unit={weightUnit} />
+        <AvgStat label="AVG SLEEP" value={avgSleep} unit="hrs" />
+        <AvgStat label="AVG STEPS" value={avgSteps} unit="" />
+        <AvgStat label="AVG WATER" value={avgWater} unit="gal" />
+      </div>
+    </div>
+  )
+}
+
 // ─── Toggle ───────────────────────────────────────────────────────────────────
 
 const Toggle = ({ value, onChange, labelTrue = 'Yes', labelFalse = 'No' }) => (
@@ -114,7 +178,7 @@ const Toggle = ({ value, onChange, labelTrue = 'Yes', labelFalse = 'No' }) => (
 
 // ─── Day column ───────────────────────────────────────────────────────────────
 
-const DayColumn = ({ day, date, index, data, onChange }) => {
+const DayColumn = ({ day, date, index, data, onChange, weightUnit }) => {
   const isRest = data.training === 'Rest'
 
   const update = (field, value) => {
@@ -139,7 +203,7 @@ const DayColumn = ({ day, date, index, data, onChange }) => {
 
       {/* Weight */}
       <div>
-        <label style={labelStyle}>Weight</label>
+        <label style={labelStyle}>Weight ({weightUnit})</label>
         <input type="number" step="0.1" placeholder="—" value={data.weight}
           onChange={e => update('weight', e.target.value)}
           style={{ ...inputStyle, textAlign: 'center' }} />
@@ -269,6 +333,8 @@ export default function CheckInForm({ onSuccess }) {
   const saveTimeoutRef = useRef(null)
 
   const totalSteps = 5
+  const weightUnit = weightUnitLabel(profile?.units)
+  const measureUnit = measurementUnitLabel(profile?.units)
 
   // ── Load profile + last check-in ──────────────────────────────────────────
 
@@ -278,7 +344,7 @@ export default function CheckInForm({ onSuccess }) {
       if (authError || !user) { setProfileError('Could not load your account.'); setProfileLoading(false); return }
 
       const [profileRes, lastCheckinRes] = await Promise.all([
-        supabase.from('profiles').select('id, full_name, coach_id, role').eq('id', user.id).single(),
+        supabase.from('profiles').select('id, full_name, coach_id, role, units').eq('id', user.id).single(),
         supabase.from('check_ins').select('week_number').eq('client_id', user.id)
           .order('submitted_at', { ascending: false }).limit(1).single(),
       ])
@@ -376,13 +442,25 @@ export default function CheckInForm({ onSuccess }) {
     setLoading(true)
     setError(null)
 
+    // Whatever's in dailyLog/measurements state was typed in the client's
+    // currently-selected display unit (see DayColumn/Step 2 labels) — convert
+    // back to canonical lbs/in exactly once, here, before anything derived
+    // from it (averages, the stored payload, the daily_log JSON snapshot)
+    // gets computed or persisted. Storage never varies by display preference.
+    const canonicalDailyLog = dailyLog.map(d => ({
+      ...d,
+      weight: toCanonicalWeight(d.weight, profile.units),
+    }))
+    const canonicalMeasurements = {
+      waist: toCanonicalMeasurement(measurements.waist, profile.units),
+      chest: toCanonicalMeasurement(measurements.chest, profile.units),
+      hips: toCanonicalMeasurement(measurements.hips, profile.units),
+      arms: toCanonicalMeasurement(measurements.arms, profile.units),
+      thighs: toCanonicalMeasurement(measurements.thighs, profile.units),
+    }
+
     // Calculate weekly averages from daily log
-    const weights = dailyLog.map(d => parseFloat(d.weight)).filter(Boolean)
-    const avgWeight = weights.length ? (weights.reduce((a, b) => a + b, 0) / weights.length).toFixed(1) : null
-    const totalSteps = dailyLog.map(d => parseInt(d.steps)).filter(Boolean)
-    const avgSteps = totalSteps.length ? Math.round(totalSteps.reduce((a, b) => a + b, 0) / totalSteps.length) : null
-    const sleeps = dailyLog.map(d => parseFloat(d.sleep)).filter(Boolean)
-    const avgSleep = sleeps.length ? (sleeps.reduce((a, b) => a + b, 0) / sleeps.length).toFixed(1) : null
+    const { avgWeight, avgSteps, avgSleep } = computeWeeklyAverages(canonicalDailyLog)
 
     const payload = {
       client_id: profile.id,
@@ -394,14 +472,14 @@ export default function CheckInForm({ onSuccess }) {
       sleep: avgSleep ? parseFloat(avgSleep) : null,
       steps: avgSteps,
       // Measurements (every 4 weeks)
-      waist: parseFloat(measurements.waist) || null,
-      chest: parseFloat(measurements.chest) || null,
-      hips: parseFloat(measurements.hips) || null,
-      arms: parseFloat(measurements.arms) || null,
-      thighs: parseFloat(measurements.thighs) || null,
+      waist: parseFloat(canonicalMeasurements.waist) || null,
+      chest: parseFloat(canonicalMeasurements.chest) || null,
+      hips: parseFloat(canonicalMeasurements.hips) || null,
+      arms: parseFloat(canonicalMeasurements.arms) || null,
+      thighs: parseFloat(canonicalMeasurements.thighs) || null,
       // Vitals
       notes: JSON.stringify({
-        daily_log: dailyLog,
+        daily_log: canonicalDailyLog,
         vitals,
         reflection,
         measurements_week: showMeasurements,
@@ -516,6 +594,7 @@ export default function CheckInForm({ onSuccess }) {
       {step === 1 && (
         <div style={cardStyle}>
           <SectionHeader number="02" title="Daily log" subtitle="Fill in each day of the week" />
+          <WeeklyAverageStrip dailyLog={dailyLog} weightUnit={weightUnit} />
           {/* Scroll hint */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <div style={{ fontSize: type.label, color: color.textOnLight.faint, fontFamily: font.mono, letterSpacing: '0.06em' }}>
@@ -532,7 +611,7 @@ export default function CheckInForm({ onSuccess }) {
             <div style={{ overflowX: 'auto', paddingBottom: 8 }}>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(170px, 1fr))', gap: 10, minWidth: 1190 }}>
                 {DAYS.map((day, i) => (
-                  <DayColumn key={day} day={day} date={WEEK_DATES[i]} index={i} data={dailyLog[i]} onChange={updateDay} />
+                  <DayColumn key={day} day={day} date={WEEK_DATES[i]} index={i} data={dailyLog[i]} onChange={updateDay} weightUnit={weightUnit} />
                 ))}
               </div>
             </div>
@@ -547,14 +626,14 @@ export default function CheckInForm({ onSuccess }) {
       {step === 2 && showMeasurements && (
         <div style={cardStyle}>
           <SectionHeader number="03" title="Measurements"
-            subtitle="Taken every 4 weeks — measurements in inches, weight in lbs" />
+            subtitle={`Taken every 4 weeks — measurements in ${measureUnit === 'cm' ? 'centimeters' : 'inches'}, weight in ${weightUnit}`} />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 16 }}>
             {[
-              { key: 'waist', label: 'Waist (in)' },
-              { key: 'chest', label: 'Chest (in)' },
-              { key: 'hips', label: 'Hips (in)' },
-              { key: 'arms', label: 'Arms (in)' },
-              { key: 'thighs', label: 'Thighs (in)' },
+              { key: 'waist', label: `Waist (${measureUnit})` },
+              { key: 'chest', label: `Chest (${measureUnit})` },
+              { key: 'hips', label: `Hips (${measureUnit})` },
+              { key: 'arms', label: `Arms (${measureUnit})` },
+              { key: 'thighs', label: `Thighs (${measureUnit})` },
             ].map(({ key, label }) => (
               <div key={key}>
                 <label style={labelStyle}>{label}</label>

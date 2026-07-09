@@ -4,6 +4,7 @@ import CheckInForm from './CheckInForm'
 import ClientSettings from './ClientSettings'
 import { color, font, type, labelStyle, badge, navItemStyle, displayStyle } from '../lib/theme'
 import { getEffectiveTargets, getActivePhase } from '../lib/dietPlan'
+import { displayWeight, displayMeasurement, weightUnitLabel, measurementUnitLabel } from '../lib/units'
 import MessageThread from './MessageThread'
 import '../styles/purema-responsive.css'
 
@@ -44,6 +45,21 @@ function daysAgo(ts) {
   if (days === 0) return 'Today'
   if (days === 1) return 'Yesterday'
   return `${days} days ago`
+}
+
+// Storage stays canonical lbs/in always — this only affects what's rendered.
+// A pure scale conversion (no offset), so converting per-row and diffing
+// (e.g. weightChange) gives the same result as diffing then converting.
+const MEASURE_KEYS = ['waist', 'chest', 'hips', 'arms', 'thighs']
+
+function withDisplayUnits(checkins, units) {
+  if (units !== 'metric') return checkins
+  return checkins.map(c => {
+    const out = { ...c }
+    if (c.weight != null) out.weight = displayWeight(c.weight, units).value
+    MEASURE_KEYS.forEach(k => { if (c[k] != null) out[k] = displayMeasurement(c[k], units).value })
+    return out
+  })
 }
 
 // ─── Shared styles ────────────────────────────────────────────────────────────
@@ -116,7 +132,13 @@ const MacroBar = ({ label, value, unit, color: barColor, target }) => {
 
 const TabHome = ({ profile, checkins, dietPhases, targetOverrides, mealPlan, onGoToCheckin }) => {
   const [mealPlanExpanded, setMealPlanExpanded] = useState(false)
+  const units = profile?.units
+  const displayCheckins = withDisplayUnits(checkins, units)
   const latest = checkins[0]
+  const displayLatest = displayCheckins[0]
+  const weightUnit = weightUnitLabel(units)
+  const measureUnit = measurementUnitLabel(units)
+  const displayTargetWeight = profile?.target_weight ? displayWeight(profile.target_weight, units).value : null
   const nextWeek = latest ? latest.week_number + 1 : 1
   const targets = latest ? getEffectiveTargets(dietPhases, targetOverrides, latest.week_number, profile) : null
   const hasCheckedInThisWeek = latest &&
@@ -175,8 +197,8 @@ const TabHome = ({ profile, checkins, dietPhases, targetOverrides, mealPlan, onG
               Week {latest.week_number} · {formatDate(latest.submitted_at)}
             </div>
             <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
-              <StatPill label="WEIGHT" value={latest.weight} unit="lbs" target={profile?.target_weight} />
-              <StatPill label="WAIST" value={latest.waist} unit="in" />
+              <StatPill label="WEIGHT" value={displayLatest.weight} unit={weightUnit} target={displayTargetWeight} />
+              <StatPill label="WAIST" value={displayLatest.waist} unit={measureUnit} />
               <StatPill label="SLEEP" value={latest.sleep} unit="hrs" />
             </div>
             {(latest.calories || latest.protein || latest.carbs || latest.fats) && (
@@ -275,7 +297,7 @@ const TabHome = ({ profile, checkins, dietPhases, targetOverrides, mealPlan, onG
         <div>
           <div style={{ ...S.label, marginBottom: 12 }}>History</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 10 }}>
-            {checkins.slice(1, 7).map(c => (
+            {displayCheckins.slice(1, 7).map(c => (
               <div key={c.id} style={{ ...S.card, display: 'flex', alignItems: 'center',
                 justifyContent: 'space-between', padding: '14px 16px' }}>
                 <div>
@@ -284,7 +306,7 @@ const TabHome = ({ profile, checkins, dietPhases, targetOverrides, mealPlan, onG
                     {c.imported_backfill && <ImportedTag />}
                   </div>
                   <div style={{ fontSize: type.label, color: color.textOnLight.faint, marginTop: 2 }}>
-                    {formatDate(c.submitted_at)}{c.weight ? ` · ${c.weight} lbs` : ''}
+                    {formatDate(c.submitted_at)}{c.weight ? ` · ${c.weight} ${weightUnit}` : ''}
                   </div>
                 </div>
                 <span style={badge(c.coach_feedback ? 'success' : 'neutral')}>
@@ -323,11 +345,15 @@ const TabHome = ({ profile, checkins, dietPhases, targetOverrides, mealPlan, onG
 
 const TabProgress = ({ profile, checkins }) => {
   const [activeSection, setActiveSection] = useState('overview')
+  const units = profile?.units
+  const weightUnit = weightUnitLabel(units)
+  const measureUnit = measurementUnitLabel(units)
 
   // Sort check-ins chronologically for charts
-  const sorted = [...checkins]
-    .filter(c => c.week_number)
-    .sort((a, b) => a.week_number - b.week_number)
+  const sorted = withDisplayUnits(
+    [...checkins].filter(c => c.week_number).sort((a, b) => a.week_number - b.week_number),
+    units
+  )
 
   // ── Countdown timer ──────────────────────────────────────────────────────
   const showDate = profile?.show_date ? new Date(profile.show_date) : null
@@ -359,9 +385,10 @@ const TabProgress = ({ profile, checkins }) => {
 
   // ── Measurement data ─────────────────────────────────────────────────────
   const measureKeys = ['waist', 'chest', 'hips', 'arms', 'thighs']
-  const latestMeasure = [...checkins]
-    .sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at))
-    .find(c => measureKeys.some(k => c[k]))
+  const latestMeasure = withDisplayUnits(
+    [...checkins].sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at)),
+    units
+  ).find(c => measureKeys.some(k => c[k]))
 
   // ── Feedback history ─────────────────────────────────────────────────────
   const feedbackHistory = [...checkins]
@@ -523,7 +550,7 @@ const TabProgress = ({ profile, checkins }) => {
                 <div style={{ fontSize: 28, fontWeight: 300, letterSpacing: '-0.02em', fontFamily: font.mono,
                   color: parseFloat(weightChange) < 0 ? color.forest : parseFloat(weightChange) > 0 ? color.alert : color.textOnLight.secondary }}>
                   {parseFloat(weightChange) > 0 ? '+' : ''}{weightChange}
-                  <span style={{ fontSize: 13, marginLeft: 3 }}>lbs</span>
+                  <span style={{ fontSize: 13, marginLeft: 3 }}>{weightUnit}</span>
                 </div>
                 <div style={{ ...S.label, marginTop: 4 }}>Total change</div>
               </div>
@@ -541,7 +568,7 @@ const TabProgress = ({ profile, checkins }) => {
           {/* Weight preview */}
           {weightData.length >= 2 && (
             <div onClick={() => setActiveSection('weight')} style={{ cursor: 'pointer' }}>
-              <MiniChart data={sorted} valueKey="weight" label="Weight trend" unit="lbs" />
+              <MiniChart data={sorted} valueKey="weight" label="Weight trend" unit={weightUnit} />
             </div>
           )}
 
@@ -563,7 +590,7 @@ const TabProgress = ({ profile, checkins }) => {
       {/* ── Weight ── */}
       {activeSection === 'weight' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <MiniChart data={sorted} valueKey="weight" label="Weight" unit="lbs" color={color.forest} />
+          <MiniChart data={sorted} valueKey="weight" label="Weight" unit={weightUnit} color={color.forest} />
           <MiniChart data={sorted} valueKey="sleep" label="Avg sleep" unit="hrs" color="#7C6AF5" />
           <MiniChart data={sorted} valueKey="steps" label="Avg steps" unit="" color={color.gold} />
         </div>
@@ -586,7 +613,7 @@ const TabProgress = ({ profile, checkins }) => {
                   ].map(({ key, label }) => latestMeasure[key] ? (
                     <div key={key} style={{ background: color.bone, borderRadius: 10, padding: '12px 14px' }}>
                       <div style={{ fontSize: 20, fontWeight: 500, color: color.textOnLight.primary, fontFamily: font.mono }}>
-                        {latestMeasure[key]}<span style={{ fontSize: type.label, color: color.textOnLight.faint, marginLeft: 2 }}>in</span>
+                        {latestMeasure[key]}<span style={{ fontSize: type.label, color: color.textOnLight.faint, marginLeft: 2 }}>{measureUnit}</span>
                       </div>
                       <div style={{ ...S.label, marginTop: 4 }}>{label}</div>
                     </div>
@@ -596,7 +623,7 @@ const TabProgress = ({ profile, checkins }) => {
                   Week {latestMeasure.week_number} · {new Date(latestMeasure.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                 </div>
               </div>
-              <MiniChart data={sorted} valueKey="waist" label="Waist" unit="in" color={color.forest} />
+              <MiniChart data={sorted} valueKey="waist" label="Waist" unit={measureUnit} color={color.forest} />
             </>
           ) : (
             <div style={{ ...S.card, textAlign: 'center', padding: '40px 20px', color: color.textOnLight.secondary, fontSize: type.body }}>
