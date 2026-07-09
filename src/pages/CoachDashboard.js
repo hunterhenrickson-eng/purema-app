@@ -4,6 +4,7 @@ import { color, font, type, labelStyle, badge, navItemStyle, displayStyle } from
 import '../styles/purema-responsive.css'
 import InviteClient, { createInvite } from '../components/InviteClient'
 import { PLANS, planById, tierLimit, isSubscribed, isPastDue, isSuspended } from '../lib/billing'
+import { isAdminSuspended, isDeleted } from '../lib/adminPermissions'
 import { getActivePhase } from '../lib/dietPlan'
 import ImportHistory from '../components/ImportHistory'
 import MessageThread from '../components/MessageThread'
@@ -3149,6 +3150,30 @@ export default function CoachDashboard() {
           style={{ padding: '10px 22px', borderRadius: 8, border: 'none', background: color.forest, color: color.sage,
             fontFamily: font.sans, fontSize: type.body, fontWeight: 500, cursor: 'pointer' }}>
           Try again
+        </button>
+      </div>
+    )
+  }
+
+  // Admin-controlled account status — separate from (and takes priority
+  // over) the Stripe-driven gate below, since a manual admin action should
+  // never be masked by a payment-status screen. No "update payment method"
+  // button here; this isn't a billing problem.
+  if (!loading && (isAdminSuspended(profile) || isDeleted(profile))) {
+    return (
+      <div style={{ minHeight: '100vh', background: color.bone, display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center', padding: 24, fontFamily: font.sans, gap: 20, textAlign: 'center' }}>
+        <Mark size={40} />
+        <div style={{ ...displayStyle, fontSize: type.heading, color: color.textOnLight.primary, maxWidth: 480 }}>
+          Your account has been suspended
+        </div>
+        <div style={{ fontSize: type.body, color: color.textOnLight.secondary, maxWidth: 420, lineHeight: 1.6 }}>
+          {profile?.admin_suspended_reason || 'Access to your dashboard has been paused by Purema. Contact support if you believe this is a mistake.'}
+        </div>
+        <button onClick={() => supabase.auth.signOut()}
+          style={{ fontSize: type.label, color: color.textOnLight.faint, fontFamily: font.mono, letterSpacing: '0.1em',
+            background: 'transparent', border: 'none', cursor: 'pointer' }}>
+          SIGN OUT
         </button>
       </div>
     )

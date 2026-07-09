@@ -26,3 +26,15 @@ export async function hasPermission(userId, permissionKey) {
 
   return data === true
 }
+
+// admin_suspended/deleted_at are admin-controlled account status fields on
+// profiles, kept deliberately separate from billing.js's isSuspended/
+// isPastDue (which reflect Stripe's payment_status) so a manual admin
+// action and an automatic billing event can never overwrite each other.
+export function isAdminSuspended(profile) {
+  return profile?.admin_suspended === true
+}
+
+export function isDeleted(profile) {
+  return !!profile?.deleted_at
+}
