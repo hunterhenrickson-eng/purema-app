@@ -2,7 +2,9 @@ import { useState, useEffect, useCallback } from 'react'
 import Papa from 'papaparse'
 import { supabase } from '../lib/supabase'
 import { createInvite } from '../components/InviteClient'
-import { color, font, type, labelStyle, displayStyle, navItemStyle } from '../lib/theme'
+import { color, font, type, labelStyle, badge, displayStyle, navItemStyle } from '../lib/theme'
+import { hasPermission } from '../lib/adminPermissions'
+import { planById } from '../lib/billing'
 
 function downloadFile(content, filename, mimeType) {
   const blob = new Blob([content], { type: mimeType })
@@ -321,9 +323,296 @@ const AuditLogViewer = () => {
   )
 }
 
+// Account management — view/suspend/restore/soft-delete coach accounts.
+// Every mutating action is gated individually by hasPermission() (not just
+// the blanket /admin route check), per the Phase 5 spec: accounts.view for
+// the list itself, accounts.suspend/accounts.restore/accounts.delete for
+// each respective button. Suspend/delete require a typed confirmation
+// (name for delete, since it's the more destructive of the two) rather than
+// a bare click, matching the weight of what they do — this UI is the only
+// thing standing between a click and a coach losing dashboard access.
+const AccountsPanel = ({ actorId }) => {
+  const [perms, setPerms] = useState(null)
+  const [accounts, setAccounts] = useState(null)
+  const [error, setError] = useState(null)
+  const [actionError, setActionError] = useState(null)
+  const [expandedId, setExpandedId] = useState(null)
+  const [expandedMode, setExpandedMode] = useState(null) // 'suspend' | 'delete'
+  const [reason, setReason] = useState('')
+  const [confirmName, setConfirmName] = useState('')
+  const [actingOn, setActingOn] = useState(null)
+
+  const loadAccounts = useCallback(async () => {
+    const { data, error: queryError } = await supabase
+      .from('profiles')
+      .select('id, full_name, email, subscription_tier, subscription_status, payment_status, admin_suspended, admin_suspended_reason, deleted_at')
+      .eq('role', 'coach')
+      .order('full_name')
+
+    if (queryError) { setError(queryError.message); return }
+    setAccounts(data || [])
+  }, [])
+
+  useEffect(() => {
+    async function init() {
+      const [view, suspend, restore, del] = await Promise.all([
+        hasPermission(actorId, 'accounts.view'),
+        hasPermission(actorId, 'accounts.suspend'),
+        hasPermission(actorId, 'accounts.restore'),
+        hasPermission(actorId, 'accounts.delete'),
+      ])
+      setPerms({ view, suspend, restore, del })
+      if (view) await loadAccounts()
+    }
+    if (actorId) init()
+  }, [actorId, loadAccounts])
+
+  const closeExpanded = () => {
+    setExpandedId(null)
+    setExpandedMode(null)
+    setReason('')
+    setConfirmName('')
+    setActionError(null)
+  }
+
+  // Best-effort, same as InviteEmployeePanel's logging — the account action
+  // itself already succeeded by the time this runs, so a logging failure
+  // shouldn't surface as an action failure or block the UI from reflecting
+  // what the database now actually has.
+  const logAction = (action, target, beforeValue, afterValue) => {
+    supabase.from('admin_audit_log').insert({
+      actor_id: actorId, action, target_type: 'profile', target_id: target.id,
+      before_value: beforeValue, after_value: afterValue,
+    }).then(({ error: logError }) => {
+      if (logError) console.error('Audit log write failed:', logError.message)
+    })
+  }
+
+  // Goes through a security-definer RPC rather than a raw .update() — RLS
+  // has no path today for one user to update a different user's profile row
+  // for this purpose, and a policy broad enough to open one would have no
+  // column-level restriction (same pitfall as the earlier self-update
+  // policy this session), letting any admin edit a coach's other fields
+  // too. The RPC only ever touches admin_suspended/admin_suspended_at/
+  // admin_suspended_reason/deleted_at and does its own permission check.
+  const runAction = async (targetId, action, reasonArg) => {
+    const { data, error: rpcError } = await supabase.rpc('admin_set_account_status', {
+      p_target_id: targetId, p_action: action, p_reason: reasonArg ?? null,
+    })
+    if (rpcError || !data) throw new Error(rpcError?.message || 'Action did not apply — check your permissions.')
+    return data
+  }
+
+  const handleSuspend = async (target) => {
+    if (!reason.trim()) { setActionError('A reason is required.'); return }
+    setActingOn(target.id)
+    setActionError(null)
+    try {
+      const before = { admin_suspended: target.admin_suspended, admin_suspended_reason: target.admin_suspended_reason }
+      const updated = await runAction(target.id, 'suspend', reason.trim())
+      setAccounts(prev => prev.map(a => a.id === target.id ? updated : a))
+      closeExpanded()
+      logAction('account.suspended', target, before, { admin_suspended: true, admin_suspended_reason: reason.trim() })
+    } catch (e) {
+      setActionError(e.message)
+    } finally {
+      setActingOn(null)
+    }
+  }
+
+  const handleRestore = async (target) => {
+    setActingOn(target.id)
+    setActionError(null)
+    try {
+      const wasDeleted = !!target.deleted_at
+      const before = { admin_suspended: target.admin_suspended, deleted_at: target.deleted_at }
+      const updated = await runAction(target.id, wasDeleted ? 'undelete' : 'restore')
+      setAccounts(prev => prev.map(a => a.id === target.id ? updated : a))
+      logAction(wasDeleted ? 'account.undeleted' : 'account.restored', target, before,
+        wasDeleted ? { deleted_at: null } : { admin_suspended: false, admin_suspended_reason: null })
+    } catch (e) {
+      setActionError(e.message)
+    } finally {
+      setActingOn(null)
+    }
+  }
+
+  const handleDelete = async (target) => {
+    // Falls back to email when full_name is unset — never compares against
+    // an empty string, which would let a blank confirm box pass.
+    const expected = target.full_name || target.email
+    if (!confirmName.trim() || confirmName.trim() !== expected) {
+      setActionError(`Type "${expected}" exactly to confirm.`)
+      return
+    }
+    setActingOn(target.id)
+    setActionError(null)
+    try {
+      const before = { deleted_at: target.deleted_at }
+      const updated = await runAction(target.id, 'delete')
+      setAccounts(prev => prev.map(a => a.id === target.id ? updated : a))
+      closeExpanded()
+      logAction('account.deleted', target, before, { deleted_at: updated.deleted_at })
+    } catch (e) {
+      setActionError(e.message)
+    } finally {
+      setActingOn(null)
+    }
+  }
+
+  const statusOf = (a) => {
+    if (a.deleted_at) return { kind: 'alert', label: 'Deleted' }
+    if (a.admin_suspended) return { kind: 'alert', label: 'Suspended' }
+    if (a.payment_status === 'suspended') return { kind: 'warning', label: 'Payment suspended' }
+    if (a.payment_status === 'past_due') return { kind: 'warning', label: 'Past due' }
+    return { kind: 'success', label: 'Active' }
+  }
+
+  const actionBtnStyle = {
+    padding: '6px 12px', borderRadius: 6, border: `1px solid ${color.borderLight}`,
+    background: 'transparent', color: color.textOnLight.secondary, fontFamily: font.sans,
+    fontSize: type.label, cursor: 'pointer', whiteSpace: 'nowrap',
+  }
+
+  if (perms === null) {
+    return <div style={{ fontSize: type.body, color: color.textOnLight.secondary }}>Loading...</div>
+  }
+
+  if (!perms.view) {
+    return (
+      <div style={{ background: color.surfaceLight, border: `0.5px solid ${color.borderLight}`,
+        borderRadius: 12, padding: 20, fontSize: type.body, color: color.textOnLight.secondary }}>
+        You don't have permission to view accounts.
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ background: color.surfaceLight, border: `0.5px solid ${color.borderLight}`,
+      borderRadius: 12, padding: 20 }}>
+      <div style={{ ...labelStyle(false), marginBottom: 14 }}>Coach accounts</div>
+
+      {error && <div style={{ fontSize: type.body, color: color.alert, marginBottom: 12 }}>{error}</div>}
+
+      {!accounts ? (
+        <div style={{ fontSize: type.body, color: color.textOnLight.secondary }}>Loading...</div>
+      ) : accounts.length === 0 ? (
+        <div style={{ fontSize: type.body, color: color.textOnLight.secondary, textAlign: 'center', padding: '32px 0' }}>
+          No coach accounts yet.
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {accounts.map(a => {
+            const status = statusOf(a)
+            const plan = planById(a.subscription_tier)
+            const isExpanded = expandedId === a.id
+            return (
+              <div key={a.id} style={{ background: color.bone, borderRadius: 8, padding: '12px 14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: type.body, fontWeight: 500, color: color.textOnLight.primary }}>
+                        {a.full_name || '—'}
+                      </span>
+                      <span style={badge(status.kind)}>{status.label}</span>
+                    </div>
+                    <div style={{ fontSize: type.label, color: color.textOnLight.faint, marginTop: 2 }}>
+                      {a.email} · {plan?.name || 'No plan'}
+                    </div>
+                    {a.admin_suspended && a.admin_suspended_reason && (
+                      <div style={{ fontSize: type.label, color: color.textOnLight.secondary, marginTop: 4 }}>
+                        "{a.admin_suspended_reason}"
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                    {!a.deleted_at && !a.admin_suspended && perms.suspend && (
+                      <button style={actionBtnStyle}
+                        onClick={() => { closeExpanded(); setExpandedId(a.id); setExpandedMode('suspend') }}>
+                        Suspend
+                      </button>
+                    )}
+                    {!a.deleted_at && a.admin_suspended && perms.restore && (
+                      <button style={actionBtnStyle} disabled={actingOn === a.id}
+                        onClick={() => handleRestore(a)}>
+                        {actingOn === a.id ? 'Restoring...' : 'Restore'}
+                      </button>
+                    )}
+                    {a.deleted_at && perms.restore && (
+                      <button style={actionBtnStyle} disabled={actingOn === a.id}
+                        onClick={() => handleRestore(a)}>
+                        {actingOn === a.id ? 'Restoring...' : 'Undelete'}
+                      </button>
+                    )}
+                    {!a.deleted_at && perms.del && (
+                      <button style={{ ...actionBtnStyle, borderColor: color.alert, color: color.alert }}
+                        onClick={() => { closeExpanded(); setExpandedId(a.id); setExpandedMode('delete') }}>
+                        Delete
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {isExpanded && expandedMode === 'suspend' && (
+                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: `0.5px solid ${color.borderLight}` }}>
+                    <label style={labelStyle(false)}>Reason (shown to the coach)</label>
+                    <textarea rows={2} value={reason} onChange={e => setReason(e.target.value)}
+                      placeholder="e.g. Repeated ToS violation — contact support to appeal"
+                      style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: `1px solid ${color.borderLight}`,
+                        fontFamily: font.sans, fontSize: type.body, outline: 'none', color: color.textOnLight.primary,
+                        resize: 'none', boxSizing: 'border-box', marginTop: 4 }} />
+                    <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                      <button disabled={actingOn === a.id} onClick={() => handleSuspend(a)}
+                        style={{ padding: '6px 14px', borderRadius: 6, border: 'none', background: color.alert,
+                          color: '#fff', fontFamily: font.sans, fontSize: type.label, fontWeight: 500,
+                          cursor: actingOn === a.id ? 'not-allowed' : 'pointer' }}>
+                        {actingOn === a.id ? 'Suspending...' : 'Confirm suspend'}
+                      </button>
+                      <button onClick={closeExpanded} style={actionBtnStyle}>Cancel</button>
+                    </div>
+                  </div>
+                )}
+
+                {isExpanded && expandedMode === 'delete' && (
+                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: `0.5px solid ${color.borderLight}` }}>
+                    <div style={{ fontSize: type.body, color: color.textOnLight.primary, marginBottom: 8 }}>
+                      This soft-deletes the account — it stays in the database (nothing is destroyed) but the coach
+                      loses dashboard access immediately. Type <strong>{a.full_name || a.email}</strong> to confirm.
+                    </div>
+                    <input type="text" value={confirmName} onChange={e => setConfirmName(e.target.value)}
+                      placeholder={a.full_name || a.email}
+                      style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: `1px solid ${color.borderLight}`,
+                        fontFamily: font.sans, fontSize: type.body, outline: 'none', color: color.textOnLight.primary,
+                        boxSizing: 'border-box' }} />
+                    <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                      <button disabled={actingOn === a.id} onClick={() => handleDelete(a)}
+                        style={{ padding: '6px 14px', borderRadius: 6, border: 'none', background: color.alert,
+                          color: '#fff', fontFamily: font.sans, fontSize: type.label, fontWeight: 500,
+                          cursor: actingOn === a.id ? 'not-allowed' : 'pointer' }}>
+                        {actingOn === a.id ? 'Deleting...' : 'Confirm delete'}
+                      </button>
+                      <button onClick={closeExpanded} style={actionBtnStyle}>Cancel</button>
+                    </div>
+                  </div>
+                )}
+
+                {isExpanded && actionError && (
+                  <div style={{ fontSize: type.label, color: color.alert, marginTop: 8 }}>{actionError}</div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 const ADMIN_TABS = [
   { id: 'invite', label: 'Invite employee' },
   { id: 'audit', label: 'Audit log' },
+  { id: 'accounts', label: 'Accounts' },
 ]
 
 export default function AdminDashboard() {
@@ -362,6 +651,7 @@ export default function AdminDashboard() {
 
       {profile && activeTab === 'invite' && <InviteEmployeePanel actorId={profile.id} />}
       {profile && activeTab === 'audit' && <AuditLogViewer />}
+      {profile && activeTab === 'accounts' && <AccountsPanel actorId={profile.id} />}
     </div>
   )
 }
