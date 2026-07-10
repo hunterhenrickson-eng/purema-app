@@ -5,6 +5,7 @@ import { createInvite } from '../components/InviteClient'
 import { color, font, type, labelStyle, badge, displayStyle, navItemStyle } from '../lib/theme'
 import { hasPermission } from '../lib/adminPermissions'
 import { planById } from '../lib/billing'
+import { startImpersonation } from '../lib/impersonation'
 
 function downloadFile(content, filename, mimeType) {
   const blob = new Blob([content], { type: mimeType })
@@ -341,6 +342,9 @@ const AccountsPanel = ({ actorId }) => {
   const [reason, setReason] = useState('')
   const [confirmName, setConfirmName] = useState('')
   const [actingOn, setActingOn] = useState(null)
+  const [impersonating, setImpersonating] = useState(null)
+  const [impersonateError, setImpersonateError] = useState(null)
+  const [impersonateErrorTargetId, setImpersonateErrorTargetId] = useState(null)
 
   const loadAccounts = useCallback(async () => {
     const { data, error: queryError } = await supabase
@@ -355,13 +359,15 @@ const AccountsPanel = ({ actorId }) => {
 
   useEffect(() => {
     async function init() {
-      const [view, suspend, restore, del] = await Promise.all([
+      const [view, suspend, restore, del, impersonate, impersonateReadonly] = await Promise.all([
         hasPermission(actorId, 'accounts.view'),
         hasPermission(actorId, 'accounts.suspend'),
         hasPermission(actorId, 'accounts.restore'),
         hasPermission(actorId, 'accounts.delete'),
+        hasPermission(actorId, 'accounts.impersonate'),
+        hasPermission(actorId, 'support.impersonate_readonly'),
       ])
-      setPerms({ view, suspend, restore, del })
+      setPerms({ view, suspend, restore, del, impersonate, impersonateReadonly })
       if (view) await loadAccounts()
     }
     if (actorId) init()
@@ -460,6 +466,24 @@ const AccountsPanel = ({ actorId }) => {
     }
   }
 
+  // Prefers full impersonation when the actor holds both permissions — a
+  // Support-role actor only ever has the read-only one, so this naturally
+  // resolves to the weaker mode for them without needing a mode picker UI.
+  const handleImpersonate = async (target) => {
+    const mode = perms.impersonate ? 'full' : 'readonly'
+    setImpersonating(target.id)
+    setImpersonateError(null)
+    setImpersonateErrorTargetId(null)
+    try {
+      await startImpersonation(target.id, mode)
+      window.location.href = '/'
+    } catch (e) {
+      setImpersonateError(e.message)
+      setImpersonateErrorTargetId(target.id)
+      setImpersonating(null)
+    }
+  }
+
   const statusOf = (a) => {
     if (a.deleted_at) return { kind: 'alert', label: 'Deleted' }
     if (a.admin_suspended) return { kind: 'alert', label: 'Suspended' }
@@ -527,6 +551,12 @@ const AccountsPanel = ({ actorId }) => {
                   </div>
 
                   <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                    {!a.deleted_at && !a.admin_suspended && (perms.impersonate || perms.impersonateReadonly) && (
+                      <button style={actionBtnStyle} disabled={impersonating === a.id}
+                        onClick={() => handleImpersonate(a)}>
+                        {impersonating === a.id ? 'Starting...' : perms.impersonate ? 'Impersonate' : 'Impersonate (read-only)'}
+                      </button>
+                    )}
                     {!a.deleted_at && !a.admin_suspended && perms.suspend && (
                       <button style={actionBtnStyle}
                         onClick={() => { closeExpanded(); setExpandedId(a.id); setExpandedMode('suspend') }}>
@@ -599,6 +629,9 @@ const AccountsPanel = ({ actorId }) => {
 
                 {isExpanded && actionError && (
                   <div style={{ fontSize: type.label, color: color.alert, marginTop: 8 }}>{actionError}</div>
+                )}
+                {impersonateErrorTargetId === a.id && impersonateError && (
+                  <div style={{ fontSize: type.label, color: color.alert, marginTop: 8 }}>{impersonateError}</div>
                 )}
               </div>
             )
