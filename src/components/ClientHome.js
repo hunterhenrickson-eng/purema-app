@@ -606,10 +606,6 @@ const TabProgress = ({ profile, checkins }) => {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
                   {[
                     { key: 'waist', label: 'Waist' },
-                    { key: 'chest', label: 'Chest' },
-                    { key: 'hips', label: 'Hips' },
-                    { key: 'arms', label: 'Arms' },
-                    { key: 'thighs', label: 'Thighs' },
                   ].map(({ key, label }) => latestMeasure[key] ? (
                     <div key={key} style={{ background: color.bone, borderRadius: 10, padding: '12px 14px' }}>
                       <div style={{ fontSize: 20, fontWeight: 500, color: color.textOnLight.primary, fontFamily: font.mono }}>
@@ -624,6 +620,10 @@ const TabProgress = ({ profile, checkins }) => {
                 </div>
               </div>
               <MiniChart data={sorted} valueKey="waist" label="Waist" unit={measureUnit} color={color.forest} />
+              <MiniChart data={sorted} valueKey="chest" label="Chest" unit={measureUnit} color={color.forest} />
+              <MiniChart data={sorted} valueKey="hips" label="Hips" unit={measureUnit} color={color.forest} />
+              <MiniChart data={sorted} valueKey="arms" label="Arms" unit={measureUnit} color={color.forest} />
+              <MiniChart data={sorted} valueKey="thighs" label="Thighs" unit={measureUnit} color={color.forest} />
             </>
           ) : (
             <div style={{ ...S.card, textAlign: 'center', padding: '40px 20px', color: color.textOnLight.secondary, fontSize: type.body }}>
