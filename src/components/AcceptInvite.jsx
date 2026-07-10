@@ -39,15 +39,17 @@ export default function AcceptInvite({ token }) {
 
   useEffect(() => {
     async function validateToken() {
-      const { data, error } = await supabase
-        .from('invites')
-        .select('*')
-        .eq('token', token)
-        .single();
+      // Goes through a security-definer RPC (scoped to an exact token match,
+      // unused, unexpired) rather than a direct table SELECT — the invites
+      // table itself no longer allows public reads at all. One side effect:
+      // the RPC can't distinguish "never existed" from "already used" from
+      // "expired" (all three just return no row) — collapsed into one
+      // generic message below rather than the three separate ones this used
+      // to show, since that distinction isn't recoverable without exposing
+      // more than a visitor with a dead/wrong token should be able to probe.
+      const { data, error } = await supabase.rpc('get_invite_by_token', { p_token: token })
 
-      if (error || !data) { setStatus('invalid'); return; }
-      if (data.used) { setStatus('used'); return; }
-      if (new Date(data.expires_at) < new Date()) { setStatus('expired'); return; }
+      if (error || !data?.id) { setStatus('invalid'); return; }
 
       setInvite(data);
       setStatus('valid');
@@ -95,16 +97,14 @@ export default function AcceptInvite({ token }) {
       return;
     }
 
-    await supabase.from('invites').update({ used: true }).eq('id', invite.id);
+    await supabase.rpc('mark_invite_used', { p_token: token });
 
     setSubmitting(false);
     window.location.href = '/';
   }
 
   if (status === 'loading') return <Shell><p style={{ color: color.textOnDark.secondary, fontSize: type.body, margin: 0 }}>Loading invite...</p></Shell>;
-  if (status === 'invalid') return <Shell><p style={{ color: color.textOnDark.secondary, fontSize: type.body, margin: 0 }}>This invite link is invalid.</p></Shell>;
-  if (status === 'used') return <Shell><p style={{ color: color.textOnDark.secondary, fontSize: type.body, margin: 0 }}>This invite has already been used.</p></Shell>;
-  if (status === 'expired') return <Shell><p style={{ color: color.textOnDark.secondary, fontSize: type.body, margin: 0 }}>This invite link has expired.</p></Shell>;
+  if (status === 'invalid') return <Shell><p style={{ color: color.textOnDark.secondary, fontSize: type.body, margin: 0 }}>This invite link is invalid, expired, or already used.</p></Shell>;
 
   return (
     <Shell>
