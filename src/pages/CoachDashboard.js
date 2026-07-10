@@ -11,6 +11,7 @@ import { isAdminSuspended, isDeleted } from '../lib/adminPermissions'
 import { getActivePhase } from '../lib/dietPlan'
 import ImportHistory from '../components/ImportHistory'
 import MessageThread from '../components/MessageThread'
+import ProgressPhotoGallery from '../components/ProgressPhotos'
 
 // One of the four screens wired to the appearance toggle (profiles.appearance
 // — see App.js and src/styles/tokens.css). This file alone has 340+
@@ -1607,6 +1608,7 @@ const TabClients = ({ clients, checkins, profile, onStatusChange, onTargetsSave,
   const [expandedId, setExpandedId] = useState(null)
   const [expandedPlanId, setExpandedPlanId] = useState(null)
   const [expandedFeedbackId, setExpandedFeedbackId] = useState(null)
+  const [expandedPhotosId, setExpandedPhotosId] = useState(null)
   const [importingClient, setImportingClient] = useState(null)
   const activeClients = clients.filter(c => !c.status || c.status === 'active')
   const limit = tierLimit(profile?.subscription_tier)
@@ -1685,6 +1687,14 @@ const TabClients = ({ clients, checkins, profile, onStatusChange, onTargetsSave,
               Feedback history
             </button>
           )}
+          {client.status !== 'archived' && (
+            <button onClick={() => setExpandedPhotosId(expandedPhotosId === client.id ? null : client.id)}
+              style={{ fontSize: type.label, padding: '4px 10px', borderRadius: 6, border: `1px solid ${color.borderLight}`,
+                background: expandedPhotosId === client.id ? color.bone : 'transparent', color: color.textOnLight.secondary,
+                cursor: 'pointer', fontFamily: font.mono }}>
+              Progress photos
+            </button>
+          )}
           {(!client.status || client.status === 'active') && (
             <button onClick={() => changeStatus('paused')}
               style={{ fontSize: type.label, padding: '4px 10px', borderRadius: 6, border: `1px solid ${color.borderLight}`,
@@ -1729,6 +1739,13 @@ const TabClients = ({ clients, checkins, profile, onStatusChange, onTargetsSave,
       )}
       {expandedFeedbackId === client.id && (
         <FeedbackHistoryPanel client={client} checkins={checkins} />
+      )}
+      {expandedPhotosId === client.id && (
+        <div style={{ marginTop: 10, paddingTop: 14, borderTop: `0.5px solid ${color.borderSubtle}` }}>
+          <ProgressPhotoGallery clientId={client.id} coachId={profile?.id}
+            checkins={checkins.filter(c => c.client_id === client.id).sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at))}
+            canUpload={false} />
+        </div>
       )}
     </div>
     )

@@ -9,6 +9,7 @@ import {
 import { getEffectiveTargets, getActivePhase } from '../lib/dietPlan'
 import { displayWeight, displayMeasurement, weightUnitLabel, measurementUnitLabel } from '../lib/units'
 import MessageThread from './MessageThread'
+import ProgressPhotoGallery from './ProgressPhotos'
 import '../styles/purema-responsive.css'
 
 // This file is one of the four screens wired to the appearance toggle
@@ -369,6 +370,7 @@ const TabHome = ({ profile, checkins, dietPhases, targetOverrides, mealPlan, onG
 
 const TabProgress = ({ profile, checkins }) => {
   const [activeSection, setActiveSection] = useState('overview')
+  const [highlightWeek, setHighlightWeek] = useState(null)
   const units = profile?.units
   const weightUnit = weightUnitLabel(units)
   const measureUnit = measurementUnitLabel(units)
@@ -507,6 +509,7 @@ const TabProgress = ({ profile, checkins }) => {
     { id: 'overview', label: 'Overview' },
     { id: 'weight', label: 'Weight' },
     { id: 'measurements', label: 'Measurements' },
+    { id: 'photos', label: 'Photos' },
     { id: 'feedback', label: 'Feedback' },
   ]
 
@@ -657,32 +660,68 @@ const TabProgress = ({ profile, checkins }) => {
         </div>
       )}
 
-      {/* ── Feedback history ── */}
-      {activeSection === 'feedback' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {feedbackHistory.length === 0 ? (
-            <div style={{ ...S.card, textAlign: 'center', padding: '40px 20px', color: color.textOnLight.secondary, fontSize: type.body }}>
-              No feedback yet. Your coach's responses will appear here.
-            </div>
-          ) : feedbackHistory.map(c => (
-            <div key={c.id} style={{ ...S.card, borderRadius: 12, padding: 20 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <span style={{ fontSize: type.label, color: color.forest, fontFamily: font.mono, letterSpacing: '0.06em', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  WEEK {c.week_number}
-                  {c.imported_backfill && <ImportedTag />}
-                </span>
-                <span style={{ fontSize: type.label, color: color.textOnLight.faint, fontFamily: font.mono }}>
-                  {new Date(c.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                </span>
-              </div>
-              <div style={{ fontSize: type.body, color: color.textOnLight.primary, lineHeight: 1.8 }}>
-                {c.coach_feedback}
-              </div>
-            </div>
-          ))}
-        </div>
+      {/* ── Progress photos ── */}
+      {activeSection === 'photos' && (
+        <ProgressPhotoGallery clientId={profile.id} coachId={profile.coach_id} checkins={checkins}
+          canUpload
+          onJumpToWeek={(week) => { setActiveSection('feedback'); setHighlightWeek(week) }} />
       )}
 
+      {/* ── Feedback history ── */}
+      {activeSection === 'feedback' && (
+        <FeedbackSection feedbackHistory={feedbackHistory} highlightWeek={highlightWeek}
+          onHighlightHandled={() => setHighlightWeek(null)} />
+      )}
+
+    </div>
+  )
+}
+
+// The "Week N" badge on a linked progress photo jumps here and highlights
+// the matching entry — the closest thing to a per-check-in detail view that
+// exists on the client side (there's no standalone check-in page to link
+// to). Falls back to a clear "no feedback for that week yet" message rather
+// than a silent no-op if the coach hasn't reviewed that week.
+const FeedbackSection = ({ feedbackHistory, highlightWeek, onHighlightHandled }) => {
+  useEffect(() => {
+    if (highlightWeek == null) return
+    const el = document.getElementById(`feedback-week-${highlightWeek}`)
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    const t = setTimeout(() => onHighlightHandled?.(), 2500)
+    return () => clearTimeout(t)
+  }, [highlightWeek, onHighlightHandled])
+
+  const highlightedHasEntry = highlightWeek != null && feedbackHistory.some(c => c.week_number === highlightWeek)
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {highlightWeek != null && !highlightedHasEntry && (
+        <div style={{ ...S.card, padding: '12px 16px', fontSize: type.body, color: color.textOnLight.secondary }}>
+          No feedback yet for Week {highlightWeek}.
+        </div>
+      )}
+      {feedbackHistory.length === 0 ? (
+        <div style={{ ...S.card, textAlign: 'center', padding: '40px 20px', color: color.textOnLight.secondary, fontSize: type.body }}>
+          No feedback yet. Your coach's responses will appear here.
+        </div>
+      ) : feedbackHistory.map(c => (
+        <div key={c.id} id={`feedback-week-${c.week_number}`} style={{ ...S.card, borderRadius: 12, padding: 20,
+          border: `${c.week_number === highlightWeek ? '1.5px' : '0.5px'} solid ${c.week_number === highlightWeek ? color.forest : color.borderLight}`,
+          transition: 'border-color 0.3s ease' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <span style={{ fontSize: type.label, color: color.forest, fontFamily: font.mono, letterSpacing: '0.06em', display: 'flex', alignItems: 'center', gap: 8 }}>
+              WEEK {c.week_number}
+              {c.imported_backfill && <ImportedTag />}
+            </span>
+            <span style={{ fontSize: type.label, color: color.textOnLight.faint, fontFamily: font.mono }}>
+              {new Date(c.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+            </span>
+          </div>
+          <div style={{ fontSize: type.body, color: color.textOnLight.primary, lineHeight: 1.8 }}>
+            {c.coach_feedback}
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
