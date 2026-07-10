@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { createInvite } from '../components/InviteClient'
 import { color, font, type, labelStyle, badge, displayStyle, navItemStyle } from '../lib/theme'
 import { hasPermission } from '../lib/adminPermissions'
-import { planById } from '../lib/billing'
+import { PLANS, planById, isPastDue, isSuspended } from '../lib/billing'
 import { startImpersonation } from '../lib/impersonation'
 
 function downloadFile(content, filename, mimeType) {
@@ -541,7 +541,7 @@ const AccountsPanel = ({ actorId }) => {
                       <span style={badge(status.kind)}>{status.label}</span>
                     </div>
                     <div style={{ fontSize: type.label, color: color.textOnLight.faint, marginTop: 2 }}>
-                      {a.email} · {plan?.name || 'No plan'}
+                      {a.email} · {plan?.label || 'No plan'}
                     </div>
                     {a.admin_suspended && a.admin_suspended_reason && (
                       <div style={{ fontSize: type.label, color: color.textOnLight.secondary, marginTop: 4 }}>
@@ -642,10 +642,175 @@ const AccountsPanel = ({ actorId }) => {
   )
 }
 
+// Read-only billing surface — billing.view (roster), billing.view_failed_payments
+// (the failed-payments filter/detail), billing.view_revenue_dashboard (the MRR
+// estimate). Deliberately no mutating actions here (change_plan/refund/coupons
+// are a separate, larger piece — each needs a new serverless function calling
+// Stripe directly, since profiles.subscription_tier/status are mirrored from
+// Stripe's webhook, not a source of truth an admin should hand-edit locally
+// without also updating Stripe or risking the next webhook event silently
+// overwriting the change).
+const BillingPanel = ({ actorId }) => {
+  const [perms, setPerms] = useState(null)
+  const [coaches, setCoaches] = useState(null)
+  const [error, setError] = useState(null)
+  const [failedOnly, setFailedOnly] = useState(false)
+
+  useEffect(() => {
+    async function init() {
+      const [view, viewFailedPayments, viewRevenueDashboard] = await Promise.all([
+        hasPermission(actorId, 'billing.view'),
+        hasPermission(actorId, 'billing.view_failed_payments'),
+        hasPermission(actorId, 'billing.view_revenue_dashboard'),
+      ])
+      setPerms({ view, viewFailedPayments, viewRevenueDashboard })
+
+      if (view) {
+        const { data, error: queryError } = await supabase
+          .from('profiles')
+          .select('id, full_name, email, subscription_tier, subscription_status, payment_status, payment_failed_at')
+          .eq('role', 'coach')
+          .order('full_name')
+        if (queryError) setError(queryError.message)
+        else setCoaches(data || [])
+      }
+    }
+    if (actorId) init()
+  }, [actorId])
+
+  const statusOf = (c) => {
+    if (isSuspended(c)) return { kind: 'alert', label: 'Suspended (billing)' }
+    if (isPastDue(c)) return { kind: 'warning', label: 'Past due' }
+    if (c.subscription_status === 'trialing') return { kind: 'info', label: 'Trialing' }
+    if (c.subscription_status === 'active') return { kind: 'success', label: 'Active' }
+    return { kind: 'neutral', label: c.subscription_status || 'No subscription' }
+  }
+
+  // Estimate only — mirrors locally-stored subscription_tier/status as of
+  // the last webhook event, not a live pull from Stripe. Proration, trials
+  // converting mid-cycle, and any drift between the two aren't accounted
+  // for here; treat this as directional, not a reconciliation source.
+  const revenue = perms?.viewRevenueDashboard && coaches ? (() => {
+    const active = coaches.filter(c => c.subscription_status === 'active')
+    const byTier = PLANS.map(p => ({
+      ...p, count: active.filter(c => c.subscription_tier === p.id).length,
+    }))
+    const mrr = byTier.reduce((sum, p) => sum + p.price * p.count, 0)
+    return { mrr, activeCount: active.length, byTier }
+  })() : null
+
+  const failedCoaches = (coaches || []).filter(c => isPastDue(c) || isSuspended(c))
+  const visibleCoaches = failedOnly ? failedCoaches : (coaches || [])
+
+  if (perms === null) {
+    return <div style={{ fontSize: type.body, color: color.textOnLight.secondary }}>Loading...</div>
+  }
+
+  if (!perms.view) {
+    return (
+      <div style={{ background: color.surfaceLight, border: `0.5px solid ${color.borderLight}`,
+        borderRadius: 12, padding: 20, fontSize: type.body, color: color.textOnLight.secondary }}>
+        You don't have permission to view billing.
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {revenue && (
+        <div style={{ background: color.surfaceLight, border: `0.5px solid ${color.borderLight}`,
+          borderRadius: 12, padding: 20 }}>
+          <div style={{ ...labelStyle(false), marginBottom: 14 }}>Revenue (estimate)</div>
+          <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', marginBottom: 16 }}>
+            <div>
+              <div style={{ fontSize: 28, fontWeight: 300, color: color.textOnLight.primary, fontFamily: font.mono }}>
+                ${revenue.mrr.toLocaleString()}
+              </div>
+              <div style={{ ...labelStyle(false), marginTop: 2 }}>Est. MRR</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 28, fontWeight: 300, color: color.textOnLight.primary, fontFamily: font.mono }}>
+                {revenue.activeCount}
+              </div>
+              <div style={{ ...labelStyle(false), marginTop: 2 }}>Active subscribers</div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            {revenue.byTier.map(p => (
+              <div key={p.id} style={{ background: color.bone, borderRadius: 8, padding: '8px 14px' }}>
+                <span style={{ fontSize: type.body, fontWeight: 500, color: color.textOnLight.primary }}>{p.count}</span>
+                <span style={{ fontSize: type.label, color: color.textOnLight.faint, marginLeft: 6 }}>{p.label}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{ fontSize: type.label, color: color.textOnLight.faint, marginTop: 12 }}>
+            Estimate from locally-mirrored subscription state, not a live Stripe pull.
+          </div>
+        </div>
+      )}
+
+      <div style={{ background: color.surfaceLight, border: `0.5px solid ${color.borderLight}`,
+        borderRadius: 12, padding: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
+          <div style={{ ...labelStyle(false), marginBottom: 0 }}>Coach billing</div>
+          {perms.viewFailedPayments && (
+            <button onClick={() => setFailedOnly(v => !v)}
+              style={{ padding: '6px 12px', borderRadius: 6,
+                border: `1px solid ${failedOnly ? color.alert : color.borderLight}`,
+                background: 'transparent', color: failedOnly ? color.alert : color.textOnLight.secondary,
+                fontFamily: font.sans, fontSize: type.label, cursor: 'pointer' }}>
+              {failedOnly ? `Showing failed payments only (${failedCoaches.length})` : 'Show failed payments only'}
+            </button>
+          )}
+        </div>
+
+        {error && <div style={{ fontSize: type.body, color: color.alert, marginBottom: 12 }}>{error}</div>}
+
+        {!coaches ? (
+          <div style={{ fontSize: type.body, color: color.textOnLight.secondary }}>Loading...</div>
+        ) : visibleCoaches.length === 0 ? (
+          <div style={{ fontSize: type.body, color: color.textOnLight.secondary, textAlign: 'center', padding: '32px 0' }}>
+            {failedOnly ? 'No failed payments.' : 'No coach accounts yet.'}
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {visibleCoaches.map(c => {
+              const status = statusOf(c)
+              const plan = planById(c.subscription_tier)
+              return (
+                <div key={c.id} style={{ background: color.bone, borderRadius: 8, padding: '12px 14px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: type.body, fontWeight: 500, color: color.textOnLight.primary }}>
+                        {c.full_name || '—'}
+                      </span>
+                      <span style={badge(status.kind)}>{status.label}</span>
+                    </div>
+                    <div style={{ fontSize: type.label, color: color.textOnLight.faint, marginTop: 2 }}>
+                      {c.email} · {plan?.label || 'No plan'}
+                    </div>
+                  </div>
+                  {perms.viewFailedPayments && c.payment_failed_at && (isPastDue(c) || isSuspended(c)) && (
+                    <div style={{ fontSize: type.label, color: color.textOnLight.secondary, fontFamily: font.mono, whiteSpace: 'nowrap' }}>
+                      Failed {new Date(c.payment_failed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 const ADMIN_TABS = [
   { id: 'invite', label: 'Invite employee' },
   { id: 'audit', label: 'Audit log' },
   { id: 'accounts', label: 'Accounts' },
+  { id: 'billing', label: 'Billing' },
 ]
 
 export default function AdminDashboard() {
@@ -685,6 +850,7 @@ export default function AdminDashboard() {
       {profile && activeTab === 'invite' && <InviteEmployeePanel actorId={profile.id} />}
       {profile && activeTab === 'audit' && <AuditLogViewer />}
       {profile && activeTab === 'accounts' && <AccountsPanel actorId={profile.id} />}
+      {profile && activeTab === 'billing' && <BillingPanel actorId={profile.id} />}
     </div>
   )
 }
