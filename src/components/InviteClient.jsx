@@ -77,7 +77,7 @@ export default function InviteClient({ atLimit = false, onUpgradeClick } = {}) {
           <button key={r} onClick={() => setRole(r)}
             style={{ padding: '6px 14px', borderRadius: 6, border: 'none', cursor: 'pointer',
               fontFamily: font.sans, fontSize: type.label, fontWeight: 500,
-              background: role === r ? color.void : '#F0EDE8',
+              background: role === r ? color.void : color.surfaceSunken,
               color: role === r ? color.textOnDark.primary : color.textOnLight.secondary,
               transition: 'all 0.15s ease' }}>
             {r === 'client' ? 'As a client' : 'As a coach'}

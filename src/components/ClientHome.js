@@ -2,11 +2,35 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import CheckInForm from './CheckInForm'
 import ClientSettings from './ClientSettings'
-import { color, font, type, labelStyle, badge, navItemStyle, displayStyle } from '../lib/theme'
+import {
+  color as staticColor, appearance, font, type,
+  labelStyleAppearance as labelStyle, badge, navItemStyleAppearance as navItemStyle, displayStyle,
+} from '../lib/theme'
 import { getEffectiveTargets, getActivePhase } from '../lib/dietPlan'
 import { displayWeight, displayMeasurement, weightUnitLabel, measurementUnitLabel } from '../lib/units'
 import MessageThread from './MessageThread'
 import '../styles/purema-responsive.css'
+
+// This file is one of the four screens wired to the appearance toggle
+// (profiles.appearance — see App.js and src/styles/tokens.css). Rather than
+// touching every one of this file's ~65 `color.bone`/`color.surfaceLight`/
+// `color.textOnLight.*`/`color.borderLight`/`color.surfaceNav` call sites
+// individually, this local `color` shadows just those fields with the
+// appearance-aware tokens — everything else (forest/gold/alert/sage/etc.)
+// already resolves through CSS vars globally via theme.js itself. Imported
+// as `labelStyleAppearance`/`navItemStyleAppearance` above under their
+// original names for the same reason — every existing `labelStyle()`/
+// `navItemStyle(x)` call site below keeps working unchanged.
+const color = {
+  ...staticColor,
+  bone: appearance.surfacePage,
+  surfaceLight: appearance.surfaceCard,
+  surfaceNav: appearance.surfaceNav,
+  borderLight: appearance.borderDefault,
+  textOnLight: appearance.text,
+  surfaceSunken: appearance.surfaceSunken,
+  borderSubtle: appearance.borderSubtle,
+}
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
@@ -72,7 +96,7 @@ const S = {
     padding: 20,
   },
   label: {
-    ...labelStyle(false),
+    ...labelStyle(),
     letterSpacing: '0.1em',
   },
 }
@@ -118,7 +142,7 @@ const MacroBar = ({ label, value, unit, color: barColor, target }) => {
     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
       <div style={{ width: 52, fontSize: type.label, color: color.textOnLight.label, fontFamily: font.mono,
         letterSpacing: '0.04em', flexShrink: 0 }}>{label}</div>
-      <div style={{ flex: 1, height: 6, background: '#F0EDE8', borderRadius: 999, overflow: 'hidden' }}>
+      <div style={{ flex: 1, height: 6, background: color.surfaceSunken, borderRadius: 999, overflow: 'hidden' }}>
         <div style={{ height: '100%', width: `${pct}%`, background: barColor, borderRadius: 999, opacity: 0.85 }} />
       </div>
       <div style={{ fontSize: type.body, fontWeight: 500, color: color.textOnLight.primary, minWidth: 52, textAlign: 'right', fontFamily: font.mono }}>
@@ -178,10 +202,10 @@ const TabHome = ({ profile, checkins, dietPhases, targetOverrides, mealPlan, onG
             padding: '10px 16px', borderRadius: 10 }}>
             <span style={{ fontSize: 16 }}>✓</span>
             <div>
-              <div style={{ fontSize: type.body, fontWeight: 500, color: '#0D3D1F' }}>
+              <div style={{ fontSize: type.body, fontWeight: 500, color: color.successTextStrong }}>
                 Week {latest.week_number} submitted
               </div>
-              <div style={{ fontSize: type.label, color: '#3A7A4A' }}>Waiting for feedback</div>
+              <div style={{ fontSize: type.label, color: color.successTextSoft }}>Waiting for feedback</div>
             </div>
           </div>
         )}
@@ -216,7 +240,7 @@ const TabHome = ({ profile, checkins, dietPhases, targetOverrides, mealPlan, onG
         {/* Coach feedback */}
         {latest?.coach_feedback ? (
           <div style={S.card}>
-            <div style={{ ...labelStyle(false), color: color.forest, marginBottom: 12 }}>
+            <div style={{ ...labelStyle(), color: color.forest, marginBottom: 12 }}>
               Coach feedback — Week {latest.week_number}
             </div>
             <div style={{ fontSize: type.body, color: color.textOnLight.primary, lineHeight: 1.8 }}>
@@ -490,13 +514,13 @@ const TabProgress = ({ profile, checkins }) => {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
       {/* Section nav */}
-      <div style={{ display: 'flex', gap: 4, background: '#F0EDE8', borderRadius: 8, padding: 4, alignSelf: 'flex-start' }}>
+      <div style={{ display: 'flex', gap: 4, background: color.surfaceSunken, borderRadius: 8, padding: 4, alignSelf: 'flex-start' }}>
         {sections.map(s => (
           <button key={s.id} onClick={() => setActiveSection(s.id)}
             style={{ padding: '6px 16px', border: 'none', cursor: 'pointer',
               fontFamily: font.sans, fontSize: type.body,
               transition: 'all 0.15s ease',
-              ...navItemStyle(activeSection === s.id, false), borderRadius: 6 }}>
+              ...navItemStyle(activeSection === s.id), borderRadius: 6 }}>
             {s.label}
           </button>
         ))}
@@ -591,7 +615,7 @@ const TabProgress = ({ profile, checkins }) => {
       {activeSection === 'weight' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <MiniChart data={sorted} valueKey="weight" label="Weight" unit={weightUnit} color={color.forest} />
-          <MiniChart data={sorted} valueKey="sleep" label="Avg sleep" unit="hrs" color="#7C6AF5" />
+          <MiniChart data={sorted} valueKey="sleep" label="Avg sleep" unit="hrs" color={color.chartPurple} />
           <MiniChart data={sorted} valueKey="steps" label="Avg steps" unit="" color={color.gold} />
         </div>
       )}
@@ -845,7 +869,7 @@ export default function ClientHome() {
                   border: 'none', textAlign: 'left', cursor: 'pointer',
                   fontFamily: font.sans, fontSize: type.body,
                   transition: 'all 0.15s ease',
-                  ...navItemStyle(activeTab === item.id, false) }}>
+                  ...navItemStyle(activeTab === item.id) }}>
                 {item.id === 'settings' && <GearIcon />}
                 {item.label}
                 {item.id === 'messages' && unreadMessageCount > 0 && (
@@ -949,7 +973,7 @@ export default function ClientHome() {
               style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
                 cursor: 'pointer', padding: '6px 10px',
                 border: 'none', fontFamily: font.sans, fontSize: type.label,
-                ...navItemStyle(activeTab === item.id, false) }}>
+                ...navItemStyle(activeTab === item.id) }}>
               {item.id === 'settings' && <GearIcon />}
               {item.label}
               {item.id === 'messages' && unreadMessageCount > 0 && (

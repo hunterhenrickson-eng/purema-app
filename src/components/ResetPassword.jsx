@@ -1,7 +1,18 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { color, font, type, labelStyle } from '../lib/theme';
+import { color as staticColor, appearance, font, type, labelStyleAppearance as labelStyle } from '../lib/theme';
 import '../styles/purema-responsive.css';
+
+// One of the four screens wired to the appearance toggle — same shadow
+// pattern as Auth.js (see its top-of-file comment for the full rationale).
+const color = {
+  ...staticColor,
+  void: appearance.surfacePage,
+  surfaceDark: appearance.surfaceCard,
+  surfaceDarkRaised: appearance.surfaceRaised,
+  borderDark: appearance.borderDefault,
+  textOnDark: appearance.text,
+};
 
 const Mark = ({ size = 24 }) => (
   <svg width={size} height={size * 0.9} viewBox="0 0 52 48">
@@ -164,9 +175,9 @@ export default function ResetPassword() {
         </div>
 
         {errorMsg && (
-          <div style={{ padding: '10px 14px', background: '#2A1010',
-            border: '1px solid #4A2020', borderRadius: 8,
-            fontSize: type.body, color: color.alert, lineHeight: 1.5 }}>
+          <div style={{ padding: '10px 14px', background: color.alertBanner.bg,
+            border: `1px solid ${color.alertBanner.border}`, borderRadius: 8,
+            fontSize: type.body, color: color.alertBanner.text, lineHeight: 1.5 }}>
             {errorMsg}
           </div>
         )}

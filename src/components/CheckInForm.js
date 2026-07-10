@@ -99,7 +99,7 @@ const cardStyle = {
 
 const SectionHeader = ({ number, title, subtitle }) => (
   <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 24,
-    paddingBottom: 16, borderBottom: '0.5px solid #F0F0F0' }}>
+    paddingBottom: 16, borderBottom: `0.5px solid ${color.borderSubtle}` }}>
     <div style={{ width: 32, height: 32, borderRadius: '50%', background: color.forest,
       display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
       fontFamily: font.mono, fontSize: type.label, fontWeight: 500, color: color.sage }}>
@@ -167,7 +167,7 @@ const Toggle = ({ value, onChange, labelTrue = 'Yes', labelFalse = 'No' }) => (
       <button key={String(v)} onClick={() => onChange(v)} type="button"
         style={{ padding: '6px 14px', borderRadius: 6, border: 'none', cursor: 'pointer',
           fontSize: type.label, fontWeight: 500, fontFamily: font.sans,
-          background: value === v ? color.forest : '#F0EDE8',
+          background: value === v ? color.forest : color.surfaceSunken,
           color: value === v ? color.sage : color.textOnLight.secondary,
           transition: 'all 0.15s ease' }}>
         {v ? labelTrue : labelFalse}
@@ -186,7 +186,7 @@ const DayColumn = ({ day, date, index, data, onChange, weightUnit }) => {
   }
 
   return (
-    <div style={{ background: '#FAFAF9', borderRadius: 10, border: '0.5px solid #F0F0F0',
+    <div style={{ background: color.surfaceSunken, borderRadius: 10, border: `0.5px solid ${color.borderSubtle}`,
       padding: '14px 12px', display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
 
       {/* Day header */}
@@ -700,8 +700,8 @@ export default function CheckInForm({ onSuccess }) {
                 style={{ ...inputStyle, resize: 'none', lineHeight: 1.6 }} />
             </div>
             {error && (
-              <div style={{ padding: '10px 14px', background: '#FCEBEB',
-                border: '1px solid #F9CCCC', borderRadius: 8, fontSize: 13, color: '#791F1F' }}>
+              <div style={{ padding: '10px 14px', background: color.alertBanner.bg,
+                border: `1px solid ${color.alertBanner.border}`, borderRadius: 8, fontSize: 13, color: color.alertBanner.text }}>
                 {error}
               </div>
             )}

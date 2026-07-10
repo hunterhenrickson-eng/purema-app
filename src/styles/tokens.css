@@ -1,0 +1,194 @@
+/* Purema appearance tokens — light/dark foundation.
+   ─────────────────────────────────────────────────────────────────────────
+   THIS FILE IS NOT WIRED INTO ANY COMPONENT YET. Nothing in the app reads
+   these custom properties today — theme.js's `color` export still returns
+   the raw hex values it always has, and every screen still renders exactly
+   as before. This file only defines the tokens and their light/dark
+   values so the next phase can start consuming them.
+
+   Separate axis from profiles.theme (the existing, currently-unwired
+   8-color white-label brand system) — appearance controls light-vs-dark
+   chrome, brand theme controls which accent palette is in play. The two
+   are independent: a coach could run a dark appearance with any brand
+   theme, or a light appearance with any brand theme.
+
+   Naming is role-based, not brand-literal (--surface-page, not --bone),
+   because a handful of raw hex values in the current codebase already
+   serve DIFFERENT roles depending on where they're used — e.g. Void
+   (#0D0D0D) is a background fill on the dark auth screens but is reused
+   as the primary TEXT color on light dashboard screens. Naming by role
+   instead of by hex avoids baking that accidental overlap into the token
+   system itself.
+
+   Resolution order once this is wired in (Phase 2, not this file):
+     1. profiles.appearance = 'light' or 'dark' → explicit [data-appearance]
+        attribute on <html>, set from JS, wins outright.
+     2. profiles.appearance = 'system' (the default) → no attribute set,
+        falls through to the @media (prefers-color-scheme) block below.
+   That resolution logic itself isn't implemented yet — this file just
+   defines what each mode's values ARE. */
+
+:root {
+  /* ── Brand accents ──────────────────────────────────────────────────
+     Same conceptual color in both modes, but several get a dark-mode-
+     adjusted shade for contrast/vibrancy against a near-black surface
+     rather than reusing the identical light-mode hex verbatim. */
+  --brand-forest: #0F6E56;
+  --brand-forest-pressed: #0D5E49;   /* saved/active button state — CoachDashboard.js, ClientSettings.js */
+  --brand-gold: #BA7517;
+  --brand-alert: #E24B4A;
+  --brand-sage: #EAF3DE;             /* success-tint fill */
+
+  /* ── Chart accents ── */
+  --chart-purple: #7C6AF5;           /* MiniChart "Avg sleep" line — ClientHome.js */
+
+  /* ── Surfaces (mode-flipping) ──────────────────────────────────────
+     surface-page: the outermost page background
+     surface-card: card/panel fill sitting on top of surface-page
+     surface-raised: one step up from surface-card (dark auth chrome's
+       raised panels today; light mode currently has no distinct raised
+       level, so it repeats surface-card until a real use case appears)
+     surface-nav: nav chrome (sidebar/top-tabs/mobile header) — one shade
+       off surface-page so nav still visually separates without a dark fill
+     surface-sunken: a recessed fill one step BELOW surface-card — segmented
+       control tracks, progress-bar tracks, day-column backgrounds, neutral
+       avatar circles, modal close-button circles. Consolidates two very
+       close existing values (#F0EDE8 used in ~10 places, #FAFAF9 used once
+       in CheckInForm.js's DayColumn) into one token — flagging that near-
+       duplicate for a future cleanup pass, not resolving it here. */
+  --surface-page: #F5F2ED;
+  --surface-card: #FFFFFF;
+  --surface-raised: #FFFFFF;
+  --surface-nav: #EEEBE4;
+  --surface-sunken: #F0EDE8;
+
+  /* ── Borders ──────────────────────────────────────────────────────
+     border-default: the more visible 1px borders (cards, inputs)
+     border-subtle: hairline internal dividers within a card. Consolidates
+       two near-identical existing values (#F0F0F0 used ~13 places,
+       #F5F5F5 used 3 places) into one token — same flagged-not-fixed
+       near-duplicate situation as surface-sunken above. */
+  --border-default: #E8E8E8;
+  --border-subtle: #F0F0F0;
+
+  /* ── Text (role-based — replaces the current textOnDark/textOnLight
+     split once this is wired in; a single role per appearance mode,
+     since a fully dark screen and a fully light screen each only ever
+     need ONE correct text color per role, not two pre-computed variants) ── */
+  --text-primary: #0D0D0D;
+  --text-secondary: #5C5C5C;
+  --text-label: #6B6B6B;
+  --text-faint: #767676;
+
+  /* ── Status / badge colors — mirrors theme.js's BADGE_HUES exactly ── */
+  --status-success-bg: #EAF3DE;
+  --status-success-text: #1A5C0A;
+  --status-success-border: #C5DFB0;        /* CoachDashboard.js attention-queue empty state */
+  --status-success-text-strong: #0D3D1F;   /* heading text on a sage card — "All caught up", "Week N submitted" */
+  --status-success-text-soft: #3A7A4A;     /* caption text on a sage card — pairs with text-strong above */
+  --status-warning-bg: #FAEEDA;
+  --status-warning-text: #633806;
+  --status-alert-bg: #FBE4E3;              /* badge() pill treatment */
+  --status-alert-text: #8A2A28;
+  --status-alert-banner-bg: #FCEBEB;       /* CheckInForm.js's inline error banner — a distinct,
+                                               more prominent treatment than the badge pill */
+  --status-alert-banner-border: #F9CCCC;
+  --status-alert-banner-text: #791F1F;
+  --status-neutral-bg: #F0EDE8;
+  --status-neutral-text: #5C5C5C;
+  --status-info-bg: #E3F0EC;
+  --status-info-text: #0F6E56;
+}
+
+/* ── Dark mode — explicit override, wins regardless of OS preference.
+   Not referenced by any component yet; see file header. ── */
+:root[data-appearance="dark"] {
+  --brand-forest: #16A085;               /* brightened for contrast against near-black */
+  --brand-forest-pressed: #0F6E56;
+  --brand-gold: #D4922A;
+  --brand-alert: #E24B4A;                /* already used as-is on dark chrome today (Auth.js/ResetPassword.jsx) */
+  --brand-sage: #1A3620;                 /* dark-mode equivalent of the light sage tint */
+
+  --chart-purple: #9B8CF9;
+
+  --surface-page: #0D0D0D;               /* = existing Void */
+  --surface-card: #141414;               /* = existing surfaceDark */
+  --surface-raised: #1A1A1A;             /* = existing surfaceDarkRaised */
+  --surface-nav: #161616;
+  --surface-sunken: #202020;
+
+  --border-default: #2A2A2A;             /* = existing borderDark */
+  --border-subtle: #232323;
+
+  --text-primary: #F5F2ED;               /* = existing textOnDark.primary */
+  --text-secondary: #B8B8B8;             /* = existing textOnDark.secondary */
+  --text-label: #9A9A9A;                 /* = existing textOnDark.label */
+  --text-faint: #767676;                 /* = existing textOnDark.faint (already dark-safe as-is) */
+
+  --status-success-bg: #16301C;
+  --status-success-text: #6FCF52;
+  --status-success-border: #2A5233;
+  --status-success-text-strong: #A8E6B0;
+  --status-success-text-soft: #6FCF52;
+  --status-warning-bg: #3D2E0D;
+  --status-warning-text: #E8B85C;
+  --status-alert-bg: #3A1616;
+  --status-alert-text: #F2938F;
+  --status-alert-banner-bg: #2A1010;     /* = existing dark alert banner (Auth.js/ResetPassword.jsx) */
+  --status-alert-banner-border: #4A2020; /* = existing dark alert banner border, same source */
+  --status-alert-banner-text: #E24B4A;   /* = existing dark alert banner text, same source (brand alert as-is) */
+  --status-neutral-bg: #232323;
+  --status-neutral-text: #B8B8B8;
+  --status-info-bg: #16302B;
+  --status-info-text: #4FBFA8;
+}
+
+/* ── 'system' appearance (the column default) — no explicit
+   [data-appearance] attribute present, so this follows the OS/browser
+   preference. Must stay BELOW the explicit dark block above so an
+   explicit light/dark choice always wins regardless of source order —
+   verified by the [data-appearance="dark"] selector's higher specificity
+   combined with this block only ever applying when that attribute is
+   absent. ── */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-appearance]) {
+    --brand-forest: #16A085;
+    --brand-forest-pressed: #0F6E56;
+    --brand-gold: #D4922A;
+    --brand-alert: #E24B4A;
+    --brand-sage: #1A3620;
+
+    --chart-purple: #9B8CF9;
+
+    --surface-page: #0D0D0D;
+    --surface-card: #141414;
+    --surface-raised: #1A1A1A;
+    --surface-nav: #161616;
+    --surface-sunken: #202020;
+
+    --border-default: #2A2A2A;
+    --border-subtle: #232323;
+
+    --text-primary: #F5F2ED;
+    --text-secondary: #B8B8B8;
+    --text-label: #9A9A9A;
+    --text-faint: #767676;
+
+    --status-success-bg: #16301C;
+    --status-success-text: #6FCF52;
+    --status-success-border: #2A5233;
+    --status-success-text-strong: #A8E6B0;
+    --status-success-text-soft: #6FCF52;
+    --status-warning-bg: #3D2E0D;
+    --status-warning-text: #E8B85C;
+    --status-alert-bg: #3A1616;
+    --status-alert-text: #F2938F;
+    --status-alert-banner-bg: #2A1010;
+    --status-alert-banner-border: #4A2020;
+    --status-alert-banner-text: #E24B4A;
+    --status-neutral-bg: #232323;
+    --status-neutral-text: #B8B8B8;
+    --status-info-bg: #16302B;
+    --status-info-text: #4FBFA8;
+  }
+}

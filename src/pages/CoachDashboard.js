@@ -1,6 +1,9 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { supabase } from '../lib/supabase'
-import { color, font, type, labelStyle, badge, navItemStyle, displayStyle } from '../lib/theme'
+import {
+  color as staticColor, appearance, font, type,
+  labelStyleAppearance as labelStyle, badge, navItemStyleAppearance as navItemStyle, displayStyle,
+} from '../lib/theme'
 import '../styles/purema-responsive.css'
 import InviteClient, { createInvite } from '../components/InviteClient'
 import { PLANS, planById, tierLimit, isSubscribed, isPastDue, isSuspended } from '../lib/billing'
@@ -8,6 +11,27 @@ import { isAdminSuspended, isDeleted } from '../lib/adminPermissions'
 import { getActivePhase } from '../lib/dietPlan'
 import ImportHistory from '../components/ImportHistory'
 import MessageThread from '../components/MessageThread'
+
+// One of the four screens wired to the appearance toggle (profiles.appearance
+// — see App.js and src/styles/tokens.css). This file alone has 340+
+// `color.bone`/`color.surfaceLight`/`color.textOnLight.*`/`color.borderLight`/
+// `color.surfaceNav` call sites — this local `color` shadows just those
+// fields with the appearance-aware tokens rather than touching each one
+// individually. `color.void`/`surfaceDark`/`textOnDark.*`/`borderDark` are
+// NOT shadowed here — this file has a few genuinely-static dark accents
+// (the notification-bell unread pill, a segmented-control active state, a
+// button's on-forest text color) that are correct as fixed values and are
+// intentionally left untouched this phase.
+const color = {
+  ...staticColor,
+  bone: appearance.surfacePage,
+  surfaceLight: appearance.surfaceCard,
+  surfaceNav: appearance.surfaceNav,
+  borderLight: appearance.borderDefault,
+  textOnLight: appearance.text,
+  surfaceSunken: appearance.surfaceSunken,
+  borderSubtle: appearance.borderSubtle,
+}
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
@@ -125,8 +149,8 @@ const IconTooltip = ({ label, show }) => !show ? null : (
 
 const S = {
   card: { background: color.surfaceLight, borderRadius: 12, border: `0.5px solid ${color.borderLight}`, padding: 20 },
-  label: { ...labelStyle(false), letterSpacing: '0.1em' },
-  sectionTitle: { ...labelStyle(false), letterSpacing: '0.1em', marginBottom: 14 },
+  label: { ...labelStyle(), letterSpacing: '0.1em' },
+  sectionTitle: { ...labelStyle(), letterSpacing: '0.1em', marginBottom: 14 },
 }
 
 // A transparency label, not a warning — backfilled history is real data,
@@ -276,14 +300,14 @@ const SearchBar = ({ clients, checkins, onSelectCheckin, onSelectClient }) => {
           )}
           {matchedCheckins.length > 0 && (
             <>
-              <div style={{ padding: '8px 16px 4px', ...S.label, borderTop: matchedClients.length > 0 ? '0.5px solid #F0F0F0' : 'none' }}>Check-ins</div>
+              <div style={{ padding: '8px 16px 4px', ...S.label, borderTop: matchedClients.length > 0 ? `0.5px solid ${color.borderSubtle}` : 'none' }}>Check-ins</div>
               {matchedCheckins.map(checkin => (
                 <div key={checkin.id}
                   onClick={() => { onSelectCheckin(checkin); setQuery(''); setOpen(false) }}
                   style={{ padding: '10px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}
                   onMouseEnter={e => e.currentTarget.style.background = color.bone}
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                  <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#FAEEDA',
+                  <div style={{ width: 28, height: 28, borderRadius: '50%', background: badge('warning').background,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: type.label, fontWeight: 500, color: color.gold, flexShrink: 0 }}>
                     {checkin.client_name.charAt(0).toUpperCase()}
@@ -419,7 +443,7 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave, coachId }) => {
   }
 
   const Row = ({ label, value, unit }) => value ? (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '0.5px solid #F0F0F0' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: `0.5px solid ${color.borderSubtle}` }}>
       <span style={{ fontSize: type.body, color: color.textOnLight.secondary }}>{label}</span>
       <span style={{ fontSize: type.body, fontWeight: 500, color: color.textOnLight.primary }}>{value}{unit ? ' ' + unit : ''}</span>
     </div>
@@ -438,7 +462,7 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave, coachId }) => {
               {checkin.imported_backfill && <ImportedTag />}
             </div>
           </div>
-          <button onClick={onClose} style={{ background: '#F0EDE8', border: 'none', color: color.textOnLight.secondary, width: 32, height: 32, borderRadius: '50%', cursor: 'pointer', fontSize: 16 }}>×</button>
+          <button onClick={onClose} style={{ background: color.surfaceSunken, border: 'none', color: color.textOnLight.secondary, width: 32, height: 32, borderRadius: '50%', cursor: 'pointer', fontSize: 16 }}>×</button>
         </div>
 
         <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -467,7 +491,7 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave, coachId }) => {
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 800, fontSize: 13 }}>
                     <thead>
-                      <tr style={{ borderBottom: '1px solid #F0F0F0' }}>
+                      <tr style={{ borderBottom: `1px solid ${color.borderSubtle}` }}>
                         <td style={{ padding: '6px 10px', color: color.textOnLight.secondary, fontFamily: font.mono, fontSize: type.label, letterSpacing: '0.06em' }}>METRIC</td>
                         {DAYS.map(d => (
                           <td key={d} style={{ padding: '6px 10px', textAlign: 'center', fontWeight: 600, color: color.textOnLight.primary, fontFamily: font.mono, fontSize: type.label, letterSpacing: '0.04em' }}>{d}</td>
@@ -485,7 +509,7 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave, coachId }) => {
                         { key: 'desire', label: 'Desire (0–5)', unit: '' },
                         { key: 'on_plan', label: 'On plan?', unit: '' },
                       ].map(({ key, label, unit }) => (
-                        <tr key={key} style={{ borderBottom: '0.5px solid #F5F5F5' }}>
+                        <tr key={key} style={{ borderBottom: `0.5px solid ${color.borderSubtle}` }}>
                           <td style={{ padding: '8px 10px', color: color.textOnLight.secondary, fontSize: 12, whiteSpace: 'nowrap' }}>{label}</td>
                           {dailyLog.map((day, i) => {
                             let val = day[key]
@@ -514,7 +538,7 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave, coachId }) => {
 
                 {/* Diet deviations */}
                 {dailyLog.some(d => !d.on_plan && d.diet_notes) && (
-                  <div style={{ marginTop: 14, paddingTop: 14, borderTop: '0.5px solid #F0F0F0' }}>
+                  <div style={{ marginTop: 14, paddingTop: 14, borderTop: `0.5px solid ${color.borderSubtle}` }}>
                     <div style={{ ...S.label, marginBottom: 8 }}>Diet deviations</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                       {dailyLog.map((d, i) => !d.on_plan && d.diet_notes ? (
@@ -529,7 +553,7 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave, coachId }) => {
 
                 {/* Gut issues */}
                 {dailyLog.some(d => d.digestive_issues && d.digestive_notes) && (
-                  <div style={{ marginTop: 14, paddingTop: 14, borderTop: '0.5px solid #F0F0F0' }}>
+                  <div style={{ marginTop: 14, paddingTop: 14, borderTop: `0.5px solid ${color.borderSubtle}` }}>
                     <div style={{ ...S.label, marginBottom: 8 }}>Digestive issues</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                       {dailyLog.map((d, i) => d.digestive_issues && d.digestive_notes ? (
@@ -699,7 +723,7 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave, coachId }) => {
                 color: color.textOnLight.primary, padding: '10px 12px', fontSize: type.body, fontFamily: font.sans,
                 lineHeight: 1.6, resize: 'none', outline: 'none', boxSizing: 'border-box' }} />
             <button onClick={saveFeedback} disabled={saving}
-              style={{ marginTop: 8, width: '100%', height: 44, background: saved ? '#0D5E49' : color.forest,
+              style={{ marginTop: 8, width: '100%', height: 44, background: saved ? color.forestPressed : color.forest,
                 border: 'none', borderRadius: 8, color: color.sage, fontSize: type.body, fontWeight: 500,
                 cursor: 'pointer', fontFamily: font.sans }}>
               {saving ? 'Saving...' : saved ? 'Saved!' : 'Save feedback'}
@@ -775,11 +799,11 @@ const TabDashboard = ({ checkins, clients, onSelectCheckin }) => {
           </div>
         </div>
       ) : activeClients.length > 0 ? (
-        <div style={{ ...S.card, display: 'flex', alignItems: 'center', gap: 14, background: color.sage, border: '0.5px solid #C5DFB0' }}>
+        <div style={{ ...S.card, display: 'flex', alignItems: 'center', gap: 14, background: color.sage, border: `0.5px solid ${color.successBorder}` }}>
           <div style={{ fontSize: 24 }}>✓</div>
           <div>
-            <div style={{ fontSize: type.body, fontWeight: 500, color: '#0D3D1F' }}>All caught up</div>
-            <div style={{ fontSize: type.label, color: '#3A7A4A', marginTop: 2 }}>No clients need your attention right now.</div>
+            <div style={{ fontSize: type.body, fontWeight: 500, color: color.successTextStrong }}>All caught up</div>
+            <div style={{ fontSize: type.label, color: color.successTextSoft, marginTop: 2 }}>No clients need your attention right now.</div>
           </div>
         </div>
       ) : (
@@ -826,7 +850,7 @@ const TargetsPanel = ({ client, onSave }) => {
   }
 
   return (
-    <div style={{ marginTop: 10, paddingTop: 14, borderTop: '0.5px solid #F0F0F0' }}>
+    <div style={{ marginTop: 10, paddingTop: 14, borderTop: `0.5px solid ${color.borderSubtle}` }}>
       <div style={{ ...S.label, marginBottom: 10 }}>Weight goal & peak week</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 10, marginBottom: 12 }}>
         {TARGET_FIELDS.map(f => (
@@ -843,7 +867,7 @@ const TargetsPanel = ({ client, onSave }) => {
       {error && <div style={{ fontSize: type.body, color: color.alert, marginBottom: 10 }}>{error}</div>}
       <button onClick={handleSave} disabled={saving}
         style={{ padding: '7px 16px', borderRadius: 6, border: 'none',
-          background: saved ? '#0D5E49' : color.forest, color: color.sage,
+          background: saved ? color.forestPressed : color.forest, color: color.sage,
           fontFamily: font.sans, fontSize: type.label, fontWeight: 500,
           cursor: saving ? 'not-allowed' : 'pointer' }}>
         {saving ? 'Saving...' : saved ? 'Saved ✓' : 'Save targets'}
@@ -913,7 +937,7 @@ const FeedbackHistoryPanel = ({ client, checkins }) => {
     })
 
   return (
-    <div style={{ marginTop: 10, paddingTop: 14, borderTop: '0.5px solid #F0F0F0' }}>
+    <div style={{ marginTop: 10, paddingTop: 14, borderTop: `0.5px solid ${color.borderSubtle}` }}>
       <div style={{ ...S.label, marginBottom: 10 }}>Feedback history</div>
       {history.length === 0 ? (
         <div style={{ fontSize: type.body, color: color.textOnLight.secondary }}>
@@ -1062,7 +1086,7 @@ const DietPlanPanel = ({ client, coachId }) => {
 
   if (loading) {
     return (
-      <div style={{ marginTop: 10, paddingTop: 14, borderTop: '0.5px solid #F0F0F0', fontSize: type.body, color: color.textOnLight.secondary }}>
+      <div style={{ marginTop: 10, paddingTop: 14, borderTop: `0.5px solid ${color.borderSubtle}`, fontSize: type.body, color: color.textOnLight.secondary }}>
         Loading plan...
       </div>
     )
@@ -1070,7 +1094,7 @@ const DietPlanPanel = ({ client, coachId }) => {
 
   if (error && phases === null) {
     return (
-      <div style={{ marginTop: 10, paddingTop: 14, borderTop: '0.5px solid #F0F0F0', fontSize: type.body, color: color.alert }}>
+      <div style={{ marginTop: 10, paddingTop: 14, borderTop: `0.5px solid ${color.borderSubtle}`, fontSize: type.body, color: color.alert }}>
         {error}
       </div>
     )
@@ -1079,7 +1103,7 @@ const DietPlanPanel = ({ client, coachId }) => {
   const activePhase = getActivePhase(phases)
 
   return (
-    <div style={{ marginTop: 10, paddingTop: 14, borderTop: '0.5px solid #F0F0F0' }}>
+    <div style={{ marginTop: 10, paddingTop: 14, borderTop: `0.5px solid ${color.borderSubtle}` }}>
       <div style={{ ...S.label, marginBottom: 10 }}>Diet plan</div>
 
       {phases.length === 0 ? (
@@ -1156,7 +1180,7 @@ const DietPlanPanel = ({ client, coachId }) => {
         {lastDiff && (
           <div style={{ marginTop: 10, padding: 10, background: color.sage, borderRadius: 6 }}>
             {lastDiff.map((line, i) => (
-              <div key={i} style={{ fontSize: type.label, color: '#1A5C0A', fontFamily: font.mono }}>{line}</div>
+              <div key={i} style={{ fontSize: type.label, color: badge('success').color, fontFamily: font.mono }}>{line}</div>
             ))}
           </div>
         )}
@@ -1457,7 +1481,7 @@ const MealStructureSection = ({ phase, clientId, coachId }) => {
   }
 
   return (
-    <div style={{ marginTop: 14, paddingTop: 14, borderTop: '0.5px solid #F0F0F0' }}>
+    <div style={{ marginTop: 14, paddingTop: 14, borderTop: `0.5px solid ${color.borderSubtle}` }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
         <div style={S.label}>Meal structure</div>
         <div onClick={() => setShowBuilder(v => !v)}
@@ -1614,7 +1638,7 @@ const TabClients = ({ clients, checkins, profile, onStatusChange, onTargetsSave,
     <div id={`client-row-${client.id}`} style={S.card}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
         <div style={{ width: 40, height: 40, borderRadius: '50%',
-          background: client.status === 'paused' ? '#F0EDE8' : client.status === 'archived' ? '#F0EDE8' : color.sage,
+          background: client.status === 'paused' ? color.surfaceSunken : client.status === 'archived' ? color.surfaceSunken : color.sage,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: 14, fontWeight: 500,
           color: client.status === 'paused' ? color.textOnLight.secondary : client.status === 'archived' ? color.textOnLight.faint : color.forest,
@@ -1777,14 +1801,14 @@ const TabCheckIns = ({ checkins, onSelectCheckin }) => {
     <button onClick={() => setFilter(value)}
       style={{ padding: '6px 14px', border: 'none', cursor: 'pointer',
         fontFamily: font.mono, fontSize: type.label, letterSpacing: '0.06em',
-        ...navItemStyle(filter === value, false), borderRadius: 6 }}>
+        ...navItemStyle(filter === value), borderRadius: 6 }}>
       {label}{count > 0 ? ` · ${count}` : ''}
     </button>
   )
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{ display: 'flex', gap: 4, background: '#F0EDE8', borderRadius: 8, padding: 4, alignSelf: 'flex-start' }}>
+      <div style={{ display: 'flex', gap: 4, background: color.surfaceSunken, borderRadius: 8, padding: 4, alignSelf: 'flex-start' }}>
         <FilterBtn value="all" label="ALL" count={checkins.length} />
         <FilterBtn value="pending" label="PENDING" count={checkins.filter(c => !c.coach_feedback).length} />
         <FilterBtn value="reviewed" label="REVIEWED" count={checkins.filter(c => c.coach_feedback).length} />
@@ -2024,7 +2048,7 @@ const TabOverview = ({ clients, checkins, profile }) => {
                   </span>
                 </div>
                 {!unlimited && (
-                  <div style={{ background: '#F0EDE8', borderRadius: 999, height: 6, overflow: 'hidden' }}>
+                  <div style={{ background: color.surfaceSunken, borderRadius: 999, height: 6, overflow: 'hidden' }}>
                     <div style={{ height: '100%', borderRadius: 999, background: color.forest,
                       width: `${Math.min((activeClients.length / (limit || 1)) * 100, 100)}%`,
                       transition: 'width 0.3s ease' }} />
@@ -2111,7 +2135,7 @@ const TabBilling = ({ profile, onProfileRefresh }) => {
         <div style={{ background: color.surfaceLight, border: `0.5px solid ${color.borderLight}`, borderRadius: 12, padding: 20,
           display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
           <div>
-            <div style={{ ...labelStyle(false), color: color.forest }}>Current plan</div>
+            <div style={{ ...labelStyle(), color: color.forest }}>Current plan</div>
             <div style={{ fontSize: 22, fontWeight: 300, color: color.textOnLight.primary }}>
               {currentPlan.label} · <span style={{ fontFamily: font.mono }}>${currentPlan.price}/mo</span>
             </div>
@@ -2506,6 +2530,12 @@ const NAV_LAYOUTS = [
   { value: 'top_tabs', label: 'Top tabs', desc: 'Nav across the top, full-width content' },
 ]
 
+const APPEARANCE_OPTIONS = [
+  { value: 'light', label: 'Light', desc: 'Always light' },
+  { value: 'dark', label: 'Dark', desc: 'Always dark' },
+  { value: 'system', label: 'System', desc: 'Match your device' },
+]
+
 const TabSettings = ({ profile, onToggleNotify }) => {
   const [savingKey, setSavingKey] = useState(null)
   const [slugInput, setSlugInput] = useState(profile?.slug || '')
@@ -2516,7 +2546,11 @@ const TabSettings = ({ profile, onToggleNotify }) => {
 
   const handleToggle = async (key, value) => {
     setSavingKey(key)
-    await onToggleNotify(key, value)
+    const result = await onToggleNotify(key, value)
+    // App.js's [data-appearance]-setting effect reads its own independently-
+    // fetched profile state, not this component's — a saved appearance
+    // change won't actually repaint anything until that reloads.
+    if (key === 'appearance' && result?.ok) { window.location.reload(); return }
     setSavingKey(null)
   }
 
@@ -2605,12 +2639,31 @@ const TabSettings = ({ profile, onToggleNotify }) => {
       </div>
 
       <div>
+        <div style={S.sectionTitle}>Appearance</div>
+        <div style={{ fontSize: type.body, color: color.textOnLight.secondary, marginBottom: 16 }}>
+          Choose light or dark, or match your device automatically.
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {APPEARANCE_OPTIONS.map(opt => (
+            <button key={opt.value} type="button" onClick={() => handleToggle('appearance', opt.value)}
+              disabled={savingKey === 'appearance'}
+              style={{ flex: 1, textAlign: 'left', padding: '12px 14px', borderRadius: 8, cursor: 'pointer',
+                border: `1px solid ${(profile?.appearance || 'system') === opt.value ? color.forest : color.borderLight}`,
+                background: (profile?.appearance || 'system') === opt.value ? color.sage : 'transparent' }}>
+              <div style={{ fontSize: type.body, fontWeight: 500, color: color.textOnLight.primary }}>{opt.label}</div>
+              <div style={{ fontSize: type.label, color: color.textOnLight.secondary, marginTop: 2 }}>{opt.desc}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div>
         <div style={S.sectionTitle}>Notifications</div>
         <div style={{ fontSize: type.body, color: color.textOnLight.secondary, marginBottom: 16 }}>
           Choose what you want to be notified about. (Delivery — push, email, or WhatsApp — isn't built yet; this just saves your preference.)
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '16px 0', borderBottom: '0.5px solid #F5F5F5' }}>
+          padding: '16px 0', borderBottom: `0.5px solid ${color.borderSubtle}` }}>
           <div>
             <div style={{ fontSize: type.body, color: color.textOnLight.primary }}>New message</div>
             <div style={{ fontSize: type.label, color: color.textOnLight.secondary, marginTop: 2 }}>
@@ -2884,7 +2937,7 @@ export default function CoachDashboard() {
     return (
       <div style={{ marginTop: 20, paddingTop: 16, borderTop: `0.5px solid ${color.borderLight}` }}>
         {!collapsed && (
-          <div style={{ ...labelStyle(false), padding: '0 4px', marginBottom: 8 }}>Clients</div>
+          <div style={{ ...labelStyle(), padding: '0 4px', marginBottom: 8 }}>Clients</div>
         )}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           {shown.map(client => {
@@ -2967,7 +3020,7 @@ export default function CoachDashboard() {
                 border: 'none', textAlign: 'left', cursor: 'pointer',
                 fontFamily: font.sans, fontSize: type.body,
                 transition: 'all 0.15s ease',
-                ...navItemStyle(activeTab === tab.id, false),
+                ...navItemStyle(activeTab === tab.id),
               }}>
               <span style={{ width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <tab.Icon />
@@ -3167,7 +3220,7 @@ export default function CoachDashboard() {
             overflowY: 'auto', background: color.surfaceLight, borderRadius: 10, border: `0.5px solid ${color.borderLight}`,
             zIndex: 300 }}>
             <div style={{ padding: '10px 14px', borderBottom: `0.5px solid ${color.borderLight}`,
-              ...labelStyle(false), marginBottom: 0 }}>
+              ...labelStyle(), marginBottom: 0 }}>
               Notifications
             </div>
             {notifications.length === 0 ? (
@@ -3497,7 +3550,7 @@ export default function CoachDashboard() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <div style={{ ...displayStyle, fontSize: type.heading, color: color.textOnLight.primary }}>Invite a client</div>
               <button onClick={() => setShowInviteModal(false)}
-                style={{ background: '#F0EDE8', border: 'none', color: color.textOnLight.secondary,
+                style={{ background: color.surfaceSunken, border: 'none', color: color.textOnLight.secondary,
                   width: 32, height: 32, borderRadius: '50%', cursor: 'pointer', fontSize: 16, flexShrink: 0 }}>×</button>
             </div>
             <InviteClient atLimit={atInviteLimit} onUpgradeClick={() => { setShowInviteModal(false); setActiveTab('billing') }} />

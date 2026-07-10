@@ -13,7 +13,7 @@ const S = {
   },
   row: {
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-    padding: '16px 0', borderBottom: '0.5px solid #F5F5F5',
+    padding: '16px 0', borderBottom: `0.5px solid ${color.borderSubtle}`,
   },
   sectionTitle: {
     fontSize: type.bodyLg, fontWeight: 500, color: color.textOnLight.primary, marginBottom: 4,
@@ -38,7 +38,7 @@ const Toggle = ({ value, onChange, disabled }) => (
 )
 
 const SegmentedControl = ({ value, onChange, options }) => (
-  <div style={{ display: 'flex', gap: 4, background: '#F0EDE8', borderRadius: 8, padding: 4 }}>
+  <div style={{ display: 'flex', gap: 4, background: color.surfaceSunken, borderRadius: 8, padding: 4 }}>
     {options.map(opt => (
       <button key={opt.value} onClick={() => onChange(opt.value)} type="button"
         style={{ padding: '6px 14px', borderRadius: 6, border: 'none', cursor: 'pointer',
@@ -54,7 +54,7 @@ const SegmentedControl = ({ value, onChange, options }) => (
 
 const SaveButton = ({ saving, saved, onClick }) => (
   <button onClick={onClick} disabled={saving}
-    style={{ height: 44, padding: '0 28px', background: saved ? '#0D5E49' : saving ? color.textOnLight.faint : color.forest,
+    style={{ height: 44, padding: '0 28px', background: saved ? color.forestPressed : saving ? color.textOnLight.faint : color.forest,
       border: 'none', borderRadius: 10, color: color.sage, fontSize: type.body, fontWeight: 500,
       cursor: saving ? 'not-allowed' : 'pointer', fontFamily: font.sans,
       transition: 'background 0.2s ease' }}>
@@ -115,7 +115,7 @@ const SectionProfile = ({ profile, onProfileUpdate }) => {
         <div>
           <div style={{ fontSize: type.label, fontWeight: 600, color: color.textOnLight.primary, fontFamily: font.mono,
             letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 12, paddingBottom: 8,
-            borderBottom: '0.5px solid #F0F0F0' }}>Account</div>
+            borderBottom: `0.5px solid ${color.borderSubtle}` }}>Account</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div>
               <label style={S.label}>Full name</label>
@@ -143,7 +143,7 @@ const SectionProfile = ({ profile, onProfileUpdate }) => {
         <div>
           <div style={{ fontSize: type.label, fontWeight: 600, color: color.textOnLight.primary, fontFamily: font.mono,
             letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 12, paddingBottom: 8,
-            borderBottom: '0.5px solid #F0F0F0' }}>Personal</div>
+            borderBottom: `0.5px solid ${color.borderSubtle}` }}>Personal</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div>
               <label style={S.label}>Date of birth</label>
@@ -160,7 +160,7 @@ const SectionProfile = ({ profile, onProfileUpdate }) => {
         <div>
           <div style={{ fontSize: type.label, fontWeight: 600, color: color.textOnLight.primary, fontFamily: font.mono,
             letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 12, paddingBottom: 8,
-            borderBottom: '0.5px solid #F0F0F0' }}>Address</div>
+            borderBottom: `0.5px solid ${color.borderSubtle}` }}>Address</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div>
               <label style={S.label}>Address line 1</label>
@@ -252,7 +252,7 @@ const SectionCompetition = ({ profile, onProfileUpdate }) => {
             <div style={{ marginTop: 8, display: 'inline-flex', alignItems: 'center', gap: 8,
               background: color.sage, padding: '6px 12px', borderRadius: 8 }}>
               <span style={{ fontSize: 18, fontWeight: 500, color: color.forest }}>{daysUntil}</span>
-              <span style={{ fontSize: type.label, color: '#3A7A4A' }}>days out</span>
+              <span style={{ fontSize: type.label, color: color.successTextSoft }}>days out</span>
             </div>
           )}
           {daysUntil !== null && daysUntil <= 0 && (
@@ -270,6 +270,7 @@ const SectionCompetition = ({ profile, onProfileUpdate }) => {
 
 const SectionPreferences = ({ profile, onProfileUpdate }) => {
   const [units, setUnits] = useState(profile?.units || 'imperial')
+  const [appearance, setAppearance] = useState(profile?.appearance || 'system')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState(null)
@@ -277,11 +278,19 @@ const SectionPreferences = ({ profile, onProfileUpdate }) => {
   const handleSave = async () => {
     setSaving(true)
     setError(null)
+    // App.js's [data-appearance]-setting effect reads its OWN independently-
+    // fetched profile state, not this component's — so a saved appearance
+    // change won't actually repaint anything until that state re-loads.
+    // Reload only when appearance itself changed, so a units-only save keeps
+    // the existing lightweight in-place "Saved" UX instead of always
+    // reloading.
+    const appearanceChanged = appearance !== (profile?.appearance || 'system')
     const { data, error: err } = await supabase
-      .from('profiles').update({ units })
+      .from('profiles').update({ units, appearance })
       .eq('id', profile.id).select().single()
     setSaving(false)
     if (err) { setError(err.message); return }
+    if (appearanceChanged) { window.location.reload(); return }
     setSaved(true)
     if (onProfileUpdate) onProfileUpdate(data)
     setTimeout(() => setSaved(false), 2500)
@@ -301,6 +310,16 @@ const SectionPreferences = ({ profile, onProfileUpdate }) => {
           </div>
           <SegmentedControl value={units} onChange={setUnits}
             options={[{ value: 'imperial', label: 'lbs / in' }, { value: 'metric', label: 'kg / cm' }]} />
+        </div>
+        <div style={S.row}>
+          <div>
+            <div style={{ fontSize: type.body, fontWeight: 500, color: color.textOnLight.primary }}>Appearance</div>
+            <div style={{ fontSize: type.label, color: color.textOnLight.secondary, marginTop: 2 }}>
+              Light, dark, or match your device
+            </div>
+          </div>
+          <SegmentedControl value={appearance} onChange={setAppearance}
+            options={[{ value: 'light', label: 'Light' }, { value: 'dark', label: 'Dark' }, { value: 'system', label: 'System' }]} />
         </div>
         {error && <div style={{ fontSize: type.body, color: color.alert, marginTop: 12 }}>{error}</div>}
         <div style={{ marginTop: 20 }}>

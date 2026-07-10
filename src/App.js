@@ -49,6 +49,26 @@ function AuthRoutes() {
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
 
+  // profiles.appearance ('light' | 'dark' | 'system') drives which values
+  // src/styles/tokens.css's CSS custom properties resolve to. 'light'/'dark'
+  // set an explicit [data-appearance] attribute (wins outright); 'system'
+  // (the column default) or no profile at all REMOVES the attribute, so
+  // tokens.css's @media (prefers-color-scheme) block takes over — no JS
+  // matchMedia listener needed, since that's inherently reactive via CSS.
+  // Known gap, not fixed here: this effect only runs inside AuthRoutes, so
+  // a direct/no-session visit to /reset-password (rendered outside
+  // AuthRoutes entirely) won't clear a stale attribute left over from an
+  // earlier authenticated tab in the same browser that didn't sign out.
+  // Narrow, low-severity (worst case: one of two legitimate-looking modes),
+  // not addressed this phase.
+  useEffect(() => {
+    if (profile?.appearance === 'light' || profile?.appearance === 'dark') {
+      document.documentElement.setAttribute('data-appearance', profile.appearance)
+    } else {
+      document.documentElement.removeAttribute('data-appearance')
+    }
+  }, [profile])
+
   useEffect(() => {
     hydrateImpersonationGuard()
 
