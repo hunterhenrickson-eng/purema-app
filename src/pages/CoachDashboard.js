@@ -897,6 +897,53 @@ const PhaseFieldsGrid = ({ values, onChange, includeDate }) => (
   </div>
 )
 
+// ─── Feedback history ─────────────────────────────────────────────────────
+// Read-only chronological view of every piece of feedback given to this
+// client — distinct from the check-ins list's per-row Reviewed/Pending
+// badge, which shows status only, not the feedback text over time.
+// Feedback itself is still edited from the check-in detail view, not here.
+const FeedbackHistoryPanel = ({ client, checkins }) => {
+  const history = checkins
+    .filter(c => c.client_id === client.id && c.coach_feedback)
+    .sort((a, b) => {
+      if (!a.feedback_at && !b.feedback_at) return 0
+      if (!a.feedback_at) return 1
+      if (!b.feedback_at) return -1
+      return new Date(b.feedback_at) - new Date(a.feedback_at)
+    })
+
+  return (
+    <div style={{ marginTop: 10, paddingTop: 14, borderTop: '0.5px solid #F0F0F0' }}>
+      <div style={{ ...S.label, marginBottom: 10 }}>Feedback history</div>
+      {history.length === 0 ? (
+        <div style={{ fontSize: type.body, color: color.textOnLight.secondary }}>
+          No feedback given yet.
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {history.map(c => (
+            <div key={c.id} style={{ background: color.bone, borderRadius: 8, padding: '10px 12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <span style={{ fontSize: type.label, color: color.forest, fontFamily: font.mono, letterSpacing: '0.06em' }}>
+                  WEEK {c.week_number}
+                </span>
+                <span style={{ fontSize: type.label, color: color.textOnLight.faint, fontFamily: font.mono }}>
+                  {c.feedback_at
+                    ? new Date(c.feedback_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                    : '—'}
+                </span>
+              </div>
+              <div style={{ fontSize: type.body, color: color.textOnLight.primary, lineHeight: 1.6 }}>
+                {c.coach_feedback}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 const DietPlanPanel = ({ client, coachId }) => {
   const [phases, setPhases] = useState(null)
   const [history, setHistory] = useState([])
@@ -1535,6 +1582,7 @@ const MealStructureSection = ({ phase, clientId, coachId }) => {
 const TabClients = ({ clients, checkins, profile, onStatusChange, onTargetsSave, onGoToBilling, onImportCheckins, focusClientId, onFocusHandled }) => {
   const [expandedId, setExpandedId] = useState(null)
   const [expandedPlanId, setExpandedPlanId] = useState(null)
+  const [expandedFeedbackId, setExpandedFeedbackId] = useState(null)
   const [importingClient, setImportingClient] = useState(null)
   const activeClients = clients.filter(c => !c.status || c.status === 'active')
   const limit = tierLimit(profile?.subscription_tier)
@@ -1605,6 +1653,14 @@ const TabClients = ({ clients, checkins, profile, onStatusChange, onTargetsSave,
               Import history
             </button>
           )}
+          {client.status !== 'archived' && (
+            <button onClick={() => setExpandedFeedbackId(expandedFeedbackId === client.id ? null : client.id)}
+              style={{ fontSize: type.label, padding: '4px 10px', borderRadius: 6, border: `1px solid ${color.borderLight}`,
+                background: expandedFeedbackId === client.id ? color.bone : 'transparent', color: color.textOnLight.secondary,
+                cursor: 'pointer', fontFamily: font.mono }}>
+              Feedback history
+            </button>
+          )}
           {(!client.status || client.status === 'active') && (
             <button onClick={() => changeStatus('paused')}
               style={{ fontSize: type.label, padding: '4px 10px', borderRadius: 6, border: `1px solid ${color.borderLight}`,
@@ -1646,6 +1702,9 @@ const TabClients = ({ clients, checkins, profile, onStatusChange, onTargetsSave,
       )}
       {expandedPlanId === client.id && (
         <DietPlanPanel client={client} coachId={profile?.id} />
+      )}
+      {expandedFeedbackId === client.id && (
+        <FeedbackHistoryPanel client={client} checkins={checkins} />
       )}
     </div>
     )
