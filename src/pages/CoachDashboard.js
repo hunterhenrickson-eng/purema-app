@@ -2527,6 +2527,15 @@ const TABS = [
   { id: 'settings', label: 'Settings', Icon: GearIcon },
 ]
 
+// Sidebar-only grouping (vertical NavList) — the top-tabs layout and mobile
+// bottom bar both stay a single flat row, unaffected. Minimal Vercel-style
+// approach: spacing + a hairline rule between groups, no text group labels.
+const NAV_GROUPS = [
+  ['dashboard', 'clients', 'requests', 'overview'],
+  ['checkins', 'calendar', 'messages'],
+  ['billing', 'settings'],
+]
+
 // Preferences storage only — same as the client-side notification toggles
 // in ClientSettings.js. No push/email delivery infrastructure exists yet;
 // this just persists the coach's choice on their own profile row.
@@ -3043,46 +3052,65 @@ export default function CoachDashboard() {
       return null
     }
 
+    const renderTab = (tab) => {
+      const badgeInfo = badgeFor(tab)
+      return (
+        <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+          onMouseEnter={() => setHoveredTab(tab.id)}
+          onMouseLeave={() => setHoveredTab(null)}
+          style={{
+            position: 'relative',
+            display: 'flex', alignItems: 'center', gap: 10,
+            justifyContent: collapsed ? 'center' : 'flex-start',
+            padding: vertical ? (collapsed ? '10px 0' : '10px 12px') : '8px 14px',
+            border: 'none', textAlign: 'left', cursor: 'pointer',
+            fontFamily: font.sans, fontSize: type.body,
+            transition: 'all 0.15s ease',
+            ...navItemStyle(activeTab === tab.id),
+          }}>
+          <span style={{ width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <tab.Icon />
+          </span>
+          {!collapsed && tab.label}
+          {!collapsed && badgeInfo && (
+            <span style={{ marginLeft: 6, background: badgeInfo.bg, color: badgeInfo.fg,
+              fontSize: type.label, borderRadius: 999, padding: '1px 6px',
+              fontFamily: font.mono, verticalAlign: 'middle' }}>
+              {badgeInfo.count}
+            </span>
+          )}
+          {collapsed && badgeInfo && (
+            <span style={{ position: 'absolute', top: 2, right: 10, background: badgeInfo.bg, color: badgeInfo.fg,
+              fontSize: 9, borderRadius: 999, padding: '1px 4px', minWidth: 14, textAlign: 'center',
+              fontFamily: font.mono, lineHeight: 1.4 }}>
+              {badgeInfo.count}
+            </span>
+          )}
+          <IconTooltip label={tab.label} show={collapsed && hoveredTab === tab.id} />
+        </button>
+      )
+    }
+
+    if (!vertical) {
+      return (
+        <nav style={{ display: 'flex', flexDirection: 'row', gap: 4 }}>
+          {TABS.map(renderTab)}
+        </nav>
+      )
+    }
+
     return (
-      <nav style={{ display: 'flex', flexDirection: vertical ? 'column' : 'row', gap: vertical ? 4 : 4 }}>
-        {TABS.map(tab => {
-          const badgeInfo = badgeFor(tab)
-          return (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-              onMouseEnter={() => setHoveredTab(tab.id)}
-              onMouseLeave={() => setHoveredTab(null)}
-              style={{
-                position: 'relative',
-                display: 'flex', alignItems: 'center', gap: 10,
-                justifyContent: collapsed ? 'center' : 'flex-start',
-                padding: vertical ? (collapsed ? '10px 0' : '10px 12px') : '8px 14px',
-                border: 'none', textAlign: 'left', cursor: 'pointer',
-                fontFamily: font.sans, fontSize: type.body,
-                transition: 'all 0.15s ease',
-                ...navItemStyle(activeTab === tab.id),
-              }}>
-              <span style={{ width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <tab.Icon />
-              </span>
-              {!collapsed && tab.label}
-              {!collapsed && badgeInfo && (
-                <span style={{ marginLeft: 6, background: badgeInfo.bg, color: badgeInfo.fg,
-                  fontSize: type.label, borderRadius: 999, padding: '1px 6px',
-                  fontFamily: font.mono, verticalAlign: 'middle' }}>
-                  {badgeInfo.count}
-                </span>
-              )}
-              {collapsed && badgeInfo && (
-                <span style={{ position: 'absolute', top: 2, right: 10, background: badgeInfo.bg, color: badgeInfo.fg,
-                  fontSize: 9, borderRadius: 999, padding: '1px 4px', minWidth: 14, textAlign: 'center',
-                  fontFamily: font.mono, lineHeight: 1.4 }}>
-                  {badgeInfo.count}
-                </span>
-              )}
-              <IconTooltip label={tab.label} show={collapsed && hoveredTab === tab.id} />
-            </button>
-          )
-        })}
+      <nav style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {NAV_GROUPS.map((groupIds, i) => (
+          <div key={i} style={i > 0 ? { borderTop: `0.5px solid ${color.borderLight}`, marginTop: 12, paddingTop: 12 } : undefined}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {groupIds
+                .map(id => TABS.find(t => t.id === id))
+                .filter(Boolean)
+                .map(renderTab)}
+            </div>
+          </div>
+        ))}
       </nav>
     )
   }
@@ -3377,6 +3405,24 @@ export default function CoachDashboard() {
     </button>
   )
 
+  const AccountIdentity = ({ collapsed }) => {
+    const displayName = profile?.full_name || profile?.email || 'Coach'
+    const currentPlan = planById(profile?.subscription_tier)
+    const tierLabel = isSubscribed(profile) && currentPlan ? currentPlan.label : 'Free'
+
+    if (collapsed) return null
+
+    return (
+      <div style={{ padding: '0 4px', marginBottom: 20, display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div style={{ fontFamily: font.sans, fontSize: type.body, fontWeight: 500, color: color.textOnLight.primary,
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {displayName}
+        </div>
+        <span style={{ ...badge('info'), width: 'fit-content' }}>{tierLabel}</span>
+      </div>
+    )
+  }
+
   return (
     <div className={navLayout === 'top_tabs' ? 'purema-shell purema-shell--top-tabs' : 'purema-shell'}
       data-sidebar={isCollapsedSidebar ? 'collapsed' : undefined}
@@ -3398,6 +3444,7 @@ export default function CoachDashboard() {
                 <div onClick={() => setActiveTab('dashboard')} style={{ cursor: 'pointer' }}><Mark size={20} /></div>
               ) : <Logo />}
             </div>
+            <AccountIdentity collapsed={sidebarCollapsed} />
             <NavList vertical collapsed={sidebarCollapsed} />
             <MiniClientList collapsed={sidebarCollapsed} />
           </div>
