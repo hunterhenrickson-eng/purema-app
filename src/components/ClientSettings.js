@@ -578,6 +578,9 @@ export default function ClientSettings({ profile, onProfileUpdate }) {
           padding: '0 12px', marginBottom: 8 }}>
           Settings
         </div>
+        <div style={{ padding: '0 12px', marginBottom: 16 }}>
+          <span style={badge('info')}>{profile?.role === 'client' ? 'Client account' : 'Account'}</span>
+        </div>
         {NAV_ITEMS.map(item => (
           <button key={item.id} onClick={() => setActiveSection(item.id)}
             style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10,

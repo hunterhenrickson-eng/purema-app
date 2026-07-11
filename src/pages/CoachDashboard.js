@@ -2597,6 +2597,11 @@ const TabSettings = ({ profile, onToggleNotify }) => {
 
   return (
     <div style={{ maxWidth: 480, display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div style={{ ...S.card, display: 'flex', alignItems: 'center', gap: 10 }}>
+        <span style={badge('info')}>{profile?.role === 'coach' ? 'Coach account' : 'Account'}</span>
+        <span style={{ fontSize: type.label, color: color.textOnLight.faint }}>{profile?.email}</span>
+      </div>
+
       <div style={S.card}>
         <div style={S.sectionTitle}>Application link</div>
         <div style={{ fontSize: type.body, color: color.textOnLight.secondary, marginBottom: 16 }}>
