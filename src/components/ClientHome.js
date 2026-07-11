@@ -744,7 +744,17 @@ const TABS = [
 ]
 
 export default function ClientHome() {
-  const [activeTab, setActiveTab] = useState('home')
+  // Restores the tab an appearance-change reload was stashed from (see
+  // ClientSettings.js's SectionPreferences handleSave) — reads once and
+  // clears immediately so a normal, non-reload page load still lands on
+  // the real default.
+  const [activeTab, setActiveTab] = useState(() => {
+    try {
+      const restore = sessionStorage.getItem('purema_restore_tab')
+      if (restore) { sessionStorage.removeItem('purema_restore_tab'); return restore }
+    } catch {}
+    return 'home'
+  })
   const [profile, setProfile] = useState(null)
   const [checkins, setCheckins] = useState([])
   const [dietPhases, setDietPhases] = useState([])

@@ -290,7 +290,19 @@ const SectionPreferences = ({ profile, onProfileUpdate }) => {
       .eq('id', profile.id).select().single()
     setSaving(false)
     if (err) { setError(err.message); return }
-    if (appearanceChanged) { window.location.reload(); return }
+    if (appearanceChanged) {
+      // The reload is genuinely necessary (see comment above), but neither
+      // ClientHome's activeTab nor this component's own activeSection is
+      // reflected in the URL, so without stashing both a reload always
+      // drops back to their hardcoded defaults ('home' / 'profile') instead
+      // of leaving the user on Settings -> Preferences.
+      try {
+        sessionStorage.setItem('purema_restore_tab', 'settings')
+        sessionStorage.setItem('purema_restore_settings_section', 'preferences')
+      } catch {}
+      window.location.reload()
+      return
+    }
     setSaved(true)
     if (onProfileUpdate) onProfileUpdate(data)
     setTimeout(() => setSaved(false), 2500)
@@ -565,7 +577,16 @@ const NAV_ITEMS = [
 // ─── Main Settings shell ──────────────────────────────────────────────────────
 
 export default function ClientSettings({ profile, onProfileUpdate }) {
-  const [activeSection, setActiveSection] = useState('profile')
+  // Restores the section an appearance-change reload was stashed from (see
+  // SectionPreferences' handleSave) — reads once and clears immediately so
+  // a normal, non-reload page load still lands on the real default.
+  const [activeSection, setActiveSection] = useState(() => {
+    try {
+      const restore = sessionStorage.getItem('purema_restore_settings_section')
+      if (restore) { sessionStorage.removeItem('purema_restore_settings_section'); return restore }
+    } catch {}
+    return 'profile'
+  })
 
   return (
     <div style={{ display: 'flex', gap: 0, minHeight: 500 }}>

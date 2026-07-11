@@ -2566,8 +2566,16 @@ const TabSettings = ({ profile, onToggleNotify }) => {
     const result = await onToggleNotify(key, value)
     // App.js's [data-appearance]-setting effect reads its own independently-
     // fetched profile state, not this component's — a saved appearance
-    // change won't actually repaint anything until that reloads.
-    if (key === 'appearance' && result?.ok) { window.location.reload(); return }
+    // change won't actually repaint anything until that reloads. The reload
+    // itself is genuinely necessary, but activeTab is plain useState (never
+    // reflected in the URL), so without stashing it a reload always drops
+    // back to the 'dashboard' default — restored in CoachDashboard()'s own
+    // initial state below.
+    if (key === 'appearance' && result?.ok) {
+      try { sessionStorage.setItem('purema_restore_tab', 'settings') } catch {}
+      window.location.reload()
+      return
+    }
     setSavingKey(null)
   }
 
@@ -2703,7 +2711,16 @@ const TabSettings = ({ profile, onToggleNotify }) => {
 // ─── Main shell ───────────────────────────────────────────────────────────────
 
 export default function CoachDashboard() {
-  const [activeTab, setActiveTab] = useState('dashboard')
+  // Restores the tab an appearance-change reload was stashed from (see
+  // TabSettings' handleToggle) — reads once and clears immediately so a
+  // normal, non-reload page load still lands on the real default.
+  const [activeTab, setActiveTab] = useState(() => {
+    try {
+      const restore = sessionStorage.getItem('purema_restore_tab')
+      if (restore) { sessionStorage.removeItem('purema_restore_tab'); return restore }
+    } catch {}
+    return 'dashboard'
+  })
   const [checkins, setCheckins] = useState([])
   const [clients, setClients] = useState([])
   const [applications, setApplications] = useState([])
