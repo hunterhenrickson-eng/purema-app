@@ -55,5 +55,5 @@ No CSS framework/component library — all styling is inline `style={{...}}` obj
 
 ### Environment / config notes
 
-- `src/.env` defines `REACT_APP_SUPABASE_URL` / `REACT_APP_SUPABASE_ANON_KEY`, but `src/lib/supabase.js` currently hardcodes the Supabase URL and anon key instead of reading `process.env`. Be aware of this mismatch if rotating credentials or working across environments.
+- `src/.env` defines `REACT_APP_SUPABASE_URL` / `REACT_APP_SUPABASE_ANON_KEY`, and `src/lib/supabase.js` reads both from `process.env` as expected.
 - `.env` is gitignored. A `vercel recovery codes/recovery-codes.txt` credential file was previously committed to this repo; it was resolved via a `git filter-repo` history rewrite + force-push (approved and done directly by the repo owner) and the leaked codes were rotated on Vercel. `vercel recovery codes/` is now in `.gitignore` and has zero git history (confirmed via `git log --all --full-history`) — nothing further to flag here unless a new credential file shows up.
