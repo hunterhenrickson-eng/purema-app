@@ -2596,8 +2596,8 @@ const TabSettings = ({ profile, onToggleNotify }) => {
   const navLayout = profile?.nav_layout === 'top_tabs' ? 'top_tabs' : 'sidebar'
 
   return (
-    <div style={{ maxWidth: 480, display: 'flex', flexDirection: 'column', gap: 32 }}>
-      <div>
+    <div style={{ maxWidth: 480, display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div style={S.card}>
         <div style={S.sectionTitle}>Application link</div>
         <div style={{ fontSize: type.body, color: color.textOnLight.secondary, marginBottom: 16 }}>
           Share this link so prospective clients can apply to work with you. Approved applications land in your Requests tab.
@@ -2636,7 +2636,7 @@ const TabSettings = ({ profile, onToggleNotify }) => {
         )}
       </div>
 
-      <div>
+      <div style={S.card}>
         <div style={S.sectionTitle}>Navigation</div>
         <div style={{ fontSize: type.body, color: color.textOnLight.secondary, marginBottom: 16 }}>
           Choose how the dashboard nav is laid out on desktop. Mobile stays the same either way.
@@ -2655,7 +2655,7 @@ const TabSettings = ({ profile, onToggleNotify }) => {
         </div>
       </div>
 
-      <div>
+      <div style={S.card}>
         <div style={S.sectionTitle}>Appearance</div>
         <div style={{ fontSize: type.body, color: color.textOnLight.secondary, marginBottom: 16 }}>
           Choose light or dark, or match your device automatically.
@@ -2674,7 +2674,7 @@ const TabSettings = ({ profile, onToggleNotify }) => {
         </div>
       </div>
 
-      <div>
+      <div style={S.card}>
         <div style={S.sectionTitle}>Notifications</div>
         <div style={{ fontSize: type.body, color: color.textOnLight.secondary, marginBottom: 16 }}>
           Choose what you want to be notified about. (Delivery — push, email, or WhatsApp — isn't built yet; this just saves your preference.)
