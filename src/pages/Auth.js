@@ -50,8 +50,17 @@ export default function Auth() {
 
     if (mode === 'signin') {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) setError(error.message)
-      setLoading(false)
+      if (error) {
+        setError(error.message)
+        setLoading(false)
+        return
+      }
+      // Auth now only renders at /login (see App.js), outside AuthRoutes'
+      // session listener — nothing else here would ever move a
+      // successfully-signed-in user off this URL, so it has to happen
+      // explicitly. '/' re-evaluates session/role and lands on the right
+      // dashboard, same as it always has for any other logged-in visit.
+      window.location.href = '/'
       return
     }
 

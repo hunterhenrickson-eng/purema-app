@@ -3,6 +3,7 @@ import { supabase } from './lib/supabase'
 import { color, font, type, badge } from './lib/theme'
 import { getImpersonationState, hydrateImpersonationGuard, exitImpersonation } from './lib/impersonation'
 import Auth from './pages/Auth'
+import Home from './pages/Home'
 import CoachDashboard from './pages/CoachDashboard'
 import AdminDashboard from './pages/AdminDashboard'
 import ClientHome from './components/ClientHome'
@@ -120,7 +121,10 @@ function AuthRoutes() {
       </div>
     )
   } else if (!session) {
-    content = <Auth />
+    // Auth itself only lives at /login now (see App() below) — a
+    // logged-out visitor anywhere else (most commonly '/') sees the
+    // marketing Home page instead, per the coach-signup-only decision.
+    content = <Home />
   } else if (window.location.pathname.startsWith('/admin')) {
     // Same pathname-check pattern as every other route here — /admin needs
     // the session/profile already loaded above to decide access, so it's
@@ -171,6 +175,14 @@ function App() {
 
   if (path === '/reset-password') {
     return <ResetPassword />
+  }
+
+  // Renders the sign-in/signup form directly, bypassing AuthRoutes'
+  // session-gate branching entirely — an already-logged-in user hitting
+  // /login just sees the form (no dashboard loop-back), same as any other
+  // route here that's decided purely by pathname, not session state.
+  if (path === '/login') {
+    return <Auth />
   }
 
   if (path.startsWith('/apply/')) {
