@@ -1,10 +1,12 @@
+import { useEffect } from 'react'
 import { color as staticColor, appearance, font, type, displayStyle, badge } from '../lib/theme'
 import { PLANS } from '../lib/billing'
 
 // Pre-auth marketing page, same light-theme/token setup as Home.js (see
-// that file's top-of-file comment for why this shadow exists and why it's
-// light-only). Monthly pricing only, straight from PLANS — no annual
-// toggle/discount UI, since PLANS doesn't represent one.
+// that file's top-of-file comment for why this shadow exists and why it
+// must ALWAYS render light regardless of system dark-mode preference).
+// Monthly pricing only, straight from PLANS — no annual toggle/discount
+// UI, since PLANS doesn't represent one.
 const color = {
   ...staticColor,
   bone: appearance.surfacePage,
@@ -22,6 +24,13 @@ const Mark = ({ size = 32 }) => (
 )
 
 export default function Pricing() {
+  // Force light regardless of system preference — see Home.js's top-of-file
+  // comment for the full mechanism/reasoning. No unmount cleanup needed for
+  // the same reason as Home.js (no client-side routing in this app).
+  useEffect(() => {
+    document.documentElement.setAttribute('data-appearance', 'light')
+  }, [])
+
   return (
     <div style={{ minHeight: '100vh', background: color.bone, fontFamily: font.sans }}>
       <div style={{ maxWidth: 1040, margin: '0 auto', padding: '28px 24px 80px' }}>

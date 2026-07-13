@@ -1,12 +1,16 @@
+import { useEffect } from 'react'
 import { color as staticColor, appearance, font, type, displayStyle } from '../lib/theme'
 
 // Marketing landing page, shown at '/' only when there's no active session
 // (see App.js / AuthRoutes) — logged-in users never see this. Light theme,
 // wired to the same appearance token system as Auth.js/CoachDashboard.js/
-// ClientHome.js, but via the light-side shadow (this page never renders
-// dark) since there's no profile yet to drive a manual toggle here — it
-// just follows system preference through tokens.css's prefers-color-scheme
-// block, same mechanism as any signed-out screen.
+// ClientHome.js via the light-side shadow, but this page must ALWAYS render
+// light regardless of system/OS dark-mode preference — a deliberate
+// exception from every other appearance-aware screen, which does follow the
+// user's chosen or system appearance. Since this route bypasses
+// AuthRoutes' own data-appearance effect entirely (see App.js), nothing
+// pins that here otherwise, and tokens.css's prefers-color-scheme fallback
+// would silently render it dark on a dark-mode system.
 const color = {
   ...staticColor,
   bone: appearance.surfacePage,
@@ -47,6 +51,15 @@ const FEATURES = [
 ]
 
 export default function Home() {
+  // Force light regardless of system preference — see top-of-file comment.
+  // No cleanup on unmount: every navigation away from this page is a real
+  // browser navigation (this app has no client-side routing), so the
+  // attribute is naturally reset by the next page's own load, not left
+  // dangling for a subsequent React remount.
+  useEffect(() => {
+    document.documentElement.setAttribute('data-appearance', 'light')
+  }, [])
+
   return (
     <div style={{ minHeight: '100vh', background: color.bone, fontFamily: font.sans }}>
       <div style={{ maxWidth: 1040, margin: '0 auto', padding: '28px 24px 80px' }}>

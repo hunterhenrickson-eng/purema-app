@@ -8,9 +8,10 @@ import '../styles/purema-responsive.css';
 
 // Pre-auth marketing/public page, deliberately converted to light — same
 // light-side shadow pattern as Home.js/Pricing.js (see those files' own
-// top-of-file comments). This is a one-page exception: AcceptInvite.jsx/
-// ClientOnboarding.jsx/Auth.js/ResetPassword.jsx stay dark-only and are not
-// touched here.
+// top-of-file comments), including forcing data-appearance="light" so it
+// ignores system dark-mode preference like they do. This is a one-page
+// exception: AcceptInvite.jsx/ClientOnboarding.jsx/Auth.js/ResetPassword.jsx
+// stay dark-only and are not touched here.
 const color = {
   ...staticColor,
   bone: appearance.surfacePage,
@@ -50,6 +51,13 @@ const Shell = ({ children }) => (
 // to read arbitrary profile columns, same reasoning as the existing
 // my_coach_id() helper used elsewhere for RLS-safe scoped reads.
 export default function PublicApply({ slug }) {
+  // Force light regardless of system preference — see Home.js's top-of-file
+  // comment for the full mechanism/reasoning. No unmount cleanup needed for
+  // the same reason as Home.js (no client-side routing in this app).
+  useEffect(() => {
+    document.documentElement.setAttribute('data-appearance', 'light');
+  }, []);
+
   const [status, setStatus] = useState('loading');
   const [coachId, setCoachId] = useState(null);
   const [name, setName] = useState('');
