@@ -2172,7 +2172,7 @@ const TabBilling = ({ profile, onProfileRefresh }) => {
       {error && <div style={{ fontSize: type.body, color: color.alert }}>{error}</div>}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
-        {PLANS.map(plan => {
+        {PLANS.filter(plan => plan.priceId).map(plan => {
           const isCurrent = profile?.subscription_tier === plan.id && subscribed
           return (
             <div key={plan.id} style={{ ...S.card,
@@ -3408,7 +3408,7 @@ export default function CoachDashboard() {
   const AccountIdentity = ({ collapsed }) => {
     const displayName = profile?.full_name || profile?.email || 'Coach'
     const currentPlan = planById(profile?.subscription_tier)
-    const tierLabel = isSubscribed(profile) && currentPlan ? currentPlan.label : 'Free'
+    const tierLabel = isSubscribed(profile) && currentPlan ? currentPlan.label : (planById('free')?.label || 'Free')
 
     if (collapsed) return null
 

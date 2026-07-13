@@ -50,11 +50,17 @@ export default function Home() {
   return (
     <div style={{ minHeight: '100vh', background: color.bone, fontFamily: font.sans }}>
       <div style={{ maxWidth: 1040, margin: '0 auto', padding: '28px 24px 80px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Mark size={22} />
-          <span style={{ ...displayStyle, fontSize: 18, color: color.textOnLight.primary }}>
-            purema<span style={{ color: color.forest }}>.</span>
-          </span>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Mark size={22} />
+            <span style={{ ...displayStyle, fontSize: 18, color: color.textOnLight.primary }}>
+              purema<span style={{ color: color.forest }}>.</span>
+            </span>
+          </div>
+          <a href="/pricing" style={{ fontFamily: font.sans, fontSize: type.body, fontWeight: 500,
+            color: color.textOnLight.secondary, textDecoration: 'none' }}>
+            Pricing
+          </a>
         </div>
 
         <div style={{ maxWidth: 640, margin: '96px auto 0', textAlign: 'center' }}>

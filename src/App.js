@@ -4,6 +4,7 @@ import { color, font, type, badge } from './lib/theme'
 import { getImpersonationState, hydrateImpersonationGuard, exitImpersonation } from './lib/impersonation'
 import Auth from './pages/Auth'
 import Home from './pages/Home'
+import Pricing from './pages/Pricing'
 import CoachDashboard from './pages/CoachDashboard'
 import AdminDashboard from './pages/AdminDashboard'
 import ClientHome from './components/ClientHome'
@@ -183,6 +184,12 @@ function App() {
   // route here that's decided purely by pathname, not session state.
   if (path === '/login') {
     return <Auth />
+  }
+
+  // Same pattern as /login — a static marketing page, unaffected by
+  // session state, so it's decided here rather than inside AuthRoutes.
+  if (path === '/pricing') {
+    return <Pricing />
   }
 
   if (path.startsWith('/apply/')) {
