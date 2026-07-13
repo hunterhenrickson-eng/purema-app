@@ -56,7 +56,7 @@
        close existing values (#F0EDE8 used in ~10 places, #FAFAF9 used once
        in CheckInForm.js's DayColumn) into one token — flagging that near-
        duplicate for a future cleanup pass, not resolving it here. */
-  --surface-page: #F5F2ED;
+  --surface-page: #FAFAFA;
   --surface-card: #FFFFFF;
   --surface-raised: #FFFFFF;
   --surface-nav: #EEEBE4;

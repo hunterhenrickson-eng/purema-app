@@ -20,7 +20,7 @@ export const color = {
   // Brand
   forest: 'var(--brand-forest)',
   void: '#0D0D0D',
-  bone: '#F5F2ED',
+  bone: '#FAFAFA',
   sage: 'var(--brand-sage)',
   gold: 'var(--brand-gold)',
   alert: 'var(--brand-alert)',
