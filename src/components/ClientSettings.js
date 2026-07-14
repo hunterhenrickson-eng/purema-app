@@ -64,9 +64,17 @@ const SaveButton = ({ saving, saved, onClick }) => (
 
 // ─── Sections ─────────────────────────────────────────────────────────────────
 
+// Guarded rather than assumed — Intl.supportedValuesOf shipped in every
+// evergreen browser years ago (Chrome/Edge 99+, Firefox 119+, Safari 17+),
+// but on the off chance it's unavailable this just yields an empty option
+// list instead of throwing, so the field still renders (showing whatever
+// value is already saved) rather than crashing the whole settings page.
+const TIMEZONES = typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : []
+
 const SectionProfile = ({ profile, onProfileUpdate }) => {
   const [fullName, setFullName] = useState(profile?.full_name || '')
   const [dateOfBirth, setDateOfBirth] = useState(profile?.date_of_birth || '')
+  const [timezone, setTimezone] = useState(profile?.timezone || '')
   const [phone, setPhone] = useState(profile?.phone || '')
   const [addressLine1, setAddressLine1] = useState(profile?.address_line1 || '')
   const [addressLine2, setAddressLine2] = useState(profile?.address_line2 || '')
@@ -89,6 +97,7 @@ const SectionProfile = ({ profile, onProfileUpdate }) => {
       .from('profiles').update({
         full_name: fullName,
         date_of_birth: dateOfBirth || null,
+        timezone: timezone || null,
         phone: phone || null,
         address_line1: addressLine1 || null,
         address_line2: addressLine2 || null,
@@ -152,6 +161,14 @@ const SectionProfile = ({ profile, onProfileUpdate }) => {
               {age !== null && (
                 <div style={{ fontSize: type.label, color: color.textOnLight.secondary, marginTop: 4, fontFamily: font.mono }}>Age: {age}</div>
               )}
+            </div>
+            <div>
+              <label style={S.label}>Timezone</label>
+              <select value={timezone} onChange={e => setTimezone(e.target.value)}
+                style={{ ...S.input, cursor: 'pointer' }}>
+                <option value="">Not set</option>
+                {TIMEZONES.map(tz => <option key={tz} value={tz}>{tz}</option>)}
+              </select>
             </div>
           </div>
         </div>

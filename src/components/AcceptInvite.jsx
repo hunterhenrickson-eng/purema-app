@@ -89,6 +89,7 @@ export default function AcceptInvite({ token }) {
       // or employee isn't anyone's client, so this stays null for those.
       coach_id: role === 'client' ? invite.coach_id : null,
       admin_role_id: role === 'admin' ? invite.admin_role_id : null,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     });
 
     if (profileError) {

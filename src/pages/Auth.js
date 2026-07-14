@@ -79,6 +79,7 @@ export default function Auth() {
         role,
         full_name: fullName,
         email,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       })
       if (profileError) {
         setError(profileError.message)

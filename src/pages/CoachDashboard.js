@@ -2562,13 +2562,29 @@ const APPEARANCE_OPTIONS = [
   { value: 'system', label: 'System', desc: 'Match your device' },
 ]
 
+// Guarded rather than assumed — Intl.supportedValuesOf shipped in every
+// evergreen browser years ago (Chrome/Edge 99+, Firefox 119+, Safari 17+),
+// but on the off chance it's unavailable this just yields an empty option
+// list instead of throwing, so the field still renders (showing whatever
+// value is already saved) rather than crashing the whole settings page.
+const TIMEZONES = typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : []
+
 const TabSettings = ({ profile, onToggleNotify }) => {
   const [savingKey, setSavingKey] = useState(null)
   const [slugInput, setSlugInput] = useState(profile?.slug || '')
   const [slugError, setSlugError] = useState(null)
   const [copied, setCopied] = useState(false)
+  const [timezone, setTimezone] = useState(profile?.timezone || '')
 
   useEffect(() => { setSlugInput(profile?.slug || '') }, [profile?.slug])
+  useEffect(() => { setTimezone(profile?.timezone || '') }, [profile?.timezone])
+
+  const handleTimezoneChange = async (value) => {
+    setTimezone(value)
+    setSavingKey('timezone')
+    await onToggleNotify('timezone', value || null)
+    setSavingKey(null)
+  }
 
   const handleToggle = async (key, value) => {
     setSavingKey(key)
@@ -2656,6 +2672,21 @@ const TabSettings = ({ profile, onToggleNotify }) => {
             </button>
           </div>
         )}
+      </div>
+
+      <div style={S.card}>
+        <div style={S.sectionTitle}>Timezone</div>
+        <div style={{ fontSize: type.body, color: color.textOnLight.secondary, marginBottom: 16 }}>
+          Used for scheduling and dates across your account.
+        </div>
+        <select value={timezone} onChange={e => handleTimezoneChange(e.target.value)}
+          disabled={savingKey === 'timezone'}
+          style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: `1px solid ${color.borderLight}`,
+            fontFamily: font.sans, fontSize: type.body, outline: 'none', color: color.textOnLight.primary,
+            background: color.surfaceLight, cursor: savingKey === 'timezone' ? 'not-allowed' : 'pointer' }}>
+          <option value="">Not set</option>
+          {TIMEZONES.map(tz => <option key={tz} value={tz}>{tz}</option>)}
+        </select>
       </div>
 
       <div style={S.card}>
