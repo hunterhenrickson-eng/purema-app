@@ -2223,29 +2223,41 @@ function ymd(d) {
 
 function buildCalendarEvents(clients, checkins) {
   const events = {}
-  const add = (dateKey, name, type) => {
+  const add = (dateKey, name, type, clientId) => {
     if (!events[dateKey]) events[dateKey] = []
-    events[dateKey].push({ name, type })
+    events[dateKey].push({ name, type, clientId })
   }
 
   clients.forEach(client => {
     if (!client.show_date) return
     const show = new Date(`${client.show_date}T00:00:00`)
-    add(ymd(show), client.full_name || client.email, 'show')
+    add(ymd(show), client.full_name || client.email, 'show', client.id)
     const peakDays = client.peak_week_days || 0
     for (let i = 1; i <= peakDays; i++) {
       const d = new Date(show)
       d.setDate(d.getDate() - i)
-      add(ymd(d), client.full_name || client.email, 'peak')
+      add(ymd(d), client.full_name || client.email, 'peak', client.id)
     }
   })
 
   checkins.forEach(c => {
     if (!c.submitted_at) return
-    add(ymd(new Date(c.submitted_at)), c.client_name, 'checkin')
+    add(ymd(new Date(c.submitted_at)), c.client_name, 'checkin', c.client_id)
   })
 
   return events
+}
+
+// Empty selection means "all clients" (the default, unfiltered state) —
+// only actually filters events down once at least one client is picked.
+function filterCalendarEvents(events, selectedClientIds) {
+  if (selectedClientIds.size === 0) return events
+  const filtered = {}
+  Object.entries(events).forEach(([dateKey, dayEvents]) => {
+    const kept = dayEvents.filter(e => selectedClientIds.has(e.clientId))
+    if (kept.length > 0) filtered[dateKey] = kept
+  })
+  return filtered
 }
 
 // Flattens the dateKey->events map into a single chronological list from
@@ -2271,11 +2283,68 @@ function buildMonthWeeks(year, month) {
   return weeks
 }
 
+// Dropdown + checkbox popover, same outside-click-to-close pattern as
+// NotificationBell above. `selected` empty = "all clients", matching
+// filterCalendarEvents' convention — this control never itself decides
+// what "no selection" means, it just reports the raw Set back up.
+const CalendarClientFilter = ({ clients, selected, onChange }) => {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const toggle = (id) => {
+    const next = new Set(selected)
+    if (next.has(id)) next.delete(id); else next.add(id)
+    onChange(next)
+  }
+
+  const label = selected.size === 0 ? 'All clients' : `${selected.size} client${selected.size === 1 ? '' : 's'}`
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button type="button" onClick={() => setOpen(o => !o)}
+        style={{ padding: '7px 12px', borderRadius: 8, border: `1px solid ${color.borderLight}`,
+          background: color.surfaceLight, cursor: 'pointer', fontFamily: font.sans, fontSize: type.body,
+          color: color.textOnLight.primary, display: 'flex', alignItems: 'center', gap: 6 }}>
+        {label} <span style={{ fontSize: 10, color: color.textOnLight.faint }}>▾</span>
+      </button>
+      {open && (
+        <div style={{ position: 'absolute', top: '110%', right: 0, zIndex: 20, minWidth: 220, maxHeight: 280,
+          overflowY: 'auto', background: color.surfaceLight, border: `1px solid ${color.borderLight}`,
+          borderRadius: 10, boxShadow: '0 4px 16px rgba(0,0,0,0.12)', padding: 8 }}>
+          <button type="button" onClick={() => onChange(new Set())}
+            style={{ width: '100%', textAlign: 'left', padding: '6px 8px', borderRadius: 6, border: 'none',
+              background: 'transparent', cursor: 'pointer', fontFamily: font.sans, fontSize: type.body,
+              fontWeight: selected.size === 0 ? 500 : 400, color: color.forest }}>
+            All clients
+          </button>
+          <div style={{ borderTop: `0.5px solid ${color.borderSubtle}`, margin: '6px 0' }} />
+          {clients.map(c => (
+            <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px',
+              borderRadius: 6, cursor: 'pointer', fontFamily: font.sans, fontSize: type.body,
+              color: color.textOnLight.primary }}>
+              <input type="checkbox" checked={selected.has(c.id)} onChange={() => toggle(c.id)} />
+              {c.full_name || c.email}
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 const TabCalendar = ({ clients, checkins }) => {
   const [viewDate, setViewDate] = useState(() => new Date())
   const [selectedDay, setSelectedDay] = useState(null)
+  const [selectedClientIds, setSelectedClientIds] = useState(() => new Set())
 
-  const events = useMemo(() => buildCalendarEvents(clients, checkins), [clients, checkins])
+  const allEvents = useMemo(() => buildCalendarEvents(clients, checkins), [clients, checkins])
+  const events = useMemo(() => filterCalendarEvents(allEvents, selectedClientIds), [allEvents, selectedClientIds])
   const year = viewDate.getFullYear()
   const month = viewDate.getMonth()
   const weeks = useMemo(() => buildMonthWeeks(year, month), [year, month])
@@ -2307,13 +2376,14 @@ const TabCalendar = ({ clients, checkins }) => {
             style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${color.borderLight}`,
               background: color.surfaceLight, cursor: 'pointer', fontSize: 16, color: color.textOnLight.primary }}>›</button>
         </div>
-        <div style={{ display: 'flex', gap: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           {Object.entries(CALENDAR_LABELS).map(([key, label]) => (
             <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <div style={{ width: 8, height: 8, borderRadius: '50%', background: CALENDAR_COLORS[key] }} />
               <span style={{ fontSize: type.label, color: color.textOnLight.secondary }}>{label}</span>
             </div>
           ))}
+          <CalendarClientFilter clients={clients} selected={selectedClientIds} onChange={setSelectedClientIds} />
         </div>
       </div>
 
