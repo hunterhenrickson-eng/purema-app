@@ -2214,6 +2214,14 @@ const CALENDAR_COLORS = { checkin: color.forest, peak: color.alert, show: color.
 const CALENDAR_LABELS = { checkin: 'Check-in', peak: 'Peak week', show: 'Show day' }
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
+// Guarded rather than assumed — Intl.supportedValuesOf shipped in every
+// evergreen browser years ago (Chrome/Edge 99+, Firefox 119+, Safari 17+),
+// but on the off chance it's unavailable this just yields an empty option
+// list instead of throwing, so any dropdown built from it still renders
+// (just with no options) rather than crashing. Shared by TabSettings' own
+// timezone field and TabCalendar's pin-a-timezone control below.
+const TIMEZONES = typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : []
+
 // Local Y-M-D key — avoids the day-shifting that toISOString() causes by
 // converting to UTC first, which matters since these are calendar dates,
 // not instants.
@@ -2338,7 +2346,100 @@ const CalendarClientFilter = ({ clients, selected, onChange }) => {
   )
 }
 
-const TabCalendar = ({ clients, checkins }) => {
+// "City, HH:MM" per zone, refreshed every 30s (a clock, not a stopwatch —
+// no need for anything tighter). `removable` zones (pinned, not already
+// covered by the roster) get a small × to unpin; roster-derived zones
+// don't, since those aren't individually removable per the spec — only
+// additions beyond the dynamic set are.
+const TimezoneChip = ({ tz, now, onRemove }) => {
+  const time = now.toLocaleTimeString('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit' })
+  const city = tz.split('/').pop().replace(/_/g, ' ')
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px',
+      borderRadius: 8, background: color.surfaceLight, border: `0.5px solid ${color.borderLight}` }}>
+      <span style={{ fontSize: type.body, color: color.textOnLight.primary, fontWeight: 500 }}>{city}</span>
+      <span style={{ fontSize: type.body, color: color.textOnLight.secondary, fontFamily: font.mono }}>{time}</span>
+      {onRemove && (
+        <button type="button" onClick={onRemove}
+          style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: color.textOnLight.faint,
+            fontSize: type.label, padding: 0, lineHeight: 1, marginLeft: 2 }}>✕</button>
+      )}
+    </div>
+  )
+}
+
+// Add-a-pin control — same TIMEZONES source and <select> pattern as the
+// Timezone field in TabSettings, rather than a second picker UI.
+const AddTimezonePin = ({ excluded, onAdd }) => {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const options = TIMEZONES.filter(tz => !excluded.includes(tz))
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button type="button" onClick={() => setOpen(o => !o)}
+        style={{ width: 30, height: 30, borderRadius: 8, border: `1px solid ${color.borderLight}`,
+          background: color.surfaceLight, cursor: 'pointer', fontSize: 16, color: color.textOnLight.secondary }}>+</button>
+      {open && (
+        <div style={{ position: 'absolute', top: '110%', left: 0, zIndex: 20, minWidth: 240,
+          background: color.surfaceLight, border: `1px solid ${color.borderLight}`, borderRadius: 10,
+          boxShadow: '0 4px 16px rgba(0,0,0,0.12)', padding: 8 }}>
+          <select autoFocus defaultValue="" onChange={e => { if (e.target.value) { onAdd(e.target.value); setOpen(false) } }}
+            style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: `1px solid ${color.borderLight}`,
+              fontFamily: font.sans, fontSize: type.body, outline: 'none', color: color.textOnLight.primary,
+              background: color.surfaceLight, cursor: 'pointer' }}>
+            <option value="" disabled>Pin a timezone...</option>
+            {options.map(tz => <option key={tz} value={tz}>{tz}</option>)}
+          </select>
+        </div>
+      )}
+    </div>
+  )
+}
+
+const TimezoneStrip = ({ profile, clients, onToggleNotify }) => {
+  const [now, setNow] = useState(() => new Date())
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 30000)
+    return () => clearInterval(id)
+  }, [])
+
+  const activeClients = clients.filter(c => !c.status || c.status === 'active')
+  const dynamicZones = useMemo(() => {
+    const raw = [profile?.timezone, ...activeClients.map(c => c.timezone)].filter(Boolean)
+    return [...new Set(raw)]
+  }, [profile?.timezone, activeClients])
+
+  const pinned = profile?.pinned_timezones || []
+  const pinnedOnly = pinned.filter(tz => !dynamicZones.includes(tz))
+
+  const handleAdd = (tz) => {
+    if (pinned.includes(tz)) return
+    onToggleNotify('pinned_timezones', [...pinned, tz])
+  }
+  const handleRemove = (tz) => {
+    onToggleNotify('pinned_timezones', pinned.filter(t => t !== tz))
+  }
+
+  if (dynamicZones.length === 0 && pinnedOnly.length === 0) return null
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+      {dynamicZones.map(tz => <TimezoneChip key={tz} tz={tz} now={now} />)}
+      {pinnedOnly.map(tz => <TimezoneChip key={tz} tz={tz} now={now} onRemove={() => handleRemove(tz)} />)}
+      <AddTimezonePin excluded={[...dynamicZones, ...pinnedOnly]} onAdd={handleAdd} />
+    </div>
+  )
+}
+
+const TabCalendar = ({ clients, checkins, profile, onToggleNotify }) => {
   const [viewDate, setViewDate] = useState(() => new Date())
   const [selectedDay, setSelectedDay] = useState(null)
   const [selectedClientIds, setSelectedClientIds] = useState(() => new Set())
@@ -2362,6 +2463,8 @@ const TabCalendar = ({ clients, checkins }) => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+      <TimezoneStrip profile={profile} clients={clients} onToggleNotify={onToggleNotify} />
 
       {/* Header: month nav + legend */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
@@ -2631,13 +2734,6 @@ const APPEARANCE_OPTIONS = [
   { value: 'dark', label: 'Dark', desc: 'Always dark' },
   { value: 'system', label: 'System', desc: 'Match your device' },
 ]
-
-// Guarded rather than assumed — Intl.supportedValuesOf shipped in every
-// evergreen browser years ago (Chrome/Edge 99+, Firefox 119+, Safari 17+),
-// but on the off chance it's unavailable this just yields an empty option
-// list instead of throwing, so the field still renders (showing whatever
-// value is already saved) rather than crashing the whole settings page.
-const TIMEZONES = typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : []
 
 const TabSettings = ({ profile, onToggleNotify }) => {
   const [savingKey, setSavingKey] = useState(null)
@@ -3678,7 +3774,7 @@ export default function CoachDashboard() {
               {activeTab === 'clients' && <TabClients clients={clients} checkins={checkins} profile={profile} onStatusChange={handleStatusChange} onTargetsSave={handleTargetsSave} onImportCheckins={handleImportCheckins} onGoToBilling={() => setActiveTab('billing')} focusClientId={focusClientId} onFocusHandled={() => setFocusClientId(null)} />}
               {activeTab === 'requests' && <TabRequests applications={applications} onApprove={handleApproveApplication} onDecline={handleDeclineApplication} />}
               {activeTab === 'checkins' && <TabCheckIns checkins={checkins} onSelectCheckin={setSelected} />}
-              {activeTab === 'calendar' && <TabCalendar clients={clients} checkins={checkins} />}
+              {activeTab === 'calendar' && <TabCalendar clients={clients} checkins={checkins} profile={profile} onToggleNotify={handleToggleNotify} />}
               {activeTab === 'messages' && <TabMessages clients={clients} messages={messages} coachId={profile?.id} onSendMessage={handleSendMessage} onMarkRead={handleMarkMessagesRead} />}
               {activeTab === 'overview' && <TabOverview clients={clients} checkins={checkins} profile={profile} />}
               {activeTab === 'billing' && <TabBilling profile={profile} />}
