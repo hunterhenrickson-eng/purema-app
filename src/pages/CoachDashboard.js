@@ -3046,8 +3046,8 @@ export default function CoachDashboard() {
     const [hoveredTab, setHoveredTab] = useState(null)
 
     const badgeFor = (tab) => {
-      if (tab.id === 'requests' && pendingApplicationsCount > 0) return { count: pendingApplicationsCount, bg: color.gold, fg: color.surfaceLight }
-      if (tab.id === 'checkins' && pendingCount > 0) return { count: pendingCount, bg: color.gold, fg: color.surfaceLight }
+      if (tab.id === 'requests' && pendingApplicationsCount > 0) return { count: pendingApplicationsCount, bg: badge('warning').background, fg: badge('warning').color }
+      if (tab.id === 'checkins' && pendingCount > 0) return { count: pendingCount, bg: badge('warning').background, fg: badge('warning').color }
       if (tab.id === 'messages' && unreadMessageCount > 0) return { count: unreadMessageCount, bg: color.forest, fg: color.sage }
       return null
     }
@@ -3275,7 +3275,7 @@ export default function CoachDashboard() {
             cursor: 'pointer', color: color.textOnLight.secondary }}>
           <BellIcon />
           {notifications.length > 0 && (
-            <span style={{ position: 'absolute', top: 2, right: 2, background: color.gold, color: color.surfaceLight,
+            <span style={{ position: 'absolute', top: 2, right: 2, background: badge('warning').background, color: badge('warning').color,
               fontSize: 9, borderRadius: 999, padding: '1px 4px', minWidth: 14, textAlign: 'center',
               fontFamily: font.mono, lineHeight: 1.4 }}>
               {notifications.length}
@@ -3601,7 +3601,7 @@ export default function CoachDashboard() {
                 whiteSpace: 'nowrap' }}>
               {tab.label}
               {tab.id === 'checkins' && pendingCount > 0 && (
-                <span style={{ background: color.gold, color: color.surfaceLight,
+                <span style={{ background: badge('warning').background, color: badge('warning').color,
                   fontSize: type.label, borderRadius: 999, padding: '1px 5px',
                   fontFamily: font.mono }}>
                   {pendingCount}
