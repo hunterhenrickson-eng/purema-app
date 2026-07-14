@@ -2,10 +2,26 @@ import { useState, useEffect, useCallback } from 'react'
 import Papa from 'papaparse'
 import { supabase } from '../lib/supabase'
 import { createInvite } from '../components/InviteClient'
-import { color, font, type, labelStyle, badge, displayStyle, navItemStyle } from '../lib/theme'
+import {
+  color as staticColor, appearance, font, type,
+  labelStyleAppearance as labelStyle, badge, displayStyle, navItemStyleAppearance as navItemStyle,
+} from '../lib/theme'
 import { hasPermission } from '../lib/adminPermissions'
 import { PLANS, planById, isPastDue, isSuspended } from '../lib/billing'
 import { startImpersonation } from '../lib/impersonation'
+
+// Brings AdminDashboard.js in line with the appearance-token shadow already
+// used by CoachDashboard.js/ClientHome.js, so an admin's own profiles.appearance
+// choice (set via AuthRoutes' data-appearance effect in App.js) actually
+// applies here too — previously this file used the raw static `color` export
+// and silently ignored the admin's own light/dark preference.
+const color = {
+  ...staticColor,
+  bone: appearance.surfacePage,
+  surfaceLight: appearance.surfaceCard,
+  borderLight: appearance.borderDefault,
+  textOnLight: appearance.text,
+}
 
 function downloadFile(content, filename, mimeType) {
   const blob = new Blob([content], { type: mimeType })
