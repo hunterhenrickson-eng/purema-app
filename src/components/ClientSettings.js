@@ -113,7 +113,7 @@ const SectionProfile = ({ profile, onProfileUpdate }) => {
 
         {/* Account */}
         <div>
-          <div style={{ fontSize: type.label, fontWeight: 600, color: color.textOnLight.primary, fontFamily: font.mono,
+          <div style={{ fontSize: type.label, fontWeight: 500, color: color.textOnLight.primary, fontFamily: font.mono,
             letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 12, paddingBottom: 8,
             borderBottom: `0.5px solid ${color.borderSubtle}` }}>Account</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -141,7 +141,7 @@ const SectionProfile = ({ profile, onProfileUpdate }) => {
 
         {/* Personal */}
         <div>
-          <div style={{ fontSize: type.label, fontWeight: 600, color: color.textOnLight.primary, fontFamily: font.mono,
+          <div style={{ fontSize: type.label, fontWeight: 500, color: color.textOnLight.primary, fontFamily: font.mono,
             letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 12, paddingBottom: 8,
             borderBottom: `0.5px solid ${color.borderSubtle}` }}>Personal</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -158,7 +158,7 @@ const SectionProfile = ({ profile, onProfileUpdate }) => {
 
         {/* Address */}
         <div>
-          <div style={{ fontSize: type.label, fontWeight: 600, color: color.textOnLight.primary, fontFamily: font.mono,
+          <div style={{ fontSize: type.label, fontWeight: 500, color: color.textOnLight.primary, fontFamily: font.mono,
             letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 12, paddingBottom: 8,
             borderBottom: `0.5px solid ${color.borderSubtle}` }}>Address</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>

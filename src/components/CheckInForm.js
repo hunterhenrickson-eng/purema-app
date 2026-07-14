@@ -191,7 +191,7 @@ const DayColumn = ({ day, date, index, data, onChange, weightUnit }) => {
 
       {/* Day header */}
       <div style={{ textAlign: 'center', paddingBottom: 8, borderBottom: `0.5px solid ${color.borderLight}` }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: color.textOnLight.primary, fontFamily: font.mono,
+        <div style={{ fontSize: 12, fontWeight: 500, color: color.textOnLight.primary, fontFamily: font.mono,
           letterSpacing: '0.06em' }}>
           {day}
         </div>

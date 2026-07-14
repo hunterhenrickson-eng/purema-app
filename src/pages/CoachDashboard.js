@@ -495,7 +495,7 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave, coachId }) => {
                       <tr style={{ borderBottom: `1px solid ${color.borderSubtle}` }}>
                         <td style={{ padding: '6px 10px', color: color.textOnLight.secondary, fontFamily: font.mono, fontSize: type.label, letterSpacing: '0.06em' }}>METRIC</td>
                         {DAYS.map(d => (
-                          <td key={d} style={{ padding: '6px 10px', textAlign: 'center', fontWeight: 600, color: color.textOnLight.primary, fontFamily: font.mono, fontSize: type.label, letterSpacing: '0.04em' }}>{d}</td>
+                          <td key={d} style={{ padding: '6px 10px', textAlign: 'center', fontWeight: 500, color: color.textOnLight.primary, fontFamily: font.mono, fontSize: type.label, letterSpacing: '0.04em' }}>{d}</td>
                         ))}
                       </tr>
                     </thead>
@@ -575,7 +575,7 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave, coachId }) => {
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}>
                     {dailyLog.map((d, i) => d.lifts ? (
                       <div key={i}>
-                        <div style={{ fontSize: type.label, fontWeight: 600, color: color.textOnLight.primary, fontFamily: font.mono, letterSpacing: '0.06em', marginBottom: 6 }}>{DAYS[i]}</div>
+                        <div style={{ fontSize: type.label, fontWeight: 500, color: color.textOnLight.primary, fontFamily: font.mono, letterSpacing: '0.06em', marginBottom: 6 }}>{DAYS[i]}</div>
                         <div style={{ fontSize: 13, color: color.textOnLight.primary, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{d.lifts}</div>
                       </div>
                     ) : null)}
@@ -590,7 +590,7 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave, coachId }) => {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                     {dailyLog.map((d, i) => d.notes ? (
                       <div key={i} style={{ display: 'flex', gap: 12 }}>
-                        <div style={{ fontSize: type.label, fontWeight: 600, color: color.textOnLight.secondary, fontFamily: font.mono, minWidth: 32, paddingTop: 2 }}>{DAYS[i]}</div>
+                        <div style={{ fontSize: type.label, fontWeight: 500, color: color.textOnLight.secondary, fontFamily: font.mono, minWidth: 32, paddingTop: 2 }}>{DAYS[i]}</div>
                         <div style={{ fontSize: 14, color: color.textOnLight.primary, lineHeight: 1.7 }}>{d.notes}</div>
                       </div>
                     ) : null)}
@@ -2341,7 +2341,7 @@ const TabCalendar = ({ clients, checkins }) => {
                     border: isSelected ? `1.5px solid ${color.forest}` : isToday ? `1px solid ${color.borderDark}` : `0.5px solid ${color.borderLight}`,
                     background: isToday ? color.bone : color.surfaceLight, cursor: 'pointer',
                     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, padding: 4 }}>
-                  <span style={{ fontSize: type.label, color: color.textOnLight.primary, fontWeight: isToday ? 600 : 400, fontFamily: font.mono }}>{day.getDate()}</span>
+                  <span style={{ fontSize: type.label, color: color.textOnLight.primary, fontWeight: isToday ? 500 : 400, fontFamily: font.mono }}>{day.getDate()}</span>
                   {types.length > 0 && (
                     <div style={{ display: 'flex', gap: 3 }}>
                       {types.map(t => (
