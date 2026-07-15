@@ -9,6 +9,7 @@ import InviteClient, { createInvite } from '../components/InviteClient'
 import { PLANS, planById, tierLimit, isSubscribed, isPastDue, isSuspended } from '../lib/billing'
 import { isAdminSuspended, isDeleted } from '../lib/adminPermissions'
 import { getActivePhase } from '../lib/dietPlan'
+import { notify } from '../lib/notify'
 import ImportHistory from '../components/ImportHistory'
 import MessageThread from '../components/MessageThread'
 import ProgressPhotoGallery from '../components/ProgressPhotos'
@@ -418,6 +419,7 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave, coachId }) => {
     await supabase.from('macro_adjustments').insert({
       client_id: checkin.client_id, coach_id: coachId, phase_id: null, ...values, note: overrideForm.note || null,
     })
+    notify('macro', checkin.client_id)
     setOverrideSaved(true)
     setTimeout(() => setOverrideSaved(false), 2000)
   }
@@ -440,7 +442,12 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave, coachId }) => {
     const feedbackAt = new Date().toISOString()
     const { error } = await supabase.from('check_ins').update({ coach_feedback: feedback, feedback_at: feedbackAt }).eq('id', checkin.id)
     setSaving(false)
-    if (!error) { setSaved(true); onFeedbackSave(checkin.id, feedback, feedbackAt); setTimeout(() => setSaved(false), 2000) }
+    if (!error) {
+      setSaved(true)
+      onFeedbackSave(checkin.id, feedback, feedbackAt)
+      notify('feedback', checkin.client_id)
+      setTimeout(() => setSaved(false), 2000)
+    }
   }
 
   const Row = ({ label, value, unit }) => value ? (
@@ -1017,7 +1024,13 @@ const DietPlanPanel = ({ client, coachId }) => {
       calories: values.calories, protein: values.protein, carbs: values.carbs, fats: values.fats,
       note: note || null,
     }).select().single()
-    if (data) setHistory(prev => [data, ...prev])
+    if (data) {
+      setHistory(prev => [data, ...prev])
+      // Shared by both addPhase (new phase) and saveEdit (editing an
+      // existing one) — one notify() call here covers both call sites
+      // rather than duplicating it at each caller.
+      notify('macro', client.id)
+    }
   }
 
   const addPhase = async () => {
@@ -3043,6 +3056,7 @@ export default function CoachDashboard() {
       coach_id: profile.id, client_id: clientId, sender_id: profile.id, body,
     })
     if (error) return { ok: false, message: error.message }
+    notify('message', clientId)
     return { ok: true }
   }
 

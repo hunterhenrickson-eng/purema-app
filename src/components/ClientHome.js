@@ -7,6 +7,7 @@ import {
   labelStyleAppearance as labelStyle, badge, navItemStyleAppearance as navItemStyle, displayStyle,
 } from '../lib/theme'
 import { getEffectiveTargets, getActivePhase } from '../lib/dietPlan'
+import { notify } from '../lib/notify'
 import { displayWeight, displayMeasurement, weightUnitLabel, measurementUnitLabel } from '../lib/units'
 import MessageThread from './MessageThread'
 import ProgressPhotoGallery from './ProgressPhotos'
@@ -848,6 +849,7 @@ export default function ClientHome() {
       coach_id: profile.coach_id, client_id: profile.id, sender_id: profile.id, body,
     })
     if (error) return { ok: false, message: error.message }
+    notify('message', profile.coach_id)
     return { ok: true }
   }
 
