@@ -16,6 +16,11 @@ const FONT_STACK = "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', He
 function renderEmail({ heading, summary, ctaText, ctaUrl }) {
   return `<!doctype html>
 <html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="color-scheme" content="light">
+    <meta name="supported-color-schemes" content="light">
+  </head>
   <body style="margin:0; padding:0; background:${BONE}; font-family:${FONT_STACK};">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${BONE}; padding:32px 16px;">
       <tr>
