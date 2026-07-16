@@ -166,7 +166,7 @@ const TabHome = ({ profile, checkins, dietPhases, targetOverrides, mealPlan, onG
   const measureUnit = measurementUnitLabel(units)
   const displayTargetWeight = profile?.target_weight ? displayWeight(profile.target_weight, units).value : null
   const nextWeek = latest ? latest.week_number + 1 : 1
-  const targets = latest ? getEffectiveTargets(dietPhases, targetOverrides, latest.week_number, profile) : null
+  const targets = latest ? getEffectiveTargets(dietPhases, targetOverrides, latest.week_number, profile, new Date(latest.submitted_at)) : null
   const hasCheckedInThisWeek = latest &&
     (new Date() - new Date(latest.submitted_at)) / (1000 * 60 * 60 * 24) < 7
   const activePhase = getActivePhase(dietPhases)
