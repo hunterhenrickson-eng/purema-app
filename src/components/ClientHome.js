@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import CheckInForm from './CheckInForm'
 import ClientSettings from './ClientSettings'
@@ -11,6 +11,7 @@ import { notify } from '../lib/notify'
 import { displayWeight, displayMeasurement, weightUnitLabel, measurementUnitLabel } from '../lib/units'
 import MessageThread from './MessageThread'
 import ProgressPhotoGallery from './ProgressPhotos'
+import FoodSearchPicker, { round1 } from './FoodSearchPicker'
 import '../styles/purema-responsive.css'
 
 // This file is one of the four screens wired to the appearance toggle
@@ -735,12 +736,149 @@ const TabCheckIn = ({ onSuccess }) => (
   </div>
 )
 
+// ─── Food diary tab ───────────────────────────────────────────────────────────
+// Daily logging — separate from Progress (weekly measurement trends) and
+// Check-in (weekly submission), since a client eats every day but only
+// checks in once a week. Scoped to today + the current Sun–Sat week only —
+// no historical browsing beyond that and no barcode scanning, both
+// explicitly deferred per the scoping doc. The week boundary matches
+// CheckInForm's own Sun–Sat daily-log convention rather than inventing a
+// different one just for this tab.
+
+function startOfWeek(d = new Date()) {
+  const s = new Date(d)
+  s.setHours(0, 0, 0, 0)
+  s.setDate(s.getDate() - s.getDay())
+  return s
+}
+
+function isSameLocalDay(a, b) {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
+}
+
+function formatTime(ts) {
+  return new Date(ts).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+}
+
+const TabDiary = ({ profile }) => {
+  const [entries, setEntries] = useState(null)
+  const [error, setError] = useState(null)
+  const [adding, setAdding] = useState(false)
+
+  const loadEntries = useCallback(async () => {
+    const { data, error: err } = await supabase
+      .from('food_log_entries')
+      .select('*')
+      .eq('client_id', profile.id)
+      .gte('logged_at', startOfWeek().toISOString())
+      .order('logged_at', { ascending: false })
+    if (err) { setError(err.message); return }
+    setEntries(data || [])
+  }, [profile.id])
+
+  useEffect(() => { loadEntries() }, [loadEntries])
+
+  const handleAdd = async (item) => {
+    setError(null)
+    const { error: insertErr } = await supabase.from('food_log_entries').insert({
+      client_id: profile.id,
+      coach_id: profile.coach_id,
+      food_name: item.food_name,
+      calories: item.calories,
+      protein: item.protein,
+      carbs: item.carbs,
+      fats: item.fats,
+      source: 'nutritionix',
+    })
+    if (insertErr) { setError(insertErr.message); return }
+    setAdding(false)
+    loadEntries()
+  }
+
+  if (entries === null) {
+    return <div style={{ fontSize: type.body, color: color.textOnLight.secondary }}>Loading diary...</div>
+  }
+
+  const today = new Date()
+  const todayEntries = entries.filter(e => isSameLocalDay(new Date(e.logged_at), today))
+  const todayTotals = todayEntries.reduce((acc, e) => ({
+    calories: acc.calories + (e.calories || 0),
+    protein: acc.protein + (e.protein || 0),
+    carbs: acc.carbs + (e.carbs || 0),
+    fats: acc.fats + (e.fats || 0),
+  }), { calories: 0, protein: 0, carbs: 0, fats: 0 })
+  const daysLoggedThisWeek = new Set(entries.map(e => new Date(e.logged_at).toDateString())).size
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={S.card}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <div style={S.label}>Today</div>
+          <div style={{ fontSize: type.label, color: color.textOnLight.secondary, fontFamily: font.mono }}>
+            {daysLoggedThisWeek} of 7 days logged this week
+          </div>
+        </div>
+
+        {todayEntries.length === 0 ? (
+          <div style={{ fontSize: type.body, color: color.textOnLight.secondary, marginBottom: 12 }}>
+            No food logged yet today.
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 14 }}>
+            {todayEntries.map(entry => (
+              <div key={entry.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '8px 12px', background: color.bone, borderRadius: 8 }}>
+                <div>
+                  <div style={{ fontSize: type.body, color: color.textOnLight.primary }}>{entry.food_name}</div>
+                  <div style={{ fontSize: type.label, color: color.textOnLight.faint, fontFamily: font.mono, marginTop: 2 }}>
+                    {formatTime(entry.logged_at)}
+                  </div>
+                </div>
+                <div style={{ fontSize: type.label, color: color.textOnLight.secondary, fontFamily: font.mono, textAlign: 'right' }}>
+                  {[
+                    entry.calories != null && `${Math.round(entry.calories)} kcal`,
+                    entry.protein != null && `${entry.protein}g P`,
+                    entry.carbs != null && `${entry.carbs}g C`,
+                    entry.fats != null && `${entry.fats}g F`,
+                  ].filter(Boolean).join(' · ')}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 14, marginBottom: 14, fontSize: type.label, color: color.forest,
+          fontFamily: font.mono, flexWrap: 'wrap' }}>
+          <span>TOTAL</span>
+          <span>{round1(todayTotals.calories)} kcal</span>
+          <span>{round1(todayTotals.protein)}g P</span>
+          <span>{round1(todayTotals.carbs)}g C</span>
+          <span>{round1(todayTotals.fats)}g F</span>
+        </div>
+
+        {adding ? (
+          <FoodSearchPicker onAdd={handleAdd} onCancel={() => setAdding(false)} />
+        ) : (
+          <button onClick={() => setAdding(true)}
+            style={{ fontSize: type.label, padding: '7px 14px', borderRadius: 6, border: `1px solid ${color.borderLight}`,
+              background: 'transparent', color: color.textOnLight.secondary, cursor: 'pointer', fontFamily: font.mono }}>
+            + Add food
+          </button>
+        )}
+
+        {error && <div style={{ fontSize: type.body, color: color.alert, marginTop: 10 }}>{error}</div>}
+      </div>
+    </div>
+  )
+}
+
 // ─── Main shell ───────────────────────────────────────────────────────────────
 
 const TABS = [
   { id: 'home', label: 'Home' },
   { id: 'progress', label: 'Progress' },
   { id: 'checkin', label: 'Check-in' },
+  { id: 'diary', label: 'Diary' },
   { id: 'messages', label: 'Messages' },
 ]
 
@@ -998,6 +1136,9 @@ export default function ClientHome() {
           )}
           {activeTab === 'checkin' && (
             <TabCheckIn onSuccess={handleCheckInSuccess} />
+          )}
+          {activeTab === 'diary' && (
+            <TabDiary profile={profile} />
           )}
           {activeTab === 'messages' && (
             <div style={{ height: 'calc(100vh - 180px)', minHeight: 420 }}>
