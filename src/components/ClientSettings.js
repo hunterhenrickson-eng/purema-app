@@ -1,11 +1,16 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { color, font, type, labelStyle, badge } from '../lib/theme'
+import { font, type, labelStyleAppearance, badge } from '../lib/theme'
+import { useAppearance } from '../lib/AppearanceContext'
 
 // ─── Shared styles ────────────────────────────────────────────────────────────
+// Factory function, not a plain object — color only exists via useAppearance()
+// now, which can only be called inside a component, so each component that
+// needs these calls the factory locally (shadowing this name, `S`) rather
+// than this being computed once at module load.
 
-const S = {
-  label: { ...labelStyle(false), letterSpacing: '0.1em' },
+const buildS = (color) => ({
+  label: { ...labelStyleAppearance(), letterSpacing: '0.1em' },
   input: {
     width: '100%', padding: '10px 12px', borderRadius: 8, border: `1px solid ${color.borderLight}`,
     fontFamily: font.sans, fontSize: type.body, color: color.textOnLight.primary, outline: 'none',
@@ -21,46 +26,55 @@ const S = {
   sectionSub: {
     fontSize: type.body, color: color.textOnLight.secondary, marginBottom: 24, lineHeight: 1.5,
   },
-}
+})
 
 // ─── Components ───────────────────────────────────────────────────────────────
 
-const Toggle = ({ value, onChange, disabled }) => (
-  <div onClick={() => !disabled && onChange(!value)}
-    style={{ width: 44, height: 24, borderRadius: 999,
-      background: value ? color.forest : color.borderLight, cursor: disabled ? 'default' : 'pointer',
-      opacity: disabled ? 0.6 : 1,
-      position: 'relative', transition: 'background 0.2s ease', flexShrink: 0 }}>
-    <div style={{ position: 'absolute', top: 3, left: value ? 23 : 3,
-      width: 18, height: 18, borderRadius: '50%', background: color.surfaceLight,
-      border: `0.5px solid ${color.borderLight}`, transition: 'left 0.2s ease' }} />
-  </div>
-)
+const Toggle = ({ value, onChange, disabled }) => {
+  const { color } = useAppearance()
+  return (
+    <div onClick={() => !disabled && onChange(!value)}
+      style={{ width: 44, height: 24, borderRadius: 999,
+        background: value ? color.forest : color.borderLight, cursor: disabled ? 'default' : 'pointer',
+        opacity: disabled ? 0.6 : 1,
+        position: 'relative', transition: 'background 0.2s ease', flexShrink: 0 }}>
+      <div style={{ position: 'absolute', top: 3, left: value ? 23 : 3,
+        width: 18, height: 18, borderRadius: '50%', background: color.surfaceLight,
+        border: `0.5px solid ${color.borderLight}`, transition: 'left 0.2s ease' }} />
+    </div>
+  )
+}
 
-const SegmentedControl = ({ value, onChange, options }) => (
-  <div style={{ display: 'flex', gap: 4, background: color.surfaceSunken, borderRadius: 8, padding: 4 }}>
-    {options.map(opt => (
-      <button key={opt.value} onClick={() => onChange(opt.value)} type="button"
-        style={{ padding: '6px 14px', borderRadius: 6, border: 'none', cursor: 'pointer',
-          fontFamily: font.sans, fontSize: type.body, fontWeight: value === opt.value ? 500 : 400,
-          background: value === opt.value ? color.void : 'transparent',
-          color: value === opt.value ? color.textOnDark.primary : color.textOnLight.secondary,
-          transition: 'all 0.15s ease' }}>
-        {opt.label}
-      </button>
-    ))}
-  </div>
-)
+const SegmentedControl = ({ value, onChange, options }) => {
+  const { color } = useAppearance()
+  return (
+    <div style={{ display: 'flex', gap: 4, background: color.surfaceSunken, borderRadius: 8, padding: 4 }}>
+      {options.map(opt => (
+        <button key={opt.value} onClick={() => onChange(opt.value)} type="button"
+          style={{ padding: '6px 14px', borderRadius: 6, border: 'none', cursor: 'pointer',
+            fontFamily: font.sans, fontSize: type.body, fontWeight: value === opt.value ? 500 : 400,
+            background: value === opt.value ? color.void : 'transparent',
+            color: value === opt.value ? color.textOnDark.primary : color.textOnLight.secondary,
+            transition: 'all 0.15s ease' }}>
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  )
+}
 
-const SaveButton = ({ saving, saved, onClick }) => (
-  <button onClick={onClick} disabled={saving}
-    style={{ height: 44, padding: '0 28px', background: saved ? color.forestPressed : saving ? color.textOnLight.faint : color.forest,
-      border: 'none', borderRadius: 10, color: color.sage, fontSize: type.body, fontWeight: 500,
-      cursor: saving ? 'not-allowed' : 'pointer', fontFamily: font.sans,
-      transition: 'background 0.2s ease' }}>
-    {saving ? 'Saving...' : saved ? 'Saved ✓' : 'Save changes'}
-  </button>
-)
+const SaveButton = ({ saving, saved, onClick }) => {
+  const { color } = useAppearance()
+  return (
+    <button onClick={onClick} disabled={saving}
+      style={{ height: 44, padding: '0 28px', background: saved ? color.forestPressed : saving ? color.textOnLight.faint : color.forest,
+        border: 'none', borderRadius: 10, color: color.sage, fontSize: type.body, fontWeight: 500,
+        cursor: saving ? 'not-allowed' : 'pointer', fontFamily: font.sans,
+        transition: 'background 0.2s ease' }}>
+      {saving ? 'Saving...' : saved ? 'Saved ✓' : 'Save changes'}
+    </button>
+  )
+}
 
 // ─── Sections ─────────────────────────────────────────────────────────────────
 
@@ -72,6 +86,8 @@ const SaveButton = ({ saving, saved, onClick }) => (
 const TIMEZONES = typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : []
 
 const SectionProfile = ({ profile, onProfileUpdate }) => {
+  const { color } = useAppearance()
+  const S = buildS(color)
   const [fullName, setFullName] = useState(profile?.full_name || '')
   const [dateOfBirth, setDateOfBirth] = useState(profile?.date_of_birth || '')
   const [timezone, setTimezone] = useState(profile?.timezone || '')
@@ -234,6 +250,8 @@ const SectionProfile = ({ profile, onProfileUpdate }) => {
 }
 
 const SectionCompetition = ({ profile, onProfileUpdate }) => {
+  const { color } = useAppearance()
+  const S = buildS(color)
   const [showDate, setShowDate] = useState(profile?.show_date || '')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -286,6 +304,8 @@ const SectionCompetition = ({ profile, onProfileUpdate }) => {
 }
 
 const SectionPreferences = ({ profile, onProfileUpdate }) => {
+  const { color } = useAppearance()
+  const S = buildS(color)
   const [units, setUnits] = useState(profile?.units || 'imperial')
   const [appearance, setAppearance] = useState(profile?.appearance || 'system')
   const [saving, setSaving] = useState(false)
@@ -371,6 +391,8 @@ const NOTIFICATION_PREFS = [
 ]
 
 const SectionNotifications = ({ profile, onProfileUpdate }) => {
+  const { color } = useAppearance()
+  const S = buildS(color)
   const [savingKey, setSavingKey] = useState(null)
   const [error, setError] = useState(null)
 
@@ -408,6 +430,8 @@ const SectionNotifications = ({ profile, onProfileUpdate }) => {
 }
 
 const SectionSecurity = ({ profile }) => {
+  const { color } = useAppearance()
+  const S = buildS(color)
   const [resetSent, setResetSent] = useState(false)
   const [resetLoading, setResetLoading] = useState(false)
 
@@ -468,6 +492,8 @@ const SectionSecurity = ({ profile }) => {
 
 
 const SectionBilling = ({ profile }) => {
+  const { color } = useAppearance()
+  const S = buildS(color)
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
@@ -594,6 +620,7 @@ const NAV_ITEMS = [
 // ─── Main Settings shell ──────────────────────────────────────────────────────
 
 export default function ClientSettings({ profile, onProfileUpdate }) {
+  const { color } = useAppearance()
   // Restores the section an appearance-change reload was stashed from (see
   // SectionPreferences' handleSave) — reads once and clears immediately so
   // a normal, non-reload page load still lands on the real default.

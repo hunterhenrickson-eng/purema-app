@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import Papa from 'papaparse'
 import { supabase } from '../lib/supabase'
-import { color, font, type, labelStyle } from '../lib/theme'
+import { font, type, labelStyleAppearance } from '../lib/theme'
+import { useAppearance } from '../lib/AppearanceContext'
 
 const S = {
-  label: { ...labelStyle(false), letterSpacing: '0.1em' },
+  label: { ...labelStyleAppearance(), letterSpacing: '0.1em' },
 }
 
 // Purema fields a CSV column can map to — "skip" leaves a column unused.
@@ -53,15 +54,19 @@ function parseDateKey(raw) {
 
 const NUMERIC_FIELDS = ['weight', 'waist', 'sleep', 'calories', 'protein', 'carbs', 'fats']
 
-const FieldSelect = ({ value, onChange }) => (
-  <select value={value} onChange={e => onChange(e.target.value)}
-    style={{ width: '100%', padding: '6px 8px', borderRadius: 6, border: `1px solid ${color.borderLight}`,
-      fontFamily: font.sans, fontSize: type.label, color: color.textOnLight.primary, background: color.surfaceLight }}>
-    {PUREMA_FIELDS.map(f => <option key={f.key} value={f.key}>{f.label}</option>)}
-  </select>
-)
+const FieldSelect = ({ value, onChange }) => {
+  const { color } = useAppearance()
+  return (
+    <select value={value} onChange={e => onChange(e.target.value)}
+      style={{ width: '100%', padding: '6px 8px', borderRadius: 6, border: `1px solid ${color.borderLight}`,
+        fontFamily: font.sans, fontSize: type.label, color: color.textOnLight.primary, background: color.surfaceLight }}>
+      {PUREMA_FIELDS.map(f => <option key={f.key} value={f.key}>{f.label}</option>)}
+    </select>
+  )
+}
 
 export default function ImportHistory({ client, coachId, existingCheckins, onClose, onImported }) {
+  const { color } = useAppearance()
   const [step, setStep] = useState('upload') // upload | mapping | review | done
   const [fileName, setFileName] = useState(null)
   const [headers, setHeaders] = useState([])

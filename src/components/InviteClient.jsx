@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { color, font, type, labelStyle, badge } from '../lib/theme';
+import { font, type, labelStyleAppearance, badge } from '../lib/theme';
+import { useAppearance } from '../lib/AppearanceContext';
 
 // Shared with the Requests tab's Approve action and the admin employee-
 // invite flow, so every invite path (client, coach, employee) funnels
@@ -18,6 +19,7 @@ export async function createInvite(coachId, email, role, adminRoleId = null) {
 }
 
 export default function InviteClient({ atLimit = false, onUpgradeClick } = {}) {
+  const { color } = useAppearance();
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('client');
   const [link, setLink] = useState(null);
@@ -67,7 +69,7 @@ export default function InviteClient({ atLimit = false, onUpgradeClick } = {}) {
 
   return (
     <div>
-      <div style={{ ...labelStyle(false), marginBottom: 14 }}>
+      <div style={{ ...labelStyleAppearance(), marginBottom: 14 }}>
         Invite someone
       </div>
 

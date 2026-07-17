@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
-import { color, font, type, labelStyle as themeLabelStyle } from '../lib/theme'
+import { font, type, labelStyleAppearance as themeLabelStyle } from '../lib/theme'
+import { useAppearance } from '../lib/AppearanceContext'
 import { weightUnitLabel, measurementUnitLabel, toCanonicalWeight, toCanonicalMeasurement } from '../lib/units'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -64,17 +65,24 @@ function computeWeeklyAverages(dailyLog) {
 
 // ─── Mark ─────────────────────────────────────────────────────────────────────
 
-const Mark = ({ size = 24 }) => (
-  <svg width={size} height={size * 0.9} viewBox="0 0 52 48">
-    <polyline points="6,10 18,24 6,38" fill="none" stroke={color.forest} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    <polyline points="19,10 31,24 19,38" fill="none" stroke={color.forest} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
-    <polyline points="32,10 46,24 32,38" fill="none" stroke={color.forest} strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-)
+const Mark = ({ size = 24 }) => {
+  const { color } = useAppearance()
+  return (
+    <svg width={size} height={size * 0.9} viewBox="0 0 52 48">
+      <polyline points="6,10 18,24 6,38" fill="none" stroke={color.forest} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <polyline points="19,10 31,24 19,38" fill="none" stroke={color.forest} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
+      <polyline points="32,10 46,24 32,38" fill="none" stroke={color.forest} strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  )
+}
 
 // ─── Shared input styles ──────────────────────────────────────────────────────
+// Factory functions, not plain objects — color only exists via useAppearance()
+// now, which can only be called inside a component, so each component that
+// needs these calls the factory locally (shadowing this name) rather than
+// these being computed once at module load.
 
-const inputStyle = {
+const buildInputStyle = (color) => ({
   width: '100%',
   padding: '9px 12px',
   borderRadius: 8,
@@ -85,32 +93,35 @@ const inputStyle = {
   background: color.surfaceLight,
   outline: 'none',
   boxSizing: 'border-box',
-}
+})
 
-const labelStyle = themeLabelStyle(false)
+const labelStyle = themeLabelStyle()
 
-const cardStyle = {
+const buildCardStyle = (color) => ({
   background: color.surfaceLight,
   borderRadius: 14,
   border: `0.5px solid ${color.borderLight}`,
   padding: 24,
   marginBottom: 16,
-}
+})
 
-const SectionHeader = ({ number, title, subtitle }) => (
-  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 24,
-    paddingBottom: 16, borderBottom: `0.5px solid ${color.borderSubtle}` }}>
-    <div style={{ width: 32, height: 32, borderRadius: '50%', background: color.forest,
-      display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-      fontFamily: font.mono, fontSize: type.label, fontWeight: 500, color: color.sage }}>
-      {number}
+const SectionHeader = ({ number, title, subtitle }) => {
+  const { color } = useAppearance()
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 24,
+      paddingBottom: 16, borderBottom: `0.5px solid ${color.borderSubtle}` }}>
+      <div style={{ width: 32, height: 32, borderRadius: '50%', background: color.forest,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+        fontFamily: font.mono, fontSize: type.label, fontWeight: 500, color: color.sage }}>
+        {number}
+      </div>
+      <div>
+        <div style={{ fontSize: 17, fontWeight: 500, color: color.textOnLight.primary }}>{title}</div>
+        {subtitle && <div style={{ fontSize: type.label, color: color.textOnLight.faint, marginTop: 2 }}>{subtitle}</div>}
+      </div>
     </div>
-    <div>
-      <div style={{ fontSize: 17, fontWeight: 500, color: color.textOnLight.primary }}>{title}</div>
-      {subtitle && <div style={{ fontSize: type.label, color: color.textOnLight.faint, marginTop: 2 }}>{subtitle}</div>}
-    </div>
-  </div>
-)
+  )
+}
 
 // ─── Weekly average strip ──────────────────────────────────────────────────────
 // Live, in-progress preview of the same averages handleSubmit calculates —
@@ -118,20 +129,24 @@ const SectionHeader = ({ number, title, subtitle }) => (
 // confirmed post-submit stat treatment elsewhere in the app, so it doesn't
 // read as a final number mid-week.
 
-const AvgStat = ({ label, value, unit }) => (
-  <div style={{ textAlign: 'center' }}>
-    <div style={{ fontSize: type.label, color: color.textOnLight.faint, fontFamily: font.mono,
-      letterSpacing: '0.06em', marginBottom: 2 }}>
-      {label}
+const AvgStat = ({ label, value, unit }) => {
+  const { color } = useAppearance()
+  return (
+    <div style={{ textAlign: 'center' }}>
+      <div style={{ fontSize: type.label, color: color.textOnLight.faint, fontFamily: font.mono,
+        letterSpacing: '0.06em', marginBottom: 2 }}>
+        {label}
+      </div>
+      <div style={{ fontSize: 15, fontWeight: 500, color: value ? color.textOnLight.primary : color.textOnLight.faint,
+        fontFamily: font.mono }}>
+        {value ?? '—'}{value && unit ? <span style={{ fontSize: type.label, marginLeft: 2 }}>{unit}</span> : null}
+      </div>
     </div>
-    <div style={{ fontSize: 15, fontWeight: 500, color: value ? color.textOnLight.primary : color.textOnLight.faint,
-      fontFamily: font.mono }}>
-      {value ?? '—'}{value && unit ? <span style={{ fontSize: type.label, marginLeft: 2 }}>{unit}</span> : null}
-    </div>
-  </div>
-)
+  )
+}
 
 const WeeklyAverageStrip = ({ dailyLog, weightUnit }) => {
+  const { color } = useAppearance()
   // dailyLog.weight is whatever the client is currently typing, in the
   // currently-selected display unit — this preview intentionally averages
   // that as-is rather than converting, since it's not persisted here.
@@ -161,24 +176,29 @@ const WeeklyAverageStrip = ({ dailyLog, weightUnit }) => {
 
 // ─── Toggle ───────────────────────────────────────────────────────────────────
 
-const Toggle = ({ value, onChange, labelTrue = 'Yes', labelFalse = 'No' }) => (
-  <div style={{ display: 'flex', gap: 6 }}>
-    {[true, false].map(v => (
-      <button key={String(v)} onClick={() => onChange(v)} type="button"
-        style={{ padding: '6px 14px', borderRadius: 6, border: 'none', cursor: 'pointer',
-          fontSize: type.label, fontWeight: 500, fontFamily: font.sans,
-          background: value === v ? color.forest : color.surfaceSunken,
-          color: value === v ? color.sage : color.textOnLight.secondary,
-          transition: 'all 0.15s ease' }}>
-        {v ? labelTrue : labelFalse}
-      </button>
-    ))}
-  </div>
-)
+const Toggle = ({ value, onChange, labelTrue = 'Yes', labelFalse = 'No' }) => {
+  const { color } = useAppearance()
+  return (
+    <div style={{ display: 'flex', gap: 6 }}>
+      {[true, false].map(v => (
+        <button key={String(v)} onClick={() => onChange(v)} type="button"
+          style={{ padding: '6px 14px', borderRadius: 6, border: 'none', cursor: 'pointer',
+            fontSize: type.label, fontWeight: 500, fontFamily: font.sans,
+            background: value === v ? color.forest : color.surfaceSunken,
+            color: value === v ? color.sage : color.textOnLight.secondary,
+            transition: 'all 0.15s ease' }}>
+          {v ? labelTrue : labelFalse}
+        </button>
+      ))}
+    </div>
+  )
+}
 
 // ─── Day column ───────────────────────────────────────────────────────────────
 
 const DayColumn = ({ day, date, index, data, onChange, weightUnit }) => {
+  const { color } = useAppearance()
+  const inputStyle = buildInputStyle(color)
   const isRest = data.training === 'Rest'
 
   const update = (field, value) => {
@@ -313,6 +333,9 @@ const DayColumn = ({ day, date, index, data, onChange, weightUnit }) => {
 // ─── Main form ────────────────────────────────────────────────────────────────
 
 export default function CheckInForm({ onSuccess }) {
+  const { color } = useAppearance()
+  const inputStyle = buildInputStyle(color)
+  const cardStyle = buildCardStyle(color)
   const [profile, setProfile] = useState(null)
   const [profileLoading, setProfileLoading] = useState(true)
   const [profileError, setProfileError] = useState(null)

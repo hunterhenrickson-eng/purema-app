@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { color, font, type, inputStyle } from '../lib/theme'
+import { font, type, inputStyleAppearance as inputStyle } from '../lib/theme'
+import { useAppearance } from '../lib/AppearanceContext'
 
 function formatTime(ts) {
   return new Date(ts).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
@@ -31,6 +32,7 @@ function dayLabel(ts) {
 const MAX_TEXTAREA_HEIGHT = 120
 
 export default function MessageThread({ title, headerLeft, messages, currentUserId, onSend, emptyLabel }) {
+  const { color } = useAppearance()
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState(null)
