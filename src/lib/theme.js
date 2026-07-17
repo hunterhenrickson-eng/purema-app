@@ -35,6 +35,13 @@ export const color = {
   // full-toggle screens use.
   surfaceSunken: 'var(--surface-sunken)',
   borderSubtle: 'var(--border-subtle)',
+  // Popover/dropdown drop-shadow (CalendarClientFilter, AddTimezonePin).
+  // Same rgba(0,0,0,x) value in both modes — a dark shadow reads correctly
+  // against both a light and a dark surface, so unlike surfaceSunken/
+  // borderSubtle above this doesn't need genuinely different light/dark
+  // values, just a single named token instead of the literal repeated
+  // inline at each call site.
+  shadowSoft: 'var(--shadow-soft)',
 
   // Surfaces
   // void/surfaceDark/surfaceDarkRaised/borderDark/bone/surfaceLight/

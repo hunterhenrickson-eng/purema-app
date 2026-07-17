@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './lib/supabase'
 import { color, font, type, badge } from './lib/theme'
+import { useAppearance } from './lib/AppearanceContext'
 import { getImpersonationState, hydrateImpersonationGuard, exitImpersonation } from './lib/impersonation'
 import Auth from './pages/Auth'
 import Home from './pages/Home'
@@ -47,6 +48,7 @@ function ImpersonationBanner() {
 }
 
 function AuthRoutes() {
+  const { color: appearanceColor, font: appearanceFont } = useAppearance()
   const [session, setSession] = useState(null)
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -115,10 +117,10 @@ function AuthRoutes() {
 
   if (loading) {
     content = (
-      <div style={{ minHeight: '100vh', background: '#0D0D0D', display: 'flex',
+      <div style={{ minHeight: '100vh', background: appearanceColor.void, display: 'flex',
         alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 12,
-          color: '#0F6E56', letterSpacing: '0.1em' }}>LOADING...</div>
+        <div style={{ fontFamily: appearanceFont.mono, fontSize: 12,
+          color: appearanceColor.forest, letterSpacing: '0.1em' }}>LOADING...</div>
       </div>
     )
   } else if (!session) {

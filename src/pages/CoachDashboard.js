@@ -2178,7 +2178,7 @@ const CalendarClientFilter = ({ clients, selected, onChange }) => {
       {open && (
         <div style={{ position: 'absolute', top: '110%', right: 0, zIndex: 20, minWidth: 220, maxHeight: 280,
           overflowY: 'auto', background: color.surfaceLight, border: `1px solid ${color.borderLight}`,
-          borderRadius: 10, boxShadow: '0 4px 16px rgba(0,0,0,0.12)', padding: 8 }}>
+          borderRadius: 10, boxShadow: `0 4px 16px ${color.shadowSoft}`, padding: 8 }}>
           <button type="button" onClick={() => onChange(new Set())}
             style={{ width: '100%', textAlign: 'left', padding: '6px 8px', borderRadius: 6, border: 'none',
               background: 'transparent', cursor: 'pointer', fontFamily: font.sans, fontSize: type.body,
@@ -2244,7 +2244,7 @@ const AddTimezonePin = ({ excluded, onAdd }) => {
       {open && (
         <div style={{ position: 'absolute', top: '110%', left: 0, zIndex: 20, minWidth: 240,
           background: color.surfaceLight, border: `1px solid ${color.borderLight}`, borderRadius: 10,
-          boxShadow: '0 4px 16px rgba(0,0,0,0.12)', padding: 8 }}>
+          boxShadow: `0 4px 16px ${color.shadowSoft}`, padding: 8 }}>
           <select autoFocus defaultValue="" onChange={e => { if (e.target.value) { onAdd(e.target.value); setOpen(false) } }}
             style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: `1px solid ${color.borderLight}`,
               fontFamily: font.sans, fontSize: type.body, outline: 'none', color: color.textOnLight.primary,
@@ -2681,7 +2681,8 @@ const TabSettings = ({ profile, onToggleNotify }) => {
         {slugError && <p style={{ color: color.alert, marginTop: 8, fontSize: type.body }}>{slugError}</p>}
         {applyLink && (
           <div style={{ marginTop: 12, display: 'flex', gap: 8, alignItems: 'center' }}>
-            <code style={{ fontSize: type.label, wordBreak: 'break-all', flex: 1, color: color.textOnLight.secondary }}>
+            <code style={{ fontSize: type.label, wordBreak: 'break-all', flex: 1, color: color.textOnLight.secondary,
+              fontFamily: font.mono }}>
               {applyLink}
             </code>
             <button onClick={handleCopyLink}

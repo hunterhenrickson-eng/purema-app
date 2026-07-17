@@ -71,6 +71,13 @@
   --border-default: #E8E8E8;
   --border-subtle: #F0F0F0;
 
+  /* ── Shadow ───────────────────────────────────────────────────────
+     Popover/dropdown drop-shadow. Not redefined in the dark blocks below
+     on purpose — a dark shadow reads correctly against both a light and
+     a dark surface, so this stays the same value in both modes and just
+     falls through via normal CSS inheritance from :root. ── */
+  --shadow-soft: rgba(0, 0, 0, 0.12);
+
   /* ── Text (role-based — replaces the current textOnDark/textOnLight
      split once this is wired in; a single role per appearance mode,
      since a fully dark screen and a fully light screen each only ever
