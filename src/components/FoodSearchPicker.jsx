@@ -94,10 +94,10 @@ export default function FoodSearchPicker({ onAdd, onCancel }) {
 
   return (
     <div style={{ marginTop: 8, padding: 10, background: color.surfaceLight, border: `0.5px solid ${color.borderLight}`, borderRadius: 8 }}>
-      <form onSubmit={search} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+      <form onSubmit={search} style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
         <input type="text" placeholder="Search a food (e.g. chicken breast)" value={query}
           onChange={e => setQuery(e.target.value)} autoFocus
-          style={{ flex: 1, padding: '7px 10px', borderRadius: 6, border: `1px solid ${color.borderLight}`,
+          style={{ flex: 1, minWidth: 160, padding: '7px 10px', borderRadius: 6, border: `1px solid ${color.borderLight}`,
             fontFamily: font.sans, fontSize: type.body, boxSizing: 'border-box', color: color.textOnLight.primary }} />
         <button type="submit" disabled={searching || query.trim().length < 2}
           style={{ padding: '7px 14px', borderRadius: 6, border: `1px solid ${color.borderLight}`,

@@ -2247,7 +2247,7 @@ const AddTimezonePin = ({ excluded, onAdd }) => {
         style={{ width: 30, height: 30, borderRadius: 8, border: `1px solid ${color.borderLight}`,
           background: color.surfaceLight, cursor: 'pointer', fontSize: 16, color: color.textOnLight.secondary }}>+</button>
       {open && (
-        <div style={{ position: 'absolute', top: '110%', left: 0, zIndex: 20, minWidth: 240,
+        <div style={{ position: 'absolute', top: '110%', right: 0, zIndex: 20, minWidth: 240,
           background: color.surfaceLight, border: `1px solid ${color.borderLight}`, borderRadius: 10,
           boxShadow: `0 4px 16px ${color.shadowSoft}`, padding: 8 }}>
           <select autoFocus defaultValue="" onChange={e => { if (e.target.value) { onAdd(e.target.value); setOpen(false) } }}
