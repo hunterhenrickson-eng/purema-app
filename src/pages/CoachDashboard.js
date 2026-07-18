@@ -777,7 +777,7 @@ const TabDashboard = ({ checkins, clients, onSelectCheckin }) => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+      <div className="purema-kpi-grid" style={{ display: 'grid', gap: 12 }}>
         {[
           { label: 'Active clients', value: activeClients.length, color: color.textOnLight.primary },
           { label: 'This week', value: `${weeklyRate}%`, color: weeklyRate >= 80 ? color.forest : weeklyRate >= 50 ? color.gold : activeClients.length === 0 ? color.textOnLight.secondary : color.alert },
@@ -1492,7 +1492,7 @@ const TabClients = ({ clients, checkins, profile, onStatusChange, onTargetsSave,
 
     return (
     <div id={`client-row-${client.id}`} style={S.card}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
         <div style={{ width: 40, height: 40, borderRadius: '50%',
           background: client.status === 'paused' ? color.surfaceSunken : client.status === 'archived' ? color.surfaceSunken : color.sage,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -1509,12 +1509,13 @@ const TabClients = ({ clients, checkins, profile, onStatusChange, onTargetsSave,
             {client.email} · Joined {new Date(client.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', overflowX: 'auto',
+          WebkitOverflowScrolling: 'touch', maxWidth: '100%', minWidth: 0 }}>
           {client.status !== 'archived' && (
             <button onClick={() => setExpandedId(expandedId === client.id ? null : client.id)}
               style={{ fontSize: type.label, padding: '4px 10px', borderRadius: 6, border: `1px solid ${color.borderLight}`,
                 background: expandedId === client.id ? color.bone : 'transparent', color: color.textOnLight.secondary,
-                cursor: 'pointer', fontFamily: font.mono }}>
+                cursor: 'pointer', fontFamily: font.mono, flexShrink: 0, whiteSpace: 'nowrap' }}>
               Targets
             </button>
           )}
@@ -1522,14 +1523,15 @@ const TabClients = ({ clients, checkins, profile, onStatusChange, onTargetsSave,
             <button onClick={() => setExpandedPlanId(expandedPlanId === client.id ? null : client.id)}
               style={{ fontSize: type.label, padding: '4px 10px', borderRadius: 6, border: `1px solid ${color.borderLight}`,
                 background: expandedPlanId === client.id ? color.bone : 'transparent', color: color.textOnLight.secondary,
-                cursor: 'pointer', fontFamily: font.mono }}>
+                cursor: 'pointer', fontFamily: font.mono, flexShrink: 0, whiteSpace: 'nowrap' }}>
               Diet plan
             </button>
           )}
           {client.status !== 'archived' && (
             <button onClick={() => setImportingClient(client)}
               style={{ fontSize: type.label, padding: '4px 10px', borderRadius: 6, border: `1px solid ${color.borderLight}`,
-                background: 'transparent', color: color.textOnLight.secondary, cursor: 'pointer', fontFamily: font.mono }}>
+                background: 'transparent', color: color.textOnLight.secondary, cursor: 'pointer', fontFamily: font.mono,
+                flexShrink: 0, whiteSpace: 'nowrap' }}>
               Import history
             </button>
           )}
@@ -1537,7 +1539,7 @@ const TabClients = ({ clients, checkins, profile, onStatusChange, onTargetsSave,
             <button onClick={() => setExpandedFeedbackId(expandedFeedbackId === client.id ? null : client.id)}
               style={{ fontSize: type.label, padding: '4px 10px', borderRadius: 6, border: `1px solid ${color.borderLight}`,
                 background: expandedFeedbackId === client.id ? color.bone : 'transparent', color: color.textOnLight.secondary,
-                cursor: 'pointer', fontFamily: font.mono }}>
+                cursor: 'pointer', fontFamily: font.mono, flexShrink: 0, whiteSpace: 'nowrap' }}>
               Feedback history
             </button>
           )}
@@ -1545,14 +1547,15 @@ const TabClients = ({ clients, checkins, profile, onStatusChange, onTargetsSave,
             <button onClick={() => setExpandedPhotosId(expandedPhotosId === client.id ? null : client.id)}
               style={{ fontSize: type.label, padding: '4px 10px', borderRadius: 6, border: `1px solid ${color.borderLight}`,
                 background: expandedPhotosId === client.id ? color.bone : 'transparent', color: color.textOnLight.secondary,
-                cursor: 'pointer', fontFamily: font.mono }}>
+                cursor: 'pointer', fontFamily: font.mono, flexShrink: 0, whiteSpace: 'nowrap' }}>
               Progress photos
             </button>
           )}
           {(!client.status || client.status === 'active') && (
             <button onClick={() => changeStatus('paused')}
               style={{ fontSize: type.label, padding: '4px 10px', borderRadius: 6, border: `1px solid ${color.borderLight}`,
-                background: 'transparent', color: color.textOnLight.secondary, cursor: 'pointer', fontFamily: font.mono }}>
+                background: 'transparent', color: color.textOnLight.secondary, cursor: 'pointer', fontFamily: font.mono,
+                flexShrink: 0, whiteSpace: 'nowrap' }}>
               Pause
             </button>
           )}
@@ -1560,23 +1563,25 @@ const TabClients = ({ clients, checkins, profile, onStatusChange, onTargetsSave,
             <>
               <button onClick={() => changeStatus('active')}
                 style={{ fontSize: type.label, padding: '4px 10px', borderRadius: 6, border: `1px solid ${color.forest}`,
-                  background: 'transparent', color: color.forest, cursor: 'pointer', fontFamily: font.mono }}>
+                  background: 'transparent', color: color.forest, cursor: 'pointer', fontFamily: font.mono,
+                  flexShrink: 0, whiteSpace: 'nowrap' }}>
                 Reactivate
               </button>
               <button onClick={() => changeStatus('archived')}
                 style={{ fontSize: type.label, padding: '4px 10px', borderRadius: 6, border: `1px solid ${color.alert}`,
-                  background: 'transparent', color: color.alert, cursor: 'pointer', fontFamily: font.mono }}>
+                  background: 'transparent', color: color.alert, cursor: 'pointer', fontFamily: font.mono,
+                  flexShrink: 0, whiteSpace: 'nowrap' }}>
                 Archive
               </button>
             </>
           )}
           {client.status !== 'archived' && (
-            <span style={badge(client.status === 'paused' ? 'neutral' : 'success')}>
+            <span style={{ ...badge(client.status === 'paused' ? 'neutral' : 'success'), flexShrink: 0, whiteSpace: 'nowrap' }}>
               {client.status === 'paused' ? 'Paused' : 'Active'}
             </span>
           )}
           {client.status === 'archived' && (
-            <span style={badge('neutral')}>
+            <span style={{ ...badge('neutral'), flexShrink: 0, whiteSpace: 'nowrap' }}>
               Archived
             </span>
           )}

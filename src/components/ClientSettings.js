@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { font, type, labelStyleAppearance, badge } from '../lib/theme'
 import { useAppearance } from '../lib/AppearanceContext'
+import '../styles/purema-responsive.css'
 
 // ─── Shared styles ────────────────────────────────────────────────────────────
 // Factory function, not a plain object — color only exists via useAppearance()
@@ -633,10 +634,13 @@ export default function ClientSettings({ profile, onProfileUpdate }) {
   })
 
   return (
-    <div style={{ display: 'flex', gap: 0, minHeight: 500 }}>
+    <div className="purema-settings-shell" style={{ minHeight: 500 }}>
 
-      {/* Left nav */}
-      <div style={{ width: 220, flexShrink: 0, borderRight: `0.5px solid ${color.borderLight}`,
+      {/* Left nav — the button list becomes a horizontal-scroll tab strip
+          below 900px (purema-responsive.css), same pattern as
+          CheckInForm's day columns and the app shell's own mobile bottom
+          nav. The eyebrow label/badge stay a static header above it. */}
+      <div className="purema-settings-nav-col" style={{ borderRight: `0.5px solid ${color.borderLight}`,
         paddingRight: 0, marginRight: 0 }}>
         <div style={{ fontSize: type.label, fontWeight: 500, color: color.textOnLight.faint, letterSpacing: '0.1em',
           fontFamily: font.mono, textTransform: 'uppercase',
@@ -646,23 +650,26 @@ export default function ClientSettings({ profile, onProfileUpdate }) {
         <div style={{ padding: '0 12px', marginBottom: 16 }}>
           <span style={badge('info')}>{profile?.role === 'client' ? 'Client account' : 'Account'}</span>
         </div>
-        {NAV_ITEMS.map(item => (
-          <button key={item.id} onClick={() => setActiveSection(item.id)}
-            style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10,
-              padding: '10px 12px', border: 'none', cursor: 'pointer', textAlign: 'left',
-              borderRadius: 8, marginBottom: 2, fontFamily: font.sans, fontSize: type.body,
-              background: activeSection === item.id ? color.void : 'transparent',
-              color: activeSection === item.id ? color.textOnDark.primary : color.textOnLight.secondary,
-              fontWeight: activeSection === item.id ? 500 : 400,
-              transition: 'all 0.15s ease' }}>
-            <span style={{ fontSize: 16 }}>{item.icon}</span>
-            {item.label}
-          </button>
-        ))}
+        <div className="purema-settings-nav">
+          {NAV_ITEMS.map(item => (
+            <button key={item.id} onClick={() => setActiveSection(item.id)}
+              className="purema-settings-nav-item"
+              style={{ display: 'flex', alignItems: 'center', gap: 10,
+                padding: '10px 12px', border: 'none', cursor: 'pointer', textAlign: 'left',
+                borderRadius: 8, marginBottom: 2, fontFamily: font.sans, fontSize: type.body,
+                background: activeSection === item.id ? color.void : 'transparent',
+                color: activeSection === item.id ? color.textOnDark.primary : color.textOnLight.secondary,
+                fontWeight: activeSection === item.id ? 500 : 400,
+                transition: 'all 0.15s ease' }}>
+              <span style={{ fontSize: 16 }}>{item.icon}</span>
+              {item.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Right content */}
-      <div style={{ flex: 1, paddingLeft: 40 }}>
+      <div className="purema-settings-content">
         {activeSection === 'profile' && (
           <SectionProfile profile={profile} onProfileUpdate={onProfileUpdate} />
         )}

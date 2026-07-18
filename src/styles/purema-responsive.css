@@ -11,6 +11,17 @@
   max-width: 460px; /* desktop default — roomier than the old fixed 420px */
 }
 
+/* ---- Coach dashboard KPI row ---- */
+/* Desktop: 4 equal columns. minmax(0, 1fr) (not bare 1fr) so a column
+   can't be forced wider than its share by its content's intrinsic
+   min-width — bare 1fr repeat(4,...) was overflowing below ~390px
+   because the "Needs attention" label wouldn't shrink. 2x2 on mobile
+   rather than a horizontal scroll, since these are glanceable at-a-
+   glance stats, not something you'd tab through. */
+.purema-kpi-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 /* ---- ClientHome app shell ---- */
 /* Desktop default: fixed left nav + generous content column, no bottom tab bar */
 .purema-shell {
@@ -113,6 +124,43 @@
   display: none;
 }
 
+/* ---- ClientSettings left nav ---- */
+/* Desktop: vertical 220px sidebar, same shape as every other left-nav in
+   the app. The nav items are really an in-page tab strip (Profile,
+   Competition, Preferences, Notifications, Security, Billing), so below
+   the breakpoint this becomes a horizontal-scroll row instead of a
+   dropdown or a squeezed-down sidebar — same pattern already proven out
+   by CheckInForm's day columns and the app shell's own mobile tab bar,
+   not a new one. Per-item active-state colors stay inline (can't be
+   expressed in a shared class); only layout/direction lives here. */
+.purema-settings-shell {
+  display: flex;
+  gap: 0;
+}
+
+/* Outer column: eyebrow label + account badge + the nav strip itself.
+   Stays a vertical block in both modes — only .purema-settings-nav
+   (the button list alone) switches direction below the breakpoint, so
+   the "Settings" label/badge never get pulled into the scroll row. */
+.purema-settings-nav-col {
+  width: 220px;
+  flex-shrink: 0;
+}
+
+.purema-settings-nav {
+  display: flex;
+  flex-direction: column;
+}
+
+.purema-settings-nav-item {
+  width: 100%;
+}
+
+.purema-settings-content {
+  flex: 1;
+  padding-left: 40px;
+}
+
 /* Mobile fallback: single column, bottom tab bar, no side nav */
 @media (max-width: 899px) {
   .purema-shell {
@@ -153,5 +201,31 @@
   }
   .purema-messages-back {
     display: inline-flex;
+  }
+  .purema-settings-shell {
+    display: block;
+  }
+  .purema-settings-nav-col {
+    width: auto;
+  }
+  .purema-settings-nav {
+    flex-direction: row;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    gap: 4px;
+    padding-bottom: 8px;
+    margin-bottom: 16px;
+    border-bottom: 0.5px solid var(--border-default);
+  }
+  .purema-settings-nav-item {
+    width: auto;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  .purema-settings-content {
+    padding-left: 0;
+  }
+  .purema-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
