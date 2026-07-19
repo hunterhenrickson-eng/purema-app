@@ -18,6 +18,7 @@ function renderEmail({ heading, summary, ctaText, ctaUrl }) {
 <html>
   <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="color-scheme" content="light">
     <meta name="supported-color-schemes" content="light">
   </head>
@@ -41,7 +42,7 @@ function renderEmail({ heading, summary, ctaText, ctaUrl }) {
                 <div style="font-size:14px; color:${TEXT_SECONDARY}; line-height:1.5; margin-bottom:24px;">
                   ${summary}
                 </div>
-                <a href="${ctaUrl}" style="display:inline-block; padding:10px 20px; background:${FOREST}; color:#EAF3DE; border-radius:8px; font-size:14px; font-weight:500; text-decoration:none;">
+                <a href="${ctaUrl}" style="display:inline-block; padding:14px 28px; background:${FOREST}; color:#EAF3DE; border-radius:8px; font-size:14px; font-weight:500; text-decoration:none;">
                   ${ctaText}
                 </a>
               </td>
