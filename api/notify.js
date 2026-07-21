@@ -83,7 +83,12 @@ module.exports = async (req, res) => {
       return
     }
 
-    const origin = req.headers.origin || 'https://purema.app'
+    // Not derived from req.headers.origin — that's caller-controlled (any
+    // non-browser HTTP client can set it) and would otherwise let an
+    // authorized-but-malicious sender point a real, correctly-triggered
+    // notification email's CTA link at an arbitrary domain. There's no
+    // legitimate reason this needs to vary per-request.
+    const origin = 'https://purema.app'
     let subject, html
     if (type === 'feedback') {
       ({ subject, html } = feedbackReceivedEmail({ clientName: recipient.full_name, coachName: callerProfile.full_name, checkinUrl: origin }))
