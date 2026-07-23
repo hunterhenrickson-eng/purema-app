@@ -792,7 +792,7 @@ const TabDashboard = ({ checkins, clients, onSelectCheckin }) => {
       </div>
 
       {reviewedThisWeek > 0 && (
-        <div style={{ fontSize: type.label, color: color.textOnLight.faint, fontFamily: font.mono }}>
+        <div style={{ fontSize: type.label, color: color.textOnLight.faint, fontFamily: font.mono, fontWeight: 400 }}>
           You reviewed {reviewedThisWeek} check-in{reviewedThisWeek === 1 ? '' : 's'} this week — that's roughly{' '}
           {minutesSaved} minute{minutesSaved === 1 ? '' : 's'} of manual review Purema handled for you.
         </div>
@@ -811,8 +811,8 @@ const TabDashboard = ({ checkins, clients, onSelectCheckin }) => {
         <div style={{ ...S.card, display: 'flex', alignItems: 'center', gap: 14, background: color.sage, border: `0.5px solid ${color.successBorder}` }}>
           <div style={{ fontSize: 24 }}>✓</div>
           <div>
-            <div style={{ fontSize: type.body, fontWeight: 500, color: color.successTextStrong }}>All caught up</div>
-            <div style={{ fontSize: type.label, color: color.successTextSoft, marginTop: 2 }}>No clients need your attention right now.</div>
+            <div style={{ fontSize: type.body, fontWeight: 500, color: color.successTextStrong, fontFamily: font.sans }}>All caught up</div>
+            <div style={{ fontSize: type.label, color: color.successTextSoft, marginTop: 2, fontFamily: font.sans }}>No clients need your attention right now.</div>
           </div>
         </div>
       ) : (
