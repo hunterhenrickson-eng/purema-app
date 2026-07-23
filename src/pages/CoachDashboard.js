@@ -488,7 +488,7 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave, coachId }) => {
                   { label: 'WEEK', value: checkin.week_number, unit: '' },
                 ].map(({ label, value, unit }) => value ? (
                   <div key={label} style={{ background: color.surfaceLight, border: `0.5px solid ${color.borderLight}`, borderRadius: 10, padding: '12px 16px' }}>
-                    <div style={{ fontSize: 20, fontWeight: 300, color: color.textOnLight.primary }}>{value}<span style={{ fontSize: type.label, color: color.textOnLight.faint, marginLeft: 3 }}>{unit}</span></div>
+                    <div style={{ fontSize: 20, fontWeight: 300, color: color.textOnLight.primary, fontFamily: font.mono }}>{value}<span style={{ fontSize: type.label, color: color.textOnLight.faint, marginLeft: 3 }}>{unit}</span></div>
                     <div style={{ ...S.label, marginTop: 4 }}>{label}</div>
                   </div>
                 ) : null)}
@@ -785,7 +785,7 @@ const TabDashboard = ({ checkins, clients, onSelectCheckin }) => {
           { label: 'Needs attention', value: attentionItems.length, color: attentionItems.length > 0 ? color.alert : color.textOnLight.secondary },
         ].map(({ label, value, color: statColor }) => (
           <div key={label} style={{ background: color.surfaceLight, border: `0.5px solid ${color.borderLight}`, borderRadius: 12, padding: '18px 20px' }}>
-            <div style={{ fontSize: 28, fontWeight: 300, color: statColor, letterSpacing: '-0.02em', fontFamily: font.mono }}>{value}</div>
+            <div style={{ fontSize: 28, fontWeight: 500, color: statColor, letterSpacing: '-0.02em', fontFamily: font.mono }}>{value}</div>
             <div style={{ ...S.label, marginTop: 6 }}>{label}</div>
           </div>
         ))}
@@ -1853,7 +1853,7 @@ const TabOverview = ({ clients, checkins, profile }) => {
 
   const StatCard = ({ label, value, sub, color: accentColor = color.textOnLight.primary }) => (
     <div style={{ background: color.surfaceLight, border: `0.5px solid ${color.borderLight}`, borderRadius: 12, padding: '18px 20px' }}>
-      <div style={{ fontSize: 28, fontWeight: 300, color: accentColor, letterSpacing: '-0.02em', fontFamily: font.mono }}>{value}</div>
+      <div style={{ fontSize: 28, fontWeight: 500, color: accentColor, letterSpacing: '-0.02em', fontFamily: font.mono }}>{value}</div>
       <div style={{ ...S.label, marginTop: 6 }}>{label}</div>
       {sub && <div style={{ fontSize: type.label, color: color.textOnLight.faint, marginTop: 4 }}>{sub}</div>}
     </div>
@@ -1877,17 +1877,17 @@ const TabOverview = ({ clients, checkins, profile }) => {
         <div style={S.sectionTitle}>Revenue</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
           <div style={{ background: color.surfaceLight, border: `0.5px solid ${color.borderLight}`, borderRadius: 12, padding: '18px 20px' }}>
-            <div style={{ fontSize: 28, fontWeight: 300, color: color.textOnLight.secondary, letterSpacing: '-0.02em' }}>—</div>
+            <div style={{ fontSize: 28, fontWeight: 500, color: color.textOnLight.secondary, letterSpacing: '-0.02em', fontFamily: font.mono }}>—</div>
             <div style={{ ...S.label, marginTop: 6 }}>MRR</div>
             <div style={{ fontSize: type.label, color: color.textOnLight.faint, marginTop: 4 }}>Connect Stripe to unlock</div>
           </div>
           <div style={{ background: color.surfaceLight, border: `0.5px solid ${color.borderLight}`, borderRadius: 12, padding: '18px 20px' }}>
-            <div style={{ fontSize: 28, fontWeight: 300, color: color.textOnLight.secondary, letterSpacing: '-0.02em' }}>—</div>
+            <div style={{ fontSize: 28, fontWeight: 500, color: color.textOnLight.secondary, letterSpacing: '-0.02em', fontFamily: font.mono }}>—</div>
             <div style={{ ...S.label, marginTop: 6 }}>Avg. per client</div>
             <div style={{ fontSize: type.label, color: color.textOnLight.faint, marginTop: 4 }}>Connect Stripe to unlock</div>
           </div>
           <div style={{ background: color.surfaceLight, border: `0.5px solid ${color.borderLight}`, borderRadius: 12, padding: '18px 20px' }}>
-            <div style={{ fontSize: 28, fontWeight: 300, color: color.textOnLight.secondary, letterSpacing: '-0.02em' }}>—</div>
+            <div style={{ fontSize: 28, fontWeight: 500, color: color.textOnLight.secondary, letterSpacing: '-0.02em', fontFamily: font.mono }}>—</div>
             <div style={{ ...S.label, marginTop: 6 }}>Churn this month</div>
             <div style={{ fontSize: type.label, color: color.textOnLight.faint, marginTop: 4 }}>Connect Stripe to unlock</div>
           </div>
@@ -2037,7 +2037,7 @@ const TabBilling = ({ profile, onProfileRefresh }) => {
             <div key={plan.id} style={{ ...S.card,
               border: isCurrent ? `1.5px solid ${color.forest}` : `0.5px solid ${color.borderLight}` }}>
               <div style={S.label}>{plan.label}</div>
-              <div style={{ fontSize: 28, fontWeight: 300, color: color.textOnLight.primary, marginTop: 6, fontFamily: font.mono }}>
+              <div style={{ fontSize: 28, fontWeight: 500, color: color.textOnLight.primary, marginTop: 6, fontFamily: font.mono }}>
                 ${plan.price}<span style={{ fontSize: 13, color: color.textOnLight.secondary }}>/mo</span>
               </div>
               <div style={{ fontSize: type.body, color: color.textOnLight.secondary, marginTop: 6, marginBottom: 16 }}>

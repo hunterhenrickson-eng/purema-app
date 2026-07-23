@@ -557,7 +557,7 @@ const TabProgress = ({ profile, checkins }) => {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
             {/* Streak */}
             <div style={{ ...S.card, borderRadius: 12, padding: '16px 20px' }}>
-              <div style={{ fontSize: 28, fontWeight: 300, color: streak >= 4 ? color.forest : color.textOnLight.primary,
+              <div style={{ fontSize: 28, fontWeight: 500, color: streak >= 4 ? color.forest : color.textOnLight.primary,
                 letterSpacing: '-0.02em', fontFamily: font.mono }}>{streak}</div>
               <div style={{ ...S.label, marginTop: 4 }}>Week streak</div>
               {streak >= 4 && (
@@ -567,7 +567,7 @@ const TabProgress = ({ profile, checkins }) => {
 
             {/* Total check-ins */}
             <div style={{ ...S.card, borderRadius: 12, padding: '16px 20px' }}>
-              <div style={{ fontSize: 28, fontWeight: 300, color: color.textOnLight.primary, letterSpacing: '-0.02em', fontFamily: font.mono }}>
+              <div style={{ fontSize: 28, fontWeight: 500, color: color.textOnLight.primary, letterSpacing: '-0.02em', fontFamily: font.mono }}>
                 {checkins.length}
               </div>
               <div style={{ ...S.label, marginTop: 4 }}>Check-ins total</div>
@@ -576,7 +576,7 @@ const TabProgress = ({ profile, checkins }) => {
             {/* Weight change */}
             {weightChange !== null && (
               <div style={{ ...S.card, borderRadius: 12, padding: '16px 20px' }}>
-                <div style={{ fontSize: 28, fontWeight: 300, letterSpacing: '-0.02em', fontFamily: font.mono,
+                <div style={{ fontSize: 28, fontWeight: 500, letterSpacing: '-0.02em', fontFamily: font.mono,
                   color: parseFloat(weightChange) < 0 ? color.forest : parseFloat(weightChange) > 0 ? color.alert : color.textOnLight.secondary }}>
                   {parseFloat(weightChange) > 0 ? '+' : ''}{weightChange}
                   <span style={{ fontSize: 13, marginLeft: 3 }}>{weightUnit}</span>
@@ -587,7 +587,7 @@ const TabProgress = ({ profile, checkins }) => {
 
             {/* Feedback received */}
             <div style={{ ...S.card, borderRadius: 12, padding: '16px 20px' }}>
-              <div style={{ fontSize: 28, fontWeight: 300, color: color.textOnLight.primary, letterSpacing: '-0.02em', fontFamily: font.mono }}>
+              <div style={{ fontSize: 28, fontWeight: 500, color: color.textOnLight.primary, letterSpacing: '-0.02em', fontFamily: font.mono }}>
                 {feedbackHistory.length}
               </div>
               <div style={{ ...S.label, marginTop: 4 }}>Feedback received</div>

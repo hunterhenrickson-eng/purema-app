@@ -739,13 +739,13 @@ const BillingPanel = ({ actorId }) => {
           <div style={{ ...labelStyle(false), marginBottom: 14 }}>Revenue (estimate)</div>
           <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', marginBottom: 16 }}>
             <div>
-              <div style={{ fontSize: 28, fontWeight: 300, color: color.textOnLight.primary, fontFamily: font.mono }}>
+              <div style={{ fontSize: 28, fontWeight: 500, color: color.textOnLight.primary, fontFamily: font.mono }}>
                 ${revenue.mrr.toLocaleString()}
               </div>
               <div style={{ ...labelStyle(false), marginTop: 2 }}>Est. MRR</div>
             </div>
             <div>
-              <div style={{ fontSize: 28, fontWeight: 300, color: color.textOnLight.primary, fontFamily: font.mono }}>
+              <div style={{ fontSize: 28, fontWeight: 500, color: color.textOnLight.primary, fontFamily: font.mono }}>
                 {revenue.activeCount}
               </div>
               <div style={{ ...labelStyle(false), marginTop: 2 }}>Active subscribers</div>

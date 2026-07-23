@@ -67,7 +67,7 @@ export default function Pricing() {
                 </div>
                 {plan.recommended && <span style={badge('info')}>Recommended</span>}
               </div>
-              <div style={{ fontSize: 28, fontWeight: 300, color: color.textOnLight.primary, fontFamily: font.mono }}>
+              <div style={{ fontSize: 28, fontWeight: 500, color: color.textOnLight.primary, fontFamily: font.mono }}>
                 ${plan.price}<span style={{ fontSize: 13, color: color.textOnLight.secondary }}>/mo</span>
               </div>
               <div style={{ fontSize: type.body, color: color.textOnLight.secondary, marginTop: 6, marginBottom: 20 }}>
