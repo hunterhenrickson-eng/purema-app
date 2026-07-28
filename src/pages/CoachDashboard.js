@@ -1872,28 +1872,6 @@ const TabOverview = ({ clients, checkins, profile }) => {
         </div>
       </div>
 
-      {/* Revenue — stubbed for Stripe */}
-      <div>
-        <div style={S.sectionTitle}>Revenue</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-          <div style={{ background: color.surfaceLight, border: `0.5px solid ${color.borderLight}`, borderRadius: 12, padding: '18px 20px' }}>
-            <div style={{ fontSize: 28, fontWeight: 500, color: color.textOnLight.secondary, letterSpacing: '-0.02em', fontFamily: font.mono }}>—</div>
-            <div style={{ ...S.label, marginTop: 6 }}>MRR</div>
-            <div style={{ fontSize: type.label, color: color.textOnLight.faint, marginTop: 4 }}>Connect Stripe to unlock</div>
-          </div>
-          <div style={{ background: color.surfaceLight, border: `0.5px solid ${color.borderLight}`, borderRadius: 12, padding: '18px 20px' }}>
-            <div style={{ fontSize: 28, fontWeight: 500, color: color.textOnLight.secondary, letterSpacing: '-0.02em', fontFamily: font.mono }}>—</div>
-            <div style={{ ...S.label, marginTop: 6 }}>Avg. per client</div>
-            <div style={{ fontSize: type.label, color: color.textOnLight.faint, marginTop: 4 }}>Connect Stripe to unlock</div>
-          </div>
-          <div style={{ background: color.surfaceLight, border: `0.5px solid ${color.borderLight}`, borderRadius: 12, padding: '18px 20px' }}>
-            <div style={{ fontSize: 28, fontWeight: 500, color: color.textOnLight.secondary, letterSpacing: '-0.02em', fontFamily: font.mono }}>—</div>
-            <div style={{ ...S.label, marginTop: 6 }}>Churn this month</div>
-            <div style={{ fontSize: type.label, color: color.textOnLight.faint, marginTop: 4 }}>Connect Stripe to unlock</div>
-          </div>
-        </div>
-      </div>
-
       {/* Engagement */}
       <div>
         <div style={S.sectionTitle}>Engagement</div>
