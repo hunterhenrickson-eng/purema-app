@@ -123,10 +123,16 @@ export const appearance = {
   },
 }
 
+// mono is an alias of sans, not a separate typeface — DM Mono was retired
+// sitewide (one canonical definition, no drift risk between the two going
+// forward). The one deliberate exception (AdminDashboard.js's JSON
+// audit-log diff view) hardcodes its own '"DM Mono", monospace' literal
+// directly rather than going through this token, specifically so it isn't
+// swept up if/when this alias changes again.
 export const font = {
   sans: '"DM Sans", sans-serif',
-  mono: '"DM Mono", monospace',
 }
+font.mono = font.sans
 
 // Fluid type scale: comfortable and roomy on desktop, scales down on
 // narrow viewports via clamp() — no media query required for text size.

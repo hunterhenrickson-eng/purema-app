@@ -1,4 +1,8 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@300;400;500&display=swap');
+/* DM Mono is requested at weight 400 only — the one deliberate exception
+   to the sitewide DM Mono -> DM Sans migration (AdminDashboard.js's JSON
+   audit-log diff view, which hardcodes its own font-family literal rather
+   than going through theme.js's font.mono, now aliased to font.sans). */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400&display=swap');
 
 :root {
   --bone: #FAFAFA;

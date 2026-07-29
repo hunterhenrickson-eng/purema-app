@@ -315,14 +315,18 @@ const AuditLogViewer = () => {
               </div>
               {expandedId === e.id && (e.before_value || e.after_value) && (
                 <div style={{ marginTop: 10, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                  {/* Deliberate exception to the sitewide DM Mono -> DM Sans migration —
+                      pretty-printed JSON indentation needs real fixed-width characters to
+                      read as structured, so this hardcodes the literal rather than going
+                      through font.mono (now aliased to font.sans, see theme.js). */}
                   {e.before_value && (
                     <pre style={{ flex: 1, minWidth: 200, background: color.surfaceLight, borderRadius: 6, padding: 10,
-                      fontSize: type.label, fontFamily: font.mono, color: color.textOnLight.secondary,
+                      fontSize: type.label, fontFamily: '"DM Mono", monospace', color: color.textOnLight.secondary,
                       overflowX: 'auto', margin: 0 }}>{JSON.stringify(e.before_value, null, 2)}</pre>
                   )}
                   {e.after_value && (
                     <pre style={{ flex: 1, minWidth: 200, background: color.surfaceLight, borderRadius: 6, padding: 10,
-                      fontSize: type.label, fontFamily: font.mono, color: color.textOnLight.secondary,
+                      fontSize: type.label, fontFamily: '"DM Mono", monospace', color: color.textOnLight.secondary,
                       overflowX: 'auto', margin: 0 }}>{JSON.stringify(e.after_value, null, 2)}</pre>
                   )}
                 </div>
