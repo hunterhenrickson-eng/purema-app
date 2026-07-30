@@ -1156,18 +1156,27 @@ export default function ClientHome() {
           )}
         </div>
 
-        {/* Mobile bottom tab bar (below 900px) */}
+        {/* Mobile bottom tab bar (below 900px) — equal-width shrinkable
+            columns (flex: 1 1 0%, minWidth: 0), same reasoning as
+            .purema-kpi-grid's minmax(0, 1fr): this is glanceable primary
+            nav, not something you'd swipe/scroll through, so unlike the
+            Settings side-nav's horizontal-scroll pattern every item must
+            always stay fully visible. 6 items' intrinsic content width
+            (added up) used to overflow a 375px viewport by ~7.5px; equal
+            sharing plus tighter horizontal padding fixes that regardless
+            of how many tabs end up in navItems. */}
         <div className="purema-tabbar-mobile" style={{ position: 'fixed', bottom: 0, left: 0, right: 0,
-          background: color.surfaceNav, borderTop: `0.5px solid ${color.borderLight}`, zIndex: 100,
-          justifyContent: 'space-around' }}>
+          background: color.surfaceNav, borderTop: `0.5px solid ${color.borderLight}`, zIndex: 100 }}>
           {navItems.map(item => (
             <button key={item.id} onClick={() => setActiveTab(item.id)}
-              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-                cursor: 'pointer', padding: '6px 10px',
+              style={{ flex: '1 1 0%', minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+                cursor: 'pointer', padding: '6px 2px', boxSizing: 'border-box',
                 border: 'none', fontFamily: font.sans, fontSize: type.label,
                 ...navItemStyle(activeTab === item.id) }}>
               {item.id === 'settings' && <GearIcon />}
-              {item.label}
+              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
+                {item.label}
+              </span>
               {item.id === 'messages' && unreadMessageCount > 0 && (
                 <span style={{ background: color.forest, color: color.sage, fontSize: type.label,
                   borderRadius: 999, padding: '1px 5px', fontFamily: font.mono }}>
