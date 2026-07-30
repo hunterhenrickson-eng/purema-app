@@ -53,19 +53,31 @@ module.exports = async (req, res) => {
         recipientName: details.coach_name, otherPartyName: details.prospect_name,
         formattedDateTime, appUrl: origin,
       })
-      sends.push(sendEmail({ to: details.coach_email, subject, html }))
+      sends.push({ recipient: 'coach', to: details.coach_email, promise: sendEmail({ to: details.coach_email, subject, html }) })
     }
     if (details.prospect_email) {
       const { subject, html } = intakeCallBookedEmail({
         recipientName: details.prospect_name, otherPartyName: details.coach_name,
         formattedDateTime, appUrl: origin,
       })
-      sends.push(sendEmail({ to: details.prospect_email, subject, html }))
+      sends.push({ recipient: 'prospect', to: details.prospect_email, promise: sendEmail({ to: details.prospect_email, subject, html }) })
     }
 
-    const results = await Promise.allSettled(sends)
-    const failures = results.filter(r => r.status === 'rejected')
-    res.status(200).json({ ok: true, sent: results.length - failures.length, failed: failures.length })
+    const settled = await Promise.allSettled(sends.map(s => s.promise))
+    // Surfaces Resend's own message id per recipient (same as api/notify.js's
+    // { ok, sent, id } shape) rather than just an aggregate count — this is
+    // what actually proves a send reached Resend, not just that our own
+    // fetch call didn't throw.
+    const results = sends.map((s, i) => {
+      const outcome = settled[i]
+      return outcome.status === 'fulfilled'
+        ? { recipient: s.recipient, to: s.to, ok: true, id: outcome.value.id }
+        : { recipient: s.recipient, to: s.to, ok: false, error: outcome.reason?.message }
+    })
+    console.log('notify-intake-booking results:', JSON.stringify(results))
+
+    const failures = results.filter(r => !r.ok)
+    res.status(200).json({ ok: true, sent: results.length - failures.length, failed: failures.length, results })
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
