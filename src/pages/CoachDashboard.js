@@ -2572,6 +2572,153 @@ const APPEARANCE_OPTIONS = [
   { value: 'system', label: 'System', desc: 'Match your device' },
 ]
 
+// "HH:MM:SS" (raw Postgres time) -> "2:00 PM" — reuses the Date object
+// purely as a time-formatting helper; the date part is thrown away.
+const formatTimeLabel = (t) => {
+  if (!t) return ''
+  return new Date(`1970-01-01T${t}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+}
+
+const INTAKE_SLOT_MINUTES = 20
+
+// Coach's recurring weekly availability for prospect intake calls
+// (coach_availability_rules) — Phase 1 of the intake-scheduling feature.
+// This only manages the coach's own rules; nothing reads/writes this
+// table from the public/prospect side yet (that's Phase 2, via a
+// token-based booking flow, not raw table access).
+const AvailabilitySection = ({ coachId }) => {
+  const [rules, setRules] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [day, setDay] = useState('1')
+  const [startTime, setStartTime] = useState('')
+  const [endTime, setEndTime] = useState('')
+  const [adding, setAdding] = useState(false)
+  const [removingId, setRemovingId] = useState(null)
+
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      setLoading(true)
+      const { data, error: loadError } = await supabase
+        .from('coach_availability_rules')
+        .select('*')
+        .eq('coach_id', coachId)
+        .order('day_of_week', { ascending: true })
+        .order('start_time', { ascending: true })
+      if (cancelled) return
+      if (loadError) setError("Couldn't load your availability — try refreshing.")
+      else setRules(data || [])
+      setLoading(false)
+    }
+    load()
+    return () => { cancelled = true }
+  }, [coachId])
+
+  const handleAdd = async (e) => {
+    e.preventDefault()
+    setError(null)
+    if (!startTime || !endTime) { setError('Pick a start and end time.'); return }
+    if (endTime <= startTime) { setError('End time must be after start time.'); return }
+
+    setAdding(true)
+    const { data, error: insertError } = await supabase
+      .from('coach_availability_rules')
+      .insert({ coach_id: coachId, day_of_week: parseInt(day, 10), start_time: startTime, end_time: endTime })
+      .select()
+      .single()
+    setAdding(false)
+    if (insertError || !data) { setError(insertError?.message || "Couldn't add that rule."); return }
+
+    setRules(prev => [...(prev || []), data].sort((a, b) =>
+      a.day_of_week - b.day_of_week || a.start_time.localeCompare(b.start_time)))
+    setStartTime('')
+    setEndTime('')
+  }
+
+  const handleRemove = async (ruleId) => {
+    setRemovingId(ruleId)
+    setError(null)
+    const { error: deleteError } = await supabase
+      .from('coach_availability_rules')
+      .delete()
+      .eq('id', ruleId)
+    setRemovingId(null)
+    if (deleteError) { setError(deleteError.message); return }
+    setRules(prev => (prev || []).filter(r => r.id !== ruleId))
+  }
+
+  return (
+    <div style={S.card}>
+      <div style={S.sectionTitle}>Intake call availability</div>
+      <div style={{ fontSize: type.body, color: color.textOnLight.secondary, marginBottom: 16 }}>
+        Set your recurring weekly availability for prospect intake calls. Each call is {INTAKE_SLOT_MINUTES} minutes.
+      </div>
+
+      {loading ? (
+        <div style={{ fontSize: type.body, color: color.textOnLight.secondary }}>Loading...</div>
+      ) : (
+        <>
+          {rules.length === 0 ? (
+            <div style={{ fontSize: type.body, color: color.textOnLight.faint, marginBottom: 16 }}>
+              No availability set yet — add a day and time range below.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+              {rules.map(rule => (
+                <div key={rule.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '10px 12px', background: color.bone, borderRadius: 8 }}>
+                  <div style={{ fontSize: type.body, color: color.textOnLight.primary }}>
+                    <span style={{ fontWeight: 500 }}>{WEEKDAY_LABELS[rule.day_of_week]}</span>
+                    {' '}{formatTimeLabel(rule.start_time)} – {formatTimeLabel(rule.end_time)}
+                  </div>
+                  <button type="button" onClick={() => handleRemove(rule.id)} disabled={removingId === rule.id}
+                    style={{ border: 'none', background: 'transparent', color: color.textOnLight.faint,
+                      fontSize: type.label, cursor: removingId === rule.id ? 'not-allowed' : 'pointer', padding: 4 }}>
+                    {removingId === rule.id ? 'Removing...' : 'Remove'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <form onSubmit={handleAdd} style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <div>
+              <label style={{ ...S.label, display: 'block', marginBottom: 6 }}>Day</label>
+              <select value={day} onChange={e => setDay(e.target.value)}
+                style={{ padding: '10px 12px', borderRadius: 8, border: `1px solid ${color.borderLight}`,
+                  fontFamily: font.sans, fontSize: type.body, outline: 'none', color: color.textOnLight.primary,
+                  background: color.surfaceLight, cursor: 'pointer' }}>
+                {WEEKDAY_LABELS.map((label, i) => <option key={i} value={i}>{label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ ...S.label, display: 'block', marginBottom: 6 }}>Start</label>
+              <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)}
+                style={{ padding: '9px 12px', borderRadius: 8, border: `1px solid ${color.borderLight}`,
+                  fontFamily: font.sans, fontSize: type.body, outline: 'none', color: color.textOnLight.primary }} />
+            </div>
+            <div>
+              <label style={{ ...S.label, display: 'block', marginBottom: 6 }}>End</label>
+              <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)}
+                style={{ padding: '9px 12px', borderRadius: 8, border: `1px solid ${color.borderLight}`,
+                  fontFamily: font.sans, fontSize: type.body, outline: 'none', color: color.textOnLight.primary }} />
+            </div>
+            <button type="submit" disabled={adding}
+              style={{ padding: '10px 18px', borderRadius: 8, border: 'none',
+                background: adding ? color.textOnLight.faint : color.forest, color: color.textOnDark.primary,
+                fontFamily: font.sans, fontWeight: 500, cursor: adding ? 'not-allowed' : 'pointer',
+                fontSize: type.body, whiteSpace: 'nowrap' }}>
+              {adding ? 'Adding...' : 'Add'}
+            </button>
+          </form>
+          {error && <p style={{ color: color.alert, marginTop: 12, fontSize: type.body }}>{error}</p>}
+        </>
+      )}
+    </div>
+  )
+}
+
 const TabSettings = ({ profile, onToggleNotify }) => {
   const [savingKey, setSavingKey] = useState(null)
   const [slugInput, setSlugInput] = useState(profile?.slug || '')
@@ -2692,6 +2839,8 @@ const TabSettings = ({ profile, onToggleNotify }) => {
           {TIMEZONES.map(tz => <option key={tz} value={tz}>{tz}</option>)}
         </select>
       </div>
+
+      {profile?.id && <AvailabilitySection coachId={profile.id} />}
 
       <div style={S.card}>
         <div style={S.sectionTitle}>Navigation</div>
