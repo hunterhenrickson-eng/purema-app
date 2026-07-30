@@ -21,3 +21,23 @@ export async function notify(type, recipientId) {
     console.error(`notify(${type}) failed:`, err.message)
   }
 }
+
+// Sibling to notify() above, for BookIntakeCall.jsx's anonymous booking
+// flow — deliberately NOT session-gated, since a prospect booking a call
+// has no session at all. Authorized server-side by the booking_token
+// itself instead (see api/notify-intake-booking.js). Same fire-and-forget/
+// never-throw philosophy: a failed confirmation email must not make an
+// already-successful booking look broken.
+export async function notifyIntakeBooking(token) {
+  try {
+    const res = await fetch('/api/notify-intake-booking', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token }),
+    })
+    const result = await res.json()
+    if (!res.ok) console.error('notifyIntakeBooking failed:', result.error || res.status)
+  } catch (err) {
+    console.error('notifyIntakeBooking failed:', err.message)
+  }
+}

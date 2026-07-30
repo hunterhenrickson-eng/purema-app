@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { notifyIntakeBooking } from '../lib/notify';
 import {
   color as staticColor, appearance, font, type,
 } from '../lib/theme';
@@ -113,6 +114,9 @@ export default function BookIntakeCall({ token }) {
       return;
     }
     setStatus('confirmed');
+    // Fire-and-forget — never blocks or fails the confirmation screen the
+    // prospect already sees; see notifyIntakeBooking's own comment.
+    notifyIntakeBooking(token);
   }
 
   if (status === 'loading') {

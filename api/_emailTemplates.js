@@ -101,4 +101,22 @@ function newMessageEmail({ recipientName, senderName, appUrl }) {
   }
 }
 
-module.exports = { feedbackReceivedEmail, macroTargetsUpdatedEmail, newMessageEmail }
+// One shared function for both parties on a booking (coach + prospect),
+// same as this file's existing pattern of naming templates for the event
+// rather than the recipient — recipientName/otherPartyName just swap
+// depending on who it's going to. formattedDateTime is expected pre-
+// formatted in the coach's own timezone (the only timezone that's actually
+// stored anywhere for this booking — see api/notify-intake-booking.js).
+function intakeCallBookedEmail({ recipientName, otherPartyName, formattedDateTime, appUrl }) {
+  return {
+    subject: `Intake call booked with ${otherPartyName}`,
+    html: renderEmail({
+      heading: 'Intake call booked',
+      summary: `${recipientName ? `Hi ${recipientName} — your` : 'Your'} intake call with ${otherPartyName} is confirmed for ${formattedDateTime}.`,
+      ctaText: 'Open Purema',
+      ctaUrl: appUrl,
+    }),
+  }
+}
+
+module.exports = { feedbackReceivedEmail, macroTargetsUpdatedEmail, newMessageEmail, intakeCallBookedEmail }
