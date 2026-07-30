@@ -171,7 +171,7 @@ export default function BookIntakeCall({ token }) {
           No open times in the next two weeks — check back soon or reach out directly.
         </p>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxHeight: 360, overflowY: 'auto', marginBottom: 20 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 20 }}>
           {groups.map(([dateLabel, daySlots]) => (
             <div key={dateLabel}>
               <div style={{ fontSize: type.label, color: color.textOnLight.secondary, fontFamily: font.mono,
@@ -181,7 +181,8 @@ export default function BookIntakeCall({ token }) {
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 {daySlots.map(({ iso, d }) => (
                   <button key={iso} type="button" onClick={() => setSelected(iso)}
-                    style={{ padding: '8px 12px', borderRadius: 8, cursor: 'pointer',
+                    style={{ minHeight: 44, padding: '0 14px', display: 'inline-flex', alignItems: 'center',
+                      justifyContent: 'center', borderRadius: 8, cursor: 'pointer', boxSizing: 'border-box',
                       border: `1px solid ${selected === iso ? color.forest : color.borderLight}`,
                       background: selected === iso ? color.sage : 'transparent',
                       color: color.textOnLight.primary, fontFamily: font.sans, fontSize: type.label }}>
@@ -198,7 +199,8 @@ export default function BookIntakeCall({ token }) {
 
       <button type="button" onClick={handleBook} disabled={!selected || submitting}
         style={{
-          width: '100%', padding: '12px', borderRadius: 8, border: 'none',
+          width: '100%', minHeight: 44, padding: '0 12px', display: 'flex', alignItems: 'center',
+          justifyContent: 'center', boxSizing: 'border-box', borderRadius: 8, border: 'none',
           background: (!selected || submitting) ? color.borderLight : color.forest,
           color: (!selected || submitting) ? color.textOnLight.faint : color.sage,
           fontWeight: 500, fontSize: type.body, fontFamily: font.sans,
