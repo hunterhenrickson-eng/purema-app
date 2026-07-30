@@ -13,6 +13,7 @@ import ClientOnboarding from './components/ClientOnboarding'
 import AcceptInvite from './components/AcceptInvite'
 import ResetPassword from './components/ResetPassword'
 import PublicApply from './components/PublicApply'
+import BookIntakeCall from './components/BookIntakeCall'
 
 // Shown above whatever page is active whenever an admin is impersonating a
 // coach — visible regardless of which screen the swapped session lands on,
@@ -197,6 +198,11 @@ function App() {
   if (path.startsWith('/apply/')) {
     const slug = path.split('/apply/')[1]
     return <PublicApply slug={slug} />
+  }
+
+  if (path.startsWith('/book/')) {
+    const token = path.split('/book/')[1]
+    return <BookIntakeCall token={token} />
   }
 
   return <AuthRoutes />
