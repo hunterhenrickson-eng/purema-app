@@ -3,8 +3,12 @@ import { supabase } from '../lib/supabase';
 import { color as staticColor, appearance, font, type, labelStyleAppearance as labelStyle } from '../lib/theme';
 import '../styles/purema-responsive.css';
 
-// One of the four screens wired to the appearance toggle — same shadow
-// pattern as Auth.js (see its top-of-file comment for the full rationale).
+// Forced light, same mechanism and reasoning as Auth.js/Home.js/Pricing.js/
+// PublicApply.jsx (see Auth.js's top-of-file comment) — renders at
+// /reset-password, outside AuthRoutes' data-appearance-setting effect, so
+// without the force below it falls through to the system prefers-color-
+// scheme default. Same shadow pattern as Auth.js otherwise — these
+// dark-named fields now always resolve to the LIGHT token values.
 const color = {
   ...staticColor,
   void: appearance.surfacePage,
@@ -27,6 +31,13 @@ export default function ResetPassword() {
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [errorMsg, setErrorMsg] = useState(null)
+
+  // No unmount cleanup — the success handler below navigates away via
+  // window.location.href, a real browser navigation, same reasoning as
+  // Auth.js/Home.js/Pricing.js/PublicApply.jsx.
+  useEffect(() => {
+    document.documentElement.setAttribute('data-appearance', 'light')
+  }, [])
 
   useEffect(() => {
     // Supabase sends the recovery token as a hash fragment:

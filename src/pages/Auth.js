@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import {
   color as staticColor, appearance, font, type,
@@ -6,15 +6,16 @@ import {
 } from '../lib/theme'
 import '../styles/purema-responsive.css'
 
-// One of the four screens wired to the appearance toggle (profiles.appearance
-// — see App.js and src/styles/tokens.css). Auth.js previously only ever
-// rendered dark (per the explicit decision to add a light variant here,
-// unlike AcceptInvite.jsx/ClientOnboarding.jsx/PublicApply.jsx, which stay
-// permanently dark and are NOT touched by this shadow). Shadows the
-// dark-named fields specifically, since that's what this file's JSX
-// already references throughout — resolving through the SAME
-// appearance-aware tokens ClientHome.js/CoachDashboard.js use, just mapped
-// from their dark-side names instead of their light-side names.
+// Forced light, same mechanism and reasoning as Home.js/Pricing.js/
+// PublicApply.jsx (see PublicApply.jsx's top-of-file comment) — Auth.js
+// renders at /login, outside AuthRoutes' own data-appearance-setting
+// effect (that only runs once a session/profile is loaded), so without
+// this it falls through to tokens.css's prefers-color-scheme fallback and
+// renders dark on a dark-mode system. Still shadows `color` through the
+// SAME appearance-aware tokens ClientHome.js/CoachDashboard.js use (just
+// mapped from dark-side field names, since that's what this file's JSX
+// already references throughout) — those names now always resolve to the
+// LIGHT token values given the force below, not a live light/dark toggle.
 const color = {
   ...staticColor,
   void: appearance.surfacePage,
@@ -33,7 +34,14 @@ const Mark = ({ size = 32 }) => (
 )
 
 export default function Auth() {
-  const [mode, setMode] = useState('signin') // signin | signup
+  // No unmount cleanup — every navigation away from this page (successful
+  // sign-in, sign-up) is a real browser navigation via window.location.href,
+  // same reasoning as Home.js/Pricing.js/PublicApply.jsx.
+  useEffect(() => {
+    document.documentElement.setAttribute('data-appearance', 'light')
+  }, [])
+
+  const [mode, setMode] = useState('signin') // signin | signup | forgot
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [role, setRole] = useState('coach')
@@ -47,6 +55,19 @@ export default function Auth() {
     setError(null)
     setSuccessMsg(null)
     setLoading(true)
+
+    if (mode === 'forgot') {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`
+      })
+      setLoading(false)
+      if (error) {
+        setError(error.message)
+        return
+      }
+      setSuccessMsg('Password reset link sent — check your inbox.')
+      return
+    }
 
     if (mode === 'signin') {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
@@ -113,24 +134,29 @@ export default function Auth() {
       <div className="purema-card" style={{ background: color.surfaceDark,
         borderRadius: 16, border: `0.5px solid ${color.borderDark}`, padding: 32 }}>
 
-        {/* Mode toggle */}
-        <div style={{ display: 'flex', gap: 4, background: color.void,
-          borderRadius: 10, padding: 4, marginBottom: 28 }}>
-          {[
-            { id: 'signin', label: 'Sign in' },
-            { id: 'signup', label: 'Create account' },
-          ].map(({ id, label }) => (
-            <button key={id} onClick={() => { setMode(id); setError(null); setSuccessMsg(null) }}
-              style={{ flex: 1, padding: '9px 0', borderRadius: 8, border: 'none',
-                cursor: 'pointer', fontSize: type.body, fontWeight: mode === id ? 500 : 400,
-                fontFamily: font.sans,
-                background: mode === id ? color.forest : 'transparent',
-                color: mode === id ? color.sage : color.textOnDark.secondary,
-                transition: 'all 0.15s ease' }}>
-              {label}
-            </button>
-          ))}
-        </div>
+        {/* Mode toggle — hidden in forgot-password mode, which isn't a
+            peer of Sign in/Create account so much as a detour off of
+            Sign in specifically; the "Back to sign in" link below is its
+            own way out. */}
+        {mode !== 'forgot' && (
+          <div style={{ display: 'flex', gap: 4, background: color.void,
+            borderRadius: 10, padding: 4, marginBottom: 28 }}>
+            {[
+              { id: 'signin', label: 'Sign in' },
+              { id: 'signup', label: 'Create account' },
+            ].map(({ id, label }) => (
+              <button key={id} onClick={() => { setMode(id); setError(null); setSuccessMsg(null) }}
+                style={{ flex: 1, padding: '9px 0', borderRadius: 8, border: 'none',
+                  cursor: 'pointer', fontSize: type.body, fontWeight: mode === id ? 500 : 400,
+                  fontFamily: font.sans,
+                  background: mode === id ? color.forest : 'transparent',
+                  color: mode === id ? color.sage : color.textOnDark.secondary,
+                  transition: 'all 0.15s ease' }}>
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
@@ -166,21 +192,25 @@ export default function Auth() {
             />
           </div>
 
-          {/* Password */}
-          <div>
-            <label style={labelStyle()}>Password</label>
-            <input
-              type="password"
-              required
-              minLength={6}
-              placeholder="Min 6 characters"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              style={inputStyle}
-              onFocus={e => e.target.style.borderColor = color.forest}
-              onBlur={e => e.target.style.borderColor = color.borderDark}
-            />
-          </div>
+          {/* Password — irrelevant to forgot-password (a reset link makes
+              a typed-in password moot), so hidden there rather than just
+              disabled. */}
+          {mode !== 'forgot' && (
+            <div>
+              <label style={labelStyle()}>Password</label>
+              <input
+                type="password"
+                required
+                minLength={6}
+                placeholder="Min 6 characters"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                style={inputStyle}
+                onFocus={e => e.target.style.borderColor = color.forest}
+                onBlur={e => e.target.style.borderColor = color.borderDark}
+              />
+            </div>
+          )}
 
           {/* Role — signup only */}
           {mode === 'signup' && (
@@ -236,26 +266,30 @@ export default function Auth() {
               fontSize: type.bodyLg, fontWeight: 500, cursor: loading ? 'not-allowed' : 'pointer',
               fontFamily: font.sans, marginTop: 4,
               transition: 'background 0.15s ease' }}>
-            {loading ? 'Please wait...' : mode === 'signin' ? 'Sign in' : 'Create account'}
+            {loading ? 'Please wait...' : mode === 'forgot' ? 'Send reset link' : mode === 'signin' ? 'Sign in' : 'Create account'}
           </button>
 
         </form>
 
-        {/* Forgot password */}
+        {/* Forgot password — a link into 'forgot' mode from signin, and
+            back out of it again; signup has neither. */}
         {mode === 'signin' && (
           <div style={{ textAlign: 'center', marginTop: 20 }}>
-            <button onClick={async () => {
-              if (!email) { setError('Enter your email above first.'); return }
-              setError(null)
-              await supabase.auth.resetPasswordForEmail(email, {
-                redirectTo: `${window.location.origin}/reset-password`
-              })
-              setSuccessMsg('Password reset link sent — check your inbox.')
-            }}
+            <button onClick={() => { setMode('forgot'); setError(null); setSuccessMsg(null) }}
               style={{ background: 'none', border: 'none', color: color.textOnDark.faint,
                 fontSize: type.body, cursor: 'pointer', fontFamily: font.sans,
                 textDecoration: 'underline', textDecorationColor: color.borderDark }}>
               Forgot your password?
+            </button>
+          </div>
+        )}
+        {mode === 'forgot' && (
+          <div style={{ textAlign: 'center', marginTop: 20 }}>
+            <button onClick={() => { setMode('signin'); setError(null); setSuccessMsg(null) }}
+              style={{ background: 'none', border: 'none', color: color.textOnDark.faint,
+                fontSize: type.body, cursor: 'pointer', fontFamily: font.sans,
+                textDecoration: 'underline', textDecorationColor: color.borderDark }}>
+              Back to sign in
             </button>
           </div>
         )}

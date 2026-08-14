@@ -20,7 +20,11 @@ export const color = {
   // Brand
   forest: 'var(--brand-forest)',
   void: '#0D0D0D',
-  bone: '#FAFAFA',
+  // Locked brand background, confirmed 2026-07-01 — matches tokens.css's
+  // --surface-page. Only real consumer left is App.js's admin-access-
+  // denied gate (it imports this static color directly, not via
+  // useAppearance()); everything else reads --surface-page instead.
+  bone: '#F5F2ED',
   sage: 'var(--brand-sage)',
   gold: 'var(--brand-gold)',
   alert: 'var(--brand-alert)',

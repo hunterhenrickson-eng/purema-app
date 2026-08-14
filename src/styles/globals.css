@@ -5,7 +5,10 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400&display=swap');
 
 :root {
-  --bone: #FAFAFA;
+  /* Locked brand background, confirmed 2026-07-01 — matches tokens.css's
+     --surface-page and theme.js's color.bone. Feeds the raw <body>
+     background underneath everything else. */
+  --bone: #F5F2ED;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }

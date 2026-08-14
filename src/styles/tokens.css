@@ -56,7 +56,13 @@
        close existing values (#F0EDE8 used in ~10 places, #FAFAF9 used once
        in CheckInForm.js's DayColumn) into one token — flagging that near-
        duplicate for a future cleanup pass, not resolving it here. */
-  --surface-page: #FAFAFA;
+  /* Bone — locked brand background, confirmed 2026-07-01. Was briefly
+     #FAFAFA (commit 28ee3b3, 2026-07-13); reverted here. Note: theme.js's
+     static color.bone and globals.css's --bone are SEPARATE literal
+     copies of this same value (not consumed by this token) and still
+     read #FAFAFA — see this repo's investigation notes before assuming
+     every "Bone" reference is in sync. */
+  --surface-page: #F5F2ED;
   --surface-card: #FFFFFF;
   --surface-raised: #FFFFFF;
   --surface-nav: #EEEBE4;
