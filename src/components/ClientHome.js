@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import CheckInForm from './CheckInForm'
 import ClientSettings from './ClientSettings'
@@ -872,11 +872,223 @@ const TabDiary = ({ profile }) => {
   )
 }
 
+// ─── Tab: Calendar ────────────────────────────────────────────────────────────
+// Read-only port of CoachDashboard.js's TabCalendar, scoped to a single
+// client's own events. CALENDAR_COLORS/LABELS, ymd(), the month-weeks
+// builder, and buildUpcomingEvents() are duplicated rather than imported —
+// same per-file self-containment this file already applies to its local
+// `color` shadow — so this screen has no import coupling to CoachDashboard.
+// Keep any future edit to the color/label mapping in sync with
+// CoachDashboard.js's copy by hand.
+const CALENDAR_COLORS = { checkin: color.forest, peak: color.alert, show: color.gold }
+const CALENDAR_LABELS = { checkin: 'Check-in', peak: 'Peak week', show: 'Show day' }
+const CALENDAR_WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+// Local Y-M-D key — avoids the day-shifting toISOString() causes by
+// converting to UTC first, since these are calendar dates, not instants.
+function ymd(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+// Single-client version of CoachDashboard's buildCalendarEvents — no
+// clientId tagging or clients-array iteration, since every event here is
+// already scoped to this one client.
+function buildClientCalendarEvents(profile, checkins) {
+  const events = {}
+  const add = (dateKey, type) => {
+    if (!events[dateKey]) events[dateKey] = []
+    events[dateKey].push({ type })
+  }
+  if (profile.show_date) {
+    const show = new Date(`${profile.show_date}T00:00:00`)
+    add(ymd(show), 'show')
+    const peakDays = profile.peak_week_days || 0
+    for (let i = 1; i <= peakDays; i++) {
+      const d = new Date(show)
+      d.setDate(d.getDate() - i)
+      add(ymd(d), 'peak')
+    }
+  }
+  checkins.forEach(c => {
+    if (!c.submitted_at) return
+    add(ymd(new Date(c.submitted_at)), 'checkin')
+  })
+  return events
+}
+
+// Flattens the dateKey->events map into a single chronological list from
+// today onward — identical logic to CoachDashboard's buildUpcomingEvents.
+function buildUpcomingEvents(events, todayKey, limit) {
+  return Object.entries(events)
+    .filter(([dateKey]) => dateKey >= todayKey)
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .flatMap(([dateKey, dayEvents]) => dayEvents.map(e => ({ ...e, dateKey })))
+    .slice(0, limit)
+}
+
+function buildCalendarMonthWeeks(year, month) {
+  const firstDay = new Date(year, month, 1)
+  const startWeekday = firstDay.getDay()
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const cells = []
+  for (let i = 0; i < startWeekday; i++) cells.push(null)
+  for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(year, month, d))
+  while (cells.length % 7 !== 0) cells.push(null)
+  const weeks = []
+  for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7))
+  return weeks
+}
+
+const TabCalendar = ({ profile, checkins }) => {
+  const [viewDate, setViewDate] = useState(() => new Date())
+  const [selectedDay, setSelectedDay] = useState(null)
+
+  const events = useMemo(() => buildClientCalendarEvents(profile, checkins), [profile, checkins])
+  const year = viewDate.getFullYear()
+  const month = viewDate.getMonth()
+  const weeks = useMemo(() => buildCalendarMonthWeeks(year, month), [year, month])
+
+  const todayKey = ymd(new Date())
+  const monthLabel = viewDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+  const upcoming = useMemo(() => buildUpcomingEvents(events, todayKey, 8), [events, todayKey])
+
+  const changeMonth = (delta) => {
+    setSelectedDay(null)
+    setViewDate(new Date(year, month + delta, 1))
+  }
+
+  const selectedEvents = selectedDay ? (events[selectedDay] || []) : []
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+      {/* Static timezone label — a client only ever has one timezone to
+          show, unlike the coach calendar's pinned-timezones strip (which
+          exists to compare multiple clients' local times at once). No
+          interaction, no write. */}
+      {profile?.timezone && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: type.label,
+          color: color.textOnLight.faint, fontFamily: font.mono, letterSpacing: '0.05em' }}>
+          <span>YOUR TIMEZONE</span>
+          <span style={{ color: color.textOnLight.secondary }}>{profile.timezone}</span>
+        </div>
+      )}
+
+      {/* Header: month nav + legend */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button onClick={() => changeMonth(-1)} type="button"
+            style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${color.borderLight}`,
+              background: color.surfaceLight, cursor: 'pointer', fontSize: 16, color: color.textOnLight.primary }}>‹</button>
+          <div style={{ fontSize: type.bodyLg, fontWeight: 500, color: color.textOnLight.primary, minWidth: 160, textAlign: 'center' }}>
+            {monthLabel}
+          </div>
+          <button onClick={() => changeMonth(1)} type="button"
+            style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${color.borderLight}`,
+              background: color.surfaceLight, cursor: 'pointer', fontSize: 16, color: color.textOnLight.primary }}>›</button>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+          {Object.entries(CALENDAR_LABELS).map(([key, label]) => (
+            <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: CALENDAR_COLORS[key] }} />
+              <span style={{ fontSize: type.label, color: color.textOnLight.secondary }}>{label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Weekday header */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6 }}>
+        {CALENDAR_WEEKDAY_LABELS.map(d => (
+          <div key={d} style={{ textAlign: 'center', fontSize: type.label, color: color.textOnLight.faint, fontFamily: font.mono }}>{d}</div>
+        ))}
+      </div>
+
+      {/* Month grid */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {weeks.map((week, wi) => (
+          <div key={wi} style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6 }}>
+            {week.map((day, di) => {
+              if (!day) return <div key={di} />
+              const dayKey = ymd(day)
+              const dayEvents = events[dayKey] || []
+              const types = [...new Set(dayEvents.map(e => e.type))]
+              const isToday = dayKey === todayKey
+              const isSelected = dayKey === selectedDay
+              return (
+                <button key={di} type="button" onClick={() => setSelectedDay(isSelected ? null : dayKey)}
+                  style={{ aspectRatio: '1', borderRadius: 8,
+                    border: isSelected ? `1.5px solid ${color.forest}` : isToday ? `1px solid ${color.borderLight}` : `0.5px solid ${color.borderLight}`,
+                    background: isToday ? color.bone : color.surfaceLight, cursor: 'pointer',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, padding: 4 }}>
+                  <span style={{ fontSize: type.label, color: color.textOnLight.primary, fontWeight: isToday ? 500 : 400, fontFamily: font.mono }}>{day.getDate()}</span>
+                  {types.length > 0 && (
+                    <div style={{ display: 'flex', gap: 3 }}>
+                      {types.map(t => (
+                        <div key={t} style={{ width: 5, height: 5, borderRadius: '50%', background: CALENDAR_COLORS[t] }} />
+                      ))}
+                    </div>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        ))}
+      </div>
+
+      {/* Selected day detail — dot + label only, no name (it's always this
+          client's own events, so there's nothing to disambiguate). */}
+      {selectedDay && (
+        <div style={S.card}>
+          <div style={{ ...S.label, marginBottom: 10 }}>
+            {new Date(`${selectedDay}T00:00:00`).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+          </div>
+          {selectedEvents.length === 0 ? (
+            <div style={{ fontSize: type.body, color: color.textOnLight.secondary }}>No events on this day.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {selectedEvents.map((e, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: CALENDAR_COLORS[e.type], flexShrink: 0 }} />
+                  <span style={{ fontSize: type.body, color: color.textOnLight.primary }}>{CALENDAR_LABELS[e.type]}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Upcoming events */}
+      <div style={S.card}>
+        <div style={{ ...S.label, marginBottom: 10 }}>Upcoming</div>
+        {upcoming.length === 0 ? (
+          <div style={{ fontSize: type.body, color: color.textOnLight.secondary }}>
+            No upcoming events yet. They'll show up once your show date and peak week are set.
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {upcoming.map((e, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: CALENDAR_COLORS[e.type], flexShrink: 0 }} />
+                <span style={{ fontSize: type.label, color: color.textOnLight.faint, fontFamily: font.mono, minWidth: 80 }}>
+                  {new Date(`${e.dateKey}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                </span>
+                <span style={{ fontSize: type.body, color: color.textOnLight.primary }}>{CALENDAR_LABELS[e.type]}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ─── Main shell ───────────────────────────────────────────────────────────────
 
 const TABS = [
   { id: 'home', label: 'Home' },
   { id: 'progress', label: 'Progress' },
+  { id: 'calendar', label: 'Calendar' },
   { id: 'checkin', label: 'Check-in' },
   { id: 'diary', label: 'Diary' },
   { id: 'messages', label: 'Messages' },
@@ -1133,6 +1345,9 @@ export default function ClientHome() {
           )}
           {activeTab === 'progress' && (
             <TabProgress profile={profile} checkins={checkins} />
+          )}
+          {activeTab === 'calendar' && (
+            <TabCalendar profile={profile} checkins={checkins} />
           )}
           {activeTab === 'checkin' && (
             <TabCheckIn onSuccess={handleCheckInSuccess} />
