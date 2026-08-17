@@ -155,6 +155,103 @@ const InviteEmployeePanel = ({ actorId }) => {
   )
 }
 
+// The only way to generate a coach invite as of the RLS tightening in
+// migration tighten_coach_invite_rls_to_admin_only — coaches can no longer
+// self-generate a role='coach' invite (InviteClient.jsx's "As a coach"
+// toggle now only succeeds for an admin, since it hits the same
+// createInvite() helper). Modeled directly on InviteEmployeePanel above:
+// same layout, same reliance on the invites table's RLS INSERT policy as
+// the actual enforcement (no separate hasPermission() check here either —
+// a non-admin hitting Submit just gets back whatever RLS's rejection
+// message is, same as InviteEmployeePanel would for a non-admin employee
+// invite). No role dropdown, since this panel only ever creates role='coach'
+// invites, and no admin_role_id — that field is admin-invite-only.
+const InviteCoachPanel = ({ actorId }) => {
+  const [email, setEmail] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [link, setLink] = useState(null)
+  const [error, setError] = useState(null)
+  const [copied, setCopied] = useState(false)
+
+  const handleInvite = async (e) => {
+    e.preventDefault()
+    setError(null)
+    setLink(null)
+    setLoading(true)
+
+    const result = await createInvite(actorId, email, 'coach')
+    setLoading(false)
+
+    if (!result.ok) {
+      setError(result.message)
+      return
+    }
+
+    // Best-effort, same reasoning as InviteEmployeePanel — the invite
+    // itself already exists either way.
+    await supabase.from('admin_audit_log').insert({
+      actor_id: actorId, action: 'coach.invite_created',
+      target_type: 'invite', target_id: result.inviteId,
+      after_value: { email },
+    })
+
+    setLink(result.link)
+    setEmail('')
+  }
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(link)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div style={{ background: color.surfaceLight, border: `0.5px solid ${color.borderLight}`,
+      borderRadius: 12, padding: 20, maxWidth: 480 }}>
+      <div style={{ ...labelStyle(false), marginBottom: 14 }}>Invite a coach</div>
+
+      <form onSubmit={handleInvite} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div>
+          <label style={labelStyle(false)}>Email</label>
+          <input type="email" required placeholder="their@email.com" value={email}
+            onChange={e => setEmail(e.target.value)}
+            style={{ width: '100%', padding: '10px 12px', borderRadius: 8,
+              border: `1px solid ${color.borderLight}`, fontFamily: font.sans,
+              fontSize: type.body, outline: 'none', color: color.textOnLight.primary, boxSizing: 'border-box' }} />
+        </div>
+        <button type="submit" disabled={loading}
+          style={{ padding: '10px 18px', borderRadius: 8, border: 'none',
+            background: loading ? color.textOnLight.faint : color.forest, color: color.sage,
+            fontFamily: font.sans, fontWeight: 500, cursor: loading ? 'not-allowed' : 'pointer',
+            fontSize: type.body, alignSelf: 'flex-start' }}>
+          {loading ? 'Generating...' : 'Invite as coach'}
+        </button>
+      </form>
+
+      {error && <p style={{ color: color.alert, marginTop: 12, fontSize: type.body }}>{error}</p>}
+
+      {link && (
+        <div style={{ marginTop: 16, padding: 12, background: color.sage, borderRadius: 8 }}>
+          <div style={{ fontSize: type.label, color: color.textOnLight.secondary, marginBottom: 6 }}>
+            Share this link:
+          </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <code style={{ fontSize: type.label, wordBreak: 'break-all', flex: 1, color: color.textOnLight.primary }}>
+              {link}
+            </code>
+            <button onClick={handleCopy}
+              style={{ padding: '6px 10px', borderRadius: 6, border: `1px solid ${color.forest}`,
+                background: 'transparent', color: color.forest, fontSize: type.label,
+                cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              {copied ? 'Copied!' : 'Copy'}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // Filterable by actor/action/date range, exportable as CSV/JSON — the
 // original standalone priority item, now living inside the broader suite.
 // admin_audit_log's SELECT policy already lets any admin see every actor's
@@ -828,6 +925,7 @@ const BillingPanel = ({ actorId }) => {
 
 const ADMIN_TABS = [
   { id: 'invite', label: 'Invite employee' },
+  { id: 'invite-coach', label: 'Invite a coach' },
   { id: 'audit', label: 'Audit log' },
   { id: 'accounts', label: 'Accounts' },
   { id: 'billing', label: 'Billing' },
@@ -868,6 +966,7 @@ export default function AdminDashboard() {
       </nav>
 
       {profile && activeTab === 'invite' && <InviteEmployeePanel actorId={profile.id} />}
+      {profile && activeTab === 'invite-coach' && <InviteCoachPanel actorId={profile.id} />}
       {profile && activeTab === 'audit' && <AuditLogViewer />}
       {profile && activeTab === 'accounts' && <AccountsPanel actorId={profile.id} />}
       {profile && activeTab === 'billing' && <BillingPanel actorId={profile.id} />}

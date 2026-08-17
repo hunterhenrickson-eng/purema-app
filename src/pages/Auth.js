@@ -41,11 +41,9 @@ export default function Auth() {
     document.documentElement.setAttribute('data-appearance', 'light')
   }, [])
 
-  const [mode, setMode] = useState('signin') // signin | signup | forgot
+  const [mode, setMode] = useState('signin') // signin | forgot
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [role, setRole] = useState('coach')
-  const [fullName, setFullName] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [successMsg, setSuccessMsg] = useState(null)
@@ -69,48 +67,21 @@ export default function Auth() {
       return
     }
 
-    if (mode === 'signin') {
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) {
-        setError(error.message)
-        setLoading(false)
-        return
-      }
-      // Auth now only renders at /login (see App.js), outside AuthRoutes'
-      // session listener — nothing else here would ever move a
-      // successfully-signed-in user off this URL, so it has to happen
-      // explicitly. '/' re-evaluates session/role and lands on the right
-      // dashboard, same as it always has for any other logged-in visit.
-      window.location.href = '/'
-      return
-    }
-
-    // Sign up
-    const { data, error: signUpError } = await supabase.auth.signUp({ email, password })
-    if (signUpError) {
-      setError(signUpError.message)
+    // Only mode left besides 'forgot' — signup no longer happens here at
+    // all (see the top-of-file comment): every new account, coach or
+    // client, is provisioned through AcceptInvite.jsx instead.
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) {
+      setError(error.message)
       setLoading(false)
       return
     }
-
-    // Insert profile
-    if (data.user) {
-      const { error: profileError } = await supabase.from('profiles').insert({
-        id: data.user.id,
-        role,
-        full_name: fullName,
-        email,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      })
-      if (profileError) {
-        setError(profileError.message)
-        setLoading(false)
-        return
-      }
-    }
-
-    setLoading(false)
-    setSuccessMsg('Account created — check your email to confirm, then sign in.')
+    // Auth now only renders at /login (see App.js), outside AuthRoutes'
+    // session listener — nothing else here would ever move a
+    // successfully-signed-in user off this URL, so it has to happen
+    // explicitly. '/' re-evaluates session/role and lands on the right
+    // dashboard, same as it always has for any other logged-in visit.
+    window.location.href = '/'
   }
 
   return (
@@ -134,48 +105,17 @@ export default function Auth() {
       <div className="purema-card" style={{ background: color.surfaceDark,
         borderRadius: 16, border: `0.5px solid ${color.borderDark}`, padding: 32 }}>
 
-        {/* Mode toggle — hidden in forgot-password mode, which isn't a
-            peer of Sign in/Create account so much as a detour off of
-            Sign in specifically; the "Back to sign in" link below is its
-            own way out. */}
+        {/* No more Sign in / Create account toggle — signup no longer
+            happens on this page at all (see top-of-file comment), so
+            there's nothing left to toggle to. This heading fills the
+            same visual slot the pill switcher used to. */}
         {mode !== 'forgot' && (
-          <div style={{ display: 'flex', gap: 4, background: color.void,
-            borderRadius: 10, padding: 4, marginBottom: 28 }}>
-            {[
-              { id: 'signin', label: 'Sign in' },
-              { id: 'signup', label: 'Create account' },
-            ].map(({ id, label }) => (
-              <button key={id} onClick={() => { setMode(id); setError(null); setSuccessMsg(null) }}
-                style={{ flex: 1, padding: '9px 0', borderRadius: 8, border: 'none',
-                  cursor: 'pointer', fontSize: type.body, fontWeight: mode === id ? 500 : 400,
-                  fontFamily: font.sans,
-                  background: mode === id ? color.forest : 'transparent',
-                  color: mode === id ? color.sage : color.textOnDark.secondary,
-                  transition: 'all 0.15s ease' }}>
-                {label}
-              </button>
-            ))}
+          <div style={{ ...labelStyle(), marginBottom: 28, textAlign: 'center' }}>
+            Sign in
           </div>
         )}
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-
-          {/* Name — signup only */}
-          {mode === 'signup' && (
-            <div>
-              <label style={labelStyle()}>Full name</label>
-              <input
-                type="text"
-                required
-                placeholder="First and last name"
-                value={fullName}
-                onChange={e => setFullName(e.target.value)}
-                style={inputStyle}
-                onFocus={e => e.target.style.borderColor = color.forest}
-                onBlur={e => e.target.style.borderColor = color.borderDark}
-              />
-            </div>
-          )}
 
           {/* Email */}
           <div>
@@ -212,35 +152,6 @@ export default function Auth() {
             </div>
           )}
 
-          {/* Role — signup only */}
-          {mode === 'signup' && (
-            <div>
-              <label style={labelStyle()}>I am a</label>
-              <div style={{ display: 'flex', gap: 8 }}>
-                {[
-                  { id: 'coach', label: 'Coach' },
-                  { id: 'client', label: 'Client' },
-                ].map(({ id, label }) => (
-                  <button key={id} type="button" onClick={() => setRole(id)}
-                    style={{ flex: 1, padding: '10px 0', borderRadius: 8,
-                      border: `1px solid ${role === id ? color.forest : color.borderDark}`,
-                      background: role === id ? 'rgba(15,110,86,0.12)' : 'transparent',
-                      color: role === id ? color.forest : color.textOnDark.secondary,
-                      fontSize: type.body, fontWeight: role === id ? 500 : 400,
-                      cursor: 'pointer', fontFamily: font.sans,
-                      transition: 'all 0.15s ease' }}>
-                    {label}
-                  </button>
-                ))}
-              </div>
-              {role === 'client' && (
-                <div style={{ fontSize: type.label, color: color.textOnDark.faint, marginTop: 6, fontFamily: font.mono }}>
-                  Clients typically join via an invite link from their coach.
-                </div>
-              )}
-            </div>
-          )}
-
           {/* Error */}
           {error && (
             <div style={{ padding: '10px 14px', background: color.alertBanner.bg,
@@ -266,13 +177,13 @@ export default function Auth() {
               fontSize: type.bodyLg, fontWeight: 500, cursor: loading ? 'not-allowed' : 'pointer',
               fontFamily: font.sans, marginTop: 4,
               transition: 'background 0.15s ease' }}>
-            {loading ? 'Please wait...' : mode === 'forgot' ? 'Send reset link' : mode === 'signin' ? 'Sign in' : 'Create account'}
+            {loading ? 'Please wait...' : mode === 'forgot' ? 'Send reset link' : 'Sign in'}
           </button>
 
         </form>
 
         {/* Forgot password — a link into 'forgot' mode from signin, and
-            back out of it again; signup has neither. */}
+            back out of it again. */}
         {mode === 'signin' && (
           <div style={{ textAlign: 'center', marginTop: 20 }}>
             <button onClick={() => { setMode('forgot'); setError(null); setSuccessMsg(null) }}
@@ -281,6 +192,14 @@ export default function Auth() {
                 textDecoration: 'underline', textDecorationColor: color.borderDark }}>
               Forgot your password?
             </button>
+            {/* New accounts (coach or client) are provisioned only through
+                AcceptInvite.jsx now — see this file's top-of-file comment
+                and Auth.js's PART 2 history. This is a plain informational
+                line, not a link — there's no public request-access form to
+                send people to yet. */}
+            <div style={{ fontSize: type.label, color: color.textOnDark.faint, marginTop: 10, fontFamily: font.mono }}>
+              New accounts are created by invite only.
+            </div>
           </div>
         )}
         {mode === 'forgot' && (
