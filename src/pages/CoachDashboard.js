@@ -1483,16 +1483,49 @@ const TabClients = ({ clients, checkins, profile, onStatusChange, onTargetsSave,
 
   const ClientRow = ({ client }) => {
     const [statusError, setStatusError] = useState(null)
+    const [menuOpen, setMenuOpen] = useState(false)
+    const menuRef = useRef(null)
+
+    useEffect(() => {
+      const handler = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false) }
+      document.addEventListener('mousedown', handler)
+      return () => document.removeEventListener('mousedown', handler)
+    }, [])
 
     const changeStatus = async (newStatus) => {
       setStatusError(null)
+      setMenuOpen(false)
       const result = await onStatusChange(client.id, newStatus)
       if (!result.ok) setStatusError(result.message)
     }
 
+    // Same MenuItem treatment as ProfileMenu's — block-width row, transparent
+    // until hovered, danger variant in alert red for Archive.
+    const MenuItem = ({ onClick, children, danger }) => (
+      <button onClick={onClick}
+        style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 14px', border: 'none',
+          background: 'transparent', cursor: 'pointer', fontFamily: font.sans, fontSize: type.body,
+          color: danger ? color.alert : color.textOnLight.primary, transition: 'background 0.1s ease',
+          whiteSpace: 'nowrap' }}
+        onMouseEnter={e => { e.currentTarget.style.background = color.bone }}
+        onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
+        {children}
+      </button>
+    )
+
+    const statusBadge = client.status === 'archived' ? badge('neutral')
+      : client.status === 'paused' ? badge('neutral') : badge('success')
+    const statusLabel = client.status === 'archived' ? 'Archived' : client.status === 'paused' ? 'Paused' : 'Active'
+
     return (
     <div id={`client-row-${client.id}`} style={S.card}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+      {/* Header — avatar + name/badge/email block only. Actions are a
+          separate full-width block below (not a flex sibling here), so at
+          narrow widths the email/joined-date line can never wrap in and
+          around the action buttons — each of the three logical rows
+          (name+badge, email+date, actions) always gets its own clean line,
+          full stop, regardless of viewport width. */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
         <div style={{ width: 40, height: 40, borderRadius: '50%',
           background: client.status === 'paused' ? color.surfaceSunken : client.status === 'archived' ? color.surfaceSunken : color.sage,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -1501,92 +1534,75 @@ const TabClients = ({ clients, checkins, profile, onStatusChange, onTargetsSave,
           flexShrink: 0 }}>
           {(client.full_name || client.email || '?').charAt(0).toUpperCase()}
         </div>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: type.body, fontWeight: 500, color: client.status === 'archived' ? color.textOnLight.faint : color.textOnLight.primary }}>
-            {client.full_name || '—'}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <div style={{ fontSize: type.body, fontWeight: 500, color: client.status === 'archived' ? color.textOnLight.faint : color.textOnLight.primary }}>
+              {client.full_name || '—'}
+            </div>
+            {/* Status badge — pinned here next to the name rather than inside
+                the action strip, so it's always visible regardless of how
+                many actions there are or how narrow the viewport is. */}
+            <span style={{ ...statusBadge, flexShrink: 0, whiteSpace: 'nowrap' }}>{statusLabel}</span>
           </div>
           <div style={{ fontSize: type.label, color: color.textOnLight.secondary, marginTop: 2 }}>
             {client.email} · Joined {new Date(client.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center', overflowX: 'auto',
-          WebkitOverflowScrolling: 'touch', maxWidth: '100%', minWidth: 0 }}>
-          {client.status !== 'archived' && (
+      </div>
+      {/* Actions — Targets and Diet plan stay inline (the two a coach
+          reaches for routinely: weight goal/peak week, and macro phases).
+          Everything else lives behind the ••• menu. No overflow-x scroll —
+          with only 3 elements (2 buttons + the menu trigger) this wraps
+          onto a second line on its own at narrow widths instead of ever
+          clipping, and being its own block (not a header-row flex sibling)
+          means it never interleaves with the email/date line above.
+          Archived clients get no actions at all, same as before. */}
+      {client.status !== 'archived' && (
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginTop: 12 }}>
             <button onClick={() => setExpandedId(expandedId === client.id ? null : client.id)}
               style={{ fontSize: type.label, padding: '4px 10px', borderRadius: 6, border: `1px solid ${color.borderLight}`,
                 background: expandedId === client.id ? color.bone : 'transparent', color: color.textOnLight.secondary,
                 cursor: 'pointer', fontFamily: font.mono, flexShrink: 0, whiteSpace: 'nowrap' }}>
               Targets
             </button>
-          )}
-          {client.status !== 'archived' && (
             <button onClick={() => setExpandedPlanId(expandedPlanId === client.id ? null : client.id)}
               style={{ fontSize: type.label, padding: '4px 10px', borderRadius: 6, border: `1px solid ${color.borderLight}`,
                 background: expandedPlanId === client.id ? color.bone : 'transparent', color: color.textOnLight.secondary,
                 cursor: 'pointer', fontFamily: font.mono, flexShrink: 0, whiteSpace: 'nowrap' }}>
               Diet plan
             </button>
-          )}
-          {client.status !== 'archived' && (
-            <button onClick={() => setImportingClient(client)}
-              style={{ fontSize: type.label, padding: '4px 10px', borderRadius: 6, border: `1px solid ${color.borderLight}`,
-                background: 'transparent', color: color.textOnLight.secondary, cursor: 'pointer', fontFamily: font.mono,
-                flexShrink: 0, whiteSpace: 'nowrap' }}>
-              Import history
-            </button>
-          )}
-          {client.status !== 'archived' && (
-            <button onClick={() => setExpandedFeedbackId(expandedFeedbackId === client.id ? null : client.id)}
-              style={{ fontSize: type.label, padding: '4px 10px', borderRadius: 6, border: `1px solid ${color.borderLight}`,
-                background: expandedFeedbackId === client.id ? color.bone : 'transparent', color: color.textOnLight.secondary,
-                cursor: 'pointer', fontFamily: font.mono, flexShrink: 0, whiteSpace: 'nowrap' }}>
-              Feedback history
-            </button>
-          )}
-          {client.status !== 'archived' && (
-            <button onClick={() => setExpandedPhotosId(expandedPhotosId === client.id ? null : client.id)}
-              style={{ fontSize: type.label, padding: '4px 10px', borderRadius: 6, border: `1px solid ${color.borderLight}`,
-                background: expandedPhotosId === client.id ? color.bone : 'transparent', color: color.textOnLight.secondary,
-                cursor: 'pointer', fontFamily: font.mono, flexShrink: 0, whiteSpace: 'nowrap' }}>
-              Progress photos
-            </button>
-          )}
-          {(!client.status || client.status === 'active') && (
-            <button onClick={() => changeStatus('paused')}
-              style={{ fontSize: type.label, padding: '4px 10px', borderRadius: 6, border: `1px solid ${color.borderLight}`,
-                background: 'transparent', color: color.textOnLight.secondary, cursor: 'pointer', fontFamily: font.mono,
-                flexShrink: 0, whiteSpace: 'nowrap' }}>
-              Pause
-            </button>
-          )}
-          {client.status === 'paused' && (
-            <>
-              <button onClick={() => changeStatus('active')}
-                style={{ fontSize: type.label, padding: '4px 10px', borderRadius: 6, border: `1px solid ${color.forest}`,
-                  background: 'transparent', color: color.forest, cursor: 'pointer', fontFamily: font.mono,
-                  flexShrink: 0, whiteSpace: 'nowrap' }}>
-                Reactivate
+
+            {/* Overflow menu — same ref+outside-click+absolute-panel pattern
+                as ProfileMenu/NotificationBell/CalendarClientFilter/
+                AddTimezonePin above. */}
+            <div ref={menuRef} style={{ position: 'relative', flexShrink: 0 }}>
+              <button onClick={() => setMenuOpen(o => !o)} type="button"
+                style={{ fontSize: type.label, padding: '4px 10px', borderRadius: 6, border: `1px solid ${color.borderLight}`,
+                  background: menuOpen ? color.bone : 'transparent', color: color.textOnLight.secondary,
+                  cursor: 'pointer', fontFamily: font.mono, lineHeight: 1 }}>
+                •••
               </button>
-              <button onClick={() => changeStatus('archived')}
-                style={{ fontSize: type.label, padding: '4px 10px', borderRadius: 6, border: `1px solid ${color.alert}`,
-                  background: 'transparent', color: color.alert, cursor: 'pointer', fontFamily: font.mono,
-                  flexShrink: 0, whiteSpace: 'nowrap' }}>
-                Archive
-              </button>
-            </>
-          )}
-          {client.status !== 'archived' && (
-            <span style={{ ...badge(client.status === 'paused' ? 'neutral' : 'success'), flexShrink: 0, whiteSpace: 'nowrap' }}>
-              {client.status === 'paused' ? 'Paused' : 'Active'}
-            </span>
-          )}
-          {client.status === 'archived' && (
-            <span style={{ ...badge('neutral'), flexShrink: 0, whiteSpace: 'nowrap' }}>
-              Archived
-            </span>
-          )}
-        </div>
-      </div>
+              {menuOpen && (
+                <div style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, minWidth: 180,
+                  background: color.surfaceLight, borderRadius: 10, border: `0.5px solid ${color.borderLight}`,
+                  zIndex: 300, overflow: 'hidden' }}>
+                  <MenuItem onClick={() => { setImportingClient(client); setMenuOpen(false) }}>Import history</MenuItem>
+                  <MenuItem onClick={() => { setExpandedFeedbackId(expandedFeedbackId === client.id ? null : client.id); setMenuOpen(false) }}>Feedback history</MenuItem>
+                  <MenuItem onClick={() => { setExpandedPhotosId(expandedPhotosId === client.id ? null : client.id); setMenuOpen(false) }}>Progress photos</MenuItem>
+                  {(!client.status || client.status === 'active') && (
+                    <MenuItem onClick={() => changeStatus('paused')}>Pause</MenuItem>
+                  )}
+                  {client.status === 'paused' && (
+                    <>
+                      <MenuItem onClick={() => changeStatus('active')}>Reactivate</MenuItem>
+                      <MenuItem danger onClick={() => changeStatus('archived')}>Archive</MenuItem>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       {statusError && (
         <div style={{ fontSize: type.body, color: color.alert, marginTop: 8 }}>{statusError}</div>
       )}
