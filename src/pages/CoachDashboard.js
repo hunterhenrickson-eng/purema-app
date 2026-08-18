@@ -501,6 +501,20 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave, coachId }) => {
     </div>
   ) : null
 
+  // Groups the review into three explicit phases — what changed, what it
+  // means, what's next — per Phase 4 slice 1. Presentation only: doesn't
+  // gate or reorder any existing conditional section, just labels the zone
+  // it now sits in.
+  const ZoneHeader = ({ title }) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div style={{ fontSize: type.label, fontWeight: 600, color: color.forest, fontFamily: font.mono,
+        letterSpacing: '0.1em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+        {title}
+      </div>
+      <div style={{ flex: 1, height: 1, background: color.borderLight }} />
+    </div>
+  )
+
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
       <div style={{ background: color.bone, borderRadius: 16, width: '100%', maxWidth: isNewFormat ? 1100 : 600, maxHeight: '92vh', overflowY: 'auto', margin: '0 20px' }} onClick={e => e.stopPropagation()}>
@@ -522,7 +536,8 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave, coachId }) => {
           {/* ── NEW FORMAT ─────────────────────────────────────── */}
           {isNewFormat && (
             <>
-              {/* Weekly averages */}
+              <ZoneHeader title="What changed" />
+              {/* Weekly averages — leads the review since it's the fastest signal of change */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
                 {[
                   { label: 'AVG WEIGHT', value: checkin.weight, unit: 'lbs' },
@@ -537,6 +552,7 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave, coachId }) => {
                 ) : null)}
               </div>
 
+              <ZoneHeader title="What it means" />
               {/* Daily log */}
               <div style={{ background: color.surfaceLight, borderRadius: 12, border: `0.5px solid ${color.borderLight}`, padding: 16 }}>
                 <div style={{ ...S.label, marginBottom: 14 }}>Daily log</div>
@@ -707,39 +723,50 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave, coachId }) => {
 
           {/* ── OLD FORMAT (backwards compatible) ─────────────── */}
           {!isNewFormat && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <div style={{ background: color.surfaceLight, borderRadius: 12, padding: 16, border: `0.5px solid ${color.borderLight}` }}>
-                <div style={{ ...S.label, marginBottom: 12 }}>Body metrics</div>
-                <Row label="Weight" value={checkin.weight} unit="lbs" />
-                <Row label="Waist" value={checkin.waist} unit="in" />
-                <Row label="Chest" value={checkin.chest} unit="in" />
-                <Row label="Hips" value={checkin.hips} unit="in" />
-                <Row label="Arms" value={checkin.arms} unit="in" />
-                <Row label="Thighs" value={checkin.thighs} unit="in" />
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <>
+              <ZoneHeader title="What changed" />
+              {/* Old-format check-ins have no daily granularity to separate from
+                  the weekly numbers — this grid IS the weekly signal, same role
+                  the new format's averages tiles play. */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div style={{ background: color.surfaceLight, borderRadius: 12, padding: 16, border: `0.5px solid ${color.borderLight}` }}>
-                  <div style={{ ...S.label, marginBottom: 12 }}>Nutrition</div>
-                  <Row label="Calories" value={checkin.calories} unit="kcal" />
-                  <Row label="Protein" value={checkin.protein} unit="g" />
-                  <Row label="Carbs" value={checkin.carbs} unit="g" />
-                  <Row label="Fats" value={checkin.fats} unit="g" />
+                  <div style={{ ...S.label, marginBottom: 12 }}>Body metrics</div>
+                  <Row label="Weight" value={checkin.weight} unit="lbs" />
+                  <Row label="Waist" value={checkin.waist} unit="in" />
+                  <Row label="Chest" value={checkin.chest} unit="in" />
+                  <Row label="Hips" value={checkin.hips} unit="in" />
+                  <Row label="Arms" value={checkin.arms} unit="in" />
+                  <Row label="Thighs" value={checkin.thighs} unit="in" />
                 </div>
-                <div style={{ background: color.surfaceLight, borderRadius: 12, padding: 16, border: `0.5px solid ${color.borderLight}` }}>
-                  <div style={{ ...S.label, marginBottom: 12 }}>Lifestyle</div>
-                  <Row label="Sleep" value={checkin.sleep} unit="hrs" />
-                  <Row label="Steps" value={checkin.steps} />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div style={{ background: color.surfaceLight, borderRadius: 12, padding: 16, border: `0.5px solid ${color.borderLight}` }}>
+                    <div style={{ ...S.label, marginBottom: 12 }}>Nutrition</div>
+                    <Row label="Calories" value={checkin.calories} unit="kcal" />
+                    <Row label="Protein" value={checkin.protein} unit="g" />
+                    <Row label="Carbs" value={checkin.carbs} unit="g" />
+                    <Row label="Fats" value={checkin.fats} unit="g" />
+                  </div>
+                  <div style={{ background: color.surfaceLight, borderRadius: 12, padding: 16, border: `0.5px solid ${color.borderLight}` }}>
+                    <div style={{ ...S.label, marginBottom: 12 }}>Lifestyle</div>
+                    <Row label="Sleep" value={checkin.sleep} unit="hrs" />
+                    <Row label="Steps" value={checkin.steps} />
+                  </div>
                 </div>
               </div>
+
               {checkin.notes && (
-                <div style={{ gridColumn: '1 / -1', background: color.surfaceLight, borderRadius: 12, padding: 16, border: `0.5px solid ${color.borderLight}` }}>
-                  <div style={{ ...S.label, marginBottom: 8 }}>Client notes</div>
-                  <div style={{ fontSize: 14, color: color.textOnLight.primary, lineHeight: 1.6 }}>{checkin.notes}</div>
-                </div>
+                <>
+                  <ZoneHeader title="What it means" />
+                  <div style={{ background: color.surfaceLight, borderRadius: 12, padding: 16, border: `0.5px solid ${color.borderLight}` }}>
+                    <div style={{ ...S.label, marginBottom: 8 }}>Client notes</div>
+                    <div style={{ fontSize: 14, color: color.textOnLight.primary, lineHeight: 1.6 }}>{checkin.notes}</div>
+                  </div>
+                </>
               )}
-            </div>
+            </>
           )}
 
+          <ZoneHeader title="What's next" />
           {/* Override this week's targets — doesn't touch the underlying
               diet plan, just this one check-in's week */}
           <div style={{ background: color.surfaceLight, borderRadius: 12, border: `0.5px solid ${color.borderLight}`, padding: 16 }}>
