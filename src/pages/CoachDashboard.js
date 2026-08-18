@@ -196,6 +196,15 @@ function computeEngagementStats(clients, checkins) {
   return { activeClients, weeklyRate }
 }
 
+// Priority ordering (lower sorts first — see the final .sort() below):
+// feedback_needed (1) ranks above no_checkin (2) because it's a concrete,
+// resolvable backlog item — a client did the work and is waiting on the
+// coach, so leaving it is a direct service-quality miss. no_checkin is
+// real but softer: nothing is currently pending on the coach's side for
+// that client, just an absence. (isPastDue — the coach's own Purema
+// subscription — was scoped for this queue in Phase 2 but deferred: it's
+// coach-level, not per-client, so it doesn't fit this list's shape; it
+// stays covered by the existing dashboard banner + notification bell.)
 function buildAttentionQueue(clients, checkins) {
   const now = new Date()
   const items = []
@@ -229,7 +238,10 @@ function buildAttentionQueue(clients, checkins) {
           sublabel: latest
             ? `Last seen ${Math.floor((now - new Date(latest.submitted_at)) / (1000 * 60 * 60 * 24))} days ago`
             : 'No check-ins yet',
-          badgeType: 'neutral',
+          // Red, not the old neutral gray — a client who's gone quiet is a
+          // real churn risk, same urgency tier as feedback_needed rather
+          // than a passive/informational state.
+          badgeType: 'alert',
         })
       }
     }
@@ -351,22 +363,31 @@ const SearchBar = ({ clients, checkins, onSelectCheckin, onSelectClient }) => {
 
 // ─── Attention card ───────────────────────────────────────────────────────────
 
-const AttentionCard = ({ item, onSelectCheckin }) => {
+// Who / why / next-action, laid out as three explicit zones instead of a
+// name+sublabel pair with an implicit trailing chevron. "Next action" is
+// always something the app can actually do today — open the triggering
+// check-in if there is one (feedback_needed), otherwise jump to the
+// client's row in the roster via the same goToClient navigation the
+// sidebar mini-list already uses (no_checkin has no checkin to open).
+const AttentionCard = ({ item, onSelectCheckin, onGoToClient }) => {
   const initials = (item.client.full_name || item.client.email || '?')
     .split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
   const itemBadge = badge(item.badgeType)
+  const action = item.checkin
+    ? { label: 'Review check-in', onClick: () => onSelectCheckin(item.checkin) }
+    : { label: 'View client', onClick: () => onGoToClient(item.client.id) }
 
   return (
-    <div onClick={() => item.checkin && onSelectCheckin(item.checkin)}
-      style={{ ...S.card, display: 'flex', alignItems: 'center', gap: 14,
-        cursor: item.checkin ? 'pointer' : 'default' }}
-      onMouseEnter={e => { if (item.checkin) e.currentTarget.style.borderColor = color.forest }}
-      onMouseLeave={e => e.currentTarget.style.borderColor = color.borderLight}>
+    <div onClick={action.onClick}
+      style={{ ...S.card, display: 'flex', alignItems: 'center', gap: 14, cursor: 'pointer' }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = color.forest }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = color.borderLight }}>
       <div style={{ width: 42, height: 42, borderRadius: '50%', background: itemBadge.background,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         fontSize: 13, fontWeight: 500, color: itemBadge.color, flexShrink: 0 }}>
         {initials}
       </div>
+      {/* who + why */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: type.body, fontWeight: 500, color: color.textOnLight.primary }}>
           {item.client.full_name || item.client.email}
@@ -376,7 +397,12 @@ const AttentionCard = ({ item, onSelectCheckin }) => {
       <span style={{ ...itemBadge, whiteSpace: 'nowrap', flexShrink: 0 }}>
         {item.label}
       </span>
-      {item.checkin && <span style={{ color: color.textOnLight.faint, fontSize: 18, flexShrink: 0 }}>›</span>}
+      {/* next-action */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0,
+        color: color.forest, fontSize: type.label, fontWeight: 500, fontFamily: font.sans, whiteSpace: 'nowrap' }}>
+        {action.label}
+        <span style={{ fontSize: 18, lineHeight: 1 }}>›</span>
+      </div>
     </div>
   )
 }
@@ -778,7 +804,7 @@ function timeOfDayGreeting() {
   return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'
 }
 
-const TabDashboard = ({ checkins, clients, onSelectCheckin, profile }) => {
+const TabDashboard = ({ checkins, clients, onSelectCheckin, onGoToClient, profile }) => {
   const attentionItems = useMemo(() => buildAttentionQueue(clients, checkins), [clients, checkins])
   // weeklyRate isn't shown on this tab (it's Overview's "Engagement" stat) —
   // only activeClients is needed here, but both come from the same shared
@@ -821,7 +847,7 @@ const TabDashboard = ({ checkins, clients, onSelectCheckin, profile }) => {
           <div style={S.sectionTitle}>Needs your attention — {attentionItems.length}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {attentionItems.map((item, i) => (
-              <AttentionCard key={i} item={item} onSelectCheckin={onSelectCheckin} />
+              <AttentionCard key={i} item={item} onSelectCheckin={onSelectCheckin} onGoToClient={onGoToClient} />
             ))}
           </div>
         </div>
@@ -3813,7 +3839,7 @@ export default function CoachDashboard() {
               {portalError && isPastDue(profile) && (
                 <div style={{ fontSize: type.body, color: color.alert, marginBottom: 20 }}>{portalError}</div>
               )}
-              {activeTab === 'dashboard' && <TabDashboard checkins={checkins} clients={clients} onSelectCheckin={setSelected} profile={profile} />}
+              {activeTab === 'dashboard' && <TabDashboard checkins={checkins} clients={clients} onSelectCheckin={setSelected} onGoToClient={goToClient} profile={profile} />}
               {activeTab === 'clients' && <TabClients clients={clients} checkins={checkins} profile={profile} onStatusChange={handleStatusChange} onTargetsSave={handleTargetsSave} onImportCheckins={handleImportCheckins} onGoToBilling={() => setActiveTab('billing')} focusClientId={focusClientId} onFocusHandled={() => setFocusClientId(null)} />}
               {activeTab === 'requests' && <TabRequests applications={applications} onApprove={handleApproveApplication} onDecline={handleDeclineApplication} />}
               {activeTab === 'checkins' && <TabCheckIns checkins={checkins} onSelectCheckin={setSelected} />}
