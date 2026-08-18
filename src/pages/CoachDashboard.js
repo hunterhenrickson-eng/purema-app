@@ -179,6 +179,23 @@ function timeAgo(ts) {
   return `${days}d ago`
 }
 
+// Shared by TabDashboard and TabOverview — both need "how many active
+// clients" and "what fraction of them checked in within the last 8 days,"
+// computed identically. One function so the two tabs can't drift apart
+// (they previously each had their own copy of this exact expression).
+function computeEngagementStats(clients, checkins) {
+  const activeClients = clients.filter(c => !c.status || c.status === 'active')
+  const weeklyRate = activeClients.length === 0 ? 0 : Math.round(
+    (activeClients.filter(client =>
+      checkins.some(c =>
+        (c.client_id === client.id || c.client_name === client.full_name) &&
+        (new Date() - new Date(c.submitted_at)) / (1000 * 60 * 60 * 24) <= 8
+      )
+    ).length / activeClients.length) * 100
+  )
+  return { activeClients, weeklyRate }
+}
+
 function buildAttentionQueue(clients, checkins) {
   const now = new Date()
   const items = []
@@ -753,18 +770,21 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave, coachId }) => {
 // change if that assumption ever needs adjusting.
 const MINUTES_SAVED_PER_REVIEW = 3
 
-const TabDashboard = ({ checkins, clients, onSelectCheckin }) => {
-  const attentionItems = useMemo(() => buildAttentionQueue(clients, checkins), [clients, checkins])
-  const activeClients = clients.filter(c => !c.status || c.status === 'active')
+// Same day-part logic as the client-side greeting (see greeting() in
+// ClientHome.js) — kept separate since the two components don't share a
+// helpers module.
+function timeOfDayGreeting() {
+  const h = new Date().getHours()
+  return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'
+}
 
-  const weeklyRate = activeClients.length === 0 ? 0 : Math.round(
-    (activeClients.filter(client =>
-      checkins.some(c =>
-        (c.client_id === client.id || c.client_name === client.full_name) &&
-        (new Date() - new Date(c.submitted_at)) / (1000 * 60 * 60 * 24) <= 8
-      )
-    ).length / activeClients.length) * 100
-  )
+const TabDashboard = ({ checkins, clients, onSelectCheckin, profile }) => {
+  const attentionItems = useMemo(() => buildAttentionQueue(clients, checkins), [clients, checkins])
+  // weeklyRate isn't shown on this tab (it's Overview's "Engagement" stat) —
+  // only activeClients is needed here, but both come from the same shared
+  // computation so the count can't drift from Overview's.
+  const { activeClients } = useMemo(() => computeEngagementStats(clients, checkins), [clients, checkins])
+  const pendingCount = checkins.filter(c => !c.coach_feedback).length
 
   // Only counts real reviews (feedback_at is set the moment a coach saves
   // feedback) on real submissions — backfilled history was never actually
@@ -775,29 +795,27 @@ const TabDashboard = ({ checkins, clients, onSelectCheckin }) => {
   ).length
   const minutesSaved = reviewedThisWeek * MINUTES_SAVED_PER_REVIEW
 
+  const firstName = profile?.full_name?.split(' ')[0]
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
-      <div className="purema-kpi-grid" style={{ display: 'grid', gap: 12 }}>
-        {[
-          { label: 'Active clients', value: activeClients.length, color: color.textOnLight.primary },
-          { label: 'This week', value: `${weeklyRate}%`, color: weeklyRate >= 80 ? color.forest : weeklyRate >= 50 ? color.gold : activeClients.length === 0 ? color.textOnLight.secondary : color.alert },
-          { label: 'Pending', value: checkins.filter(c => !c.coach_feedback).length, color: checkins.filter(c => !c.coach_feedback).length > 0 ? color.gold : color.textOnLight.secondary },
-          { label: 'Needs attention', value: attentionItems.length, color: attentionItems.length > 0 ? color.alert : color.textOnLight.secondary },
-        ].map(({ label, value, color: statColor }) => (
-          <div key={label} style={{ background: color.surfaceLight, border: `0.5px solid ${color.borderLight}`, borderRadius: 12, padding: '18px 20px' }}>
-            <div style={{ fontSize: 28, fontWeight: 500, color: statColor, letterSpacing: '-0.02em', fontFamily: font.mono }}>{value}</div>
-            <div style={{ ...S.label, marginTop: 6 }}>{label}</div>
+
+      {/* Greeting + queue-count header */}
+      <div>
+        <div style={{ fontSize: type.heading, fontWeight: 500, color: color.textOnLight.primary, letterSpacing: '-0.01em' }}>
+          {timeOfDayGreeting()}{firstName ? `, ${firstName}` : ''}
+          {attentionItems.length > 0
+            ? ` — ${attentionItems.length} athlete${attentionItems.length === 1 ? '' : 's'} need${attentionItems.length === 1 ? 's' : ''} your attention`
+            : ''}
+        </div>
+        {attentionItems.length > 0 && (
+          <div style={{ fontSize: type.body, color: color.textOnLight.secondary, marginTop: 4, fontFamily: font.sans }}>
+            Resolve these first, then move on with your day.
           </div>
-        ))}
+        )}
       </div>
 
-      {reviewedThisWeek > 0 && (
-        <div style={{ fontSize: type.label, color: color.textOnLight.faint, fontFamily: font.mono, fontWeight: 400 }}>
-          You reviewed {reviewedThisWeek} check-in{reviewedThisWeek === 1 ? '' : 's'} this week — that's roughly{' '}
-          {minutesSaved} minute{minutesSaved === 1 ? '' : 's'} of manual review Purema handled for you.
-        </div>
-      )}
-
+      {/* Attention queue — largest, most prominent content on the page */}
       {attentionItems.length > 0 ? (
         <div>
           <div style={S.sectionTitle}>Needs your attention — {attentionItems.length}</div>
@@ -820,6 +838,20 @@ const TabDashboard = ({ checkins, clients, onSelectCheckin }) => {
           <div style={{ fontSize: 36, marginBottom: 12 }}>📋</div>
           <div style={{ fontSize: type.bodyLg, fontWeight: 500, color: color.textOnLight.primary, marginBottom: 6 }}>No clients yet</div>
           <div style={{ fontSize: type.body, color: color.textOnLight.secondary }}>Head to the Clients tab to send your first invite.</div>
+        </div>
+      )}
+
+      {/* Compact summary line — same numbers the old 4-tile KPI grid showed,
+          minus "needs attention" since the header above already covers it */}
+      <div style={{ fontSize: type.label, color: color.textOnLight.secondary, fontFamily: font.mono, letterSpacing: '0.02em' }}>
+        {activeClients.length} active athlete{activeClients.length === 1 ? '' : 's'} · {pendingCount} check-in{pendingCount === 1 ? '' : 's'} to review
+      </div>
+
+      {/* Time saved — demoted below the fold */}
+      {reviewedThisWeek > 0 && (
+        <div style={{ fontSize: type.label, color: color.textOnLight.faint, fontFamily: font.mono, fontWeight: 400 }}>
+          You reviewed {reviewedThisWeek} check-in{reviewedThisWeek === 1 ? '' : 's'} this week — that's roughly{' '}
+          {minutesSaved} minute{minutesSaved === 1 ? '' : 's'} of manual review Purema handled for you.
         </div>
       )}
     </div>
@@ -1863,21 +1895,12 @@ const TabRequests = ({ applications, onApprove, onDecline }) => {
 // ─── Tab: Overview ────────────────────────────────────────────────────────────
 
 const TabOverview = ({ clients, checkins, profile }) => {
-  const activeClients = clients.filter(c => !c.status || c.status === 'active')
+  const { activeClients, weeklyRate } = computeEngagementStats(clients, checkins)
   const pausedClients = clients.filter(c => c.status === 'paused')
   const archivedClients = clients.filter(c => c.status === 'archived')
   const totalCheckins = checkins.length
   const reviewedCheckins = checkins.filter(c => c.coach_feedback).length
   const responseRate = totalCheckins === 0 ? 0 : Math.round((reviewedCheckins / totalCheckins) * 100)
-
-  const weeklyRate = activeClients.length === 0 ? 0 : Math.round(
-    (activeClients.filter(client =>
-      checkins.some(c =>
-        (c.client_id === client.id || c.client_name === client.full_name) &&
-        (new Date() - new Date(c.submitted_at)) / (1000 * 60 * 60 * 24) <= 8
-      )
-    ).length / activeClients.length) * 100
-  )
 
   const StatCard = ({ label, value, sub, color: accentColor = color.textOnLight.primary }) => (
     <div style={{ background: color.surfaceLight, border: `0.5px solid ${color.borderLight}`, borderRadius: 12, padding: '18px 20px' }}>
@@ -3790,7 +3813,7 @@ export default function CoachDashboard() {
               {portalError && isPastDue(profile) && (
                 <div style={{ fontSize: type.body, color: color.alert, marginBottom: 20 }}>{portalError}</div>
               )}
-              {activeTab === 'dashboard' && <TabDashboard checkins={checkins} clients={clients} onSelectCheckin={setSelected} />}
+              {activeTab === 'dashboard' && <TabDashboard checkins={checkins} clients={clients} onSelectCheckin={setSelected} profile={profile} />}
               {activeTab === 'clients' && <TabClients clients={clients} checkins={checkins} profile={profile} onStatusChange={handleStatusChange} onTargetsSave={handleTargetsSave} onImportCheckins={handleImportCheckins} onGoToBilling={() => setActiveTab('billing')} focusClientId={focusClientId} onFocusHandled={() => setFocusClientId(null)} />}
               {activeTab === 'requests' && <TabRequests applications={applications} onApprove={handleApproveApplication} onDecline={handleDeclineApplication} />}
               {activeTab === 'checkins' && <TabCheckIns checkins={checkins} onSelectCheckin={setSelected} />}
