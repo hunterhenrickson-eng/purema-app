@@ -77,14 +77,35 @@ between `TabDashboard` and `TabOverview`. No longer a separate phase.
 
 Build one real "decision" concept that a check-in review produces, and let it power multiple surfaces instead of building each separately:
 
-- Check-in review brief: restructure CheckInDetail's existing (already-grouped) data around "what changed → what does it mean → what's next"
-- Decision templates: fast, consistent actions for repeated calls (maintain targets, adjust calories, request clarification, change training volume) — pre-filled but always editable
-- Coach decision notes: a short private rationale field attached to the decision, for the coach's own future reference, not client-facing
-- Client-facing "what changed" surface: whatever the coach decided, rendered clearly for the client
-- Client acknowledgment: a simple confirm-you've-seen-this on meaningful updates
-- Weekly briefing: a completed check-in culminates in a clear closing ritual — what the coach noticed, what changed, what to focus on, when the next check-in is due — assembled from the same decision data
+- Check-in review brief: restructure CheckInDetail's existing (already-grouped) data around "what changed → what does it mean → what's next" — **Done, slice 1** (commit `196f5b2`, 2026-08-17)
+- Decision templates: fast, consistent actions for repeated calls (maintain targets, adjust calories, request clarification, change training volume) — pre-filled but always editable — **not yet built**
+- Coach decision notes: a short private rationale field attached to the decision, for the coach's own future reference, not client-facing — **not yet built**
+- Client-facing "what changed" surface: whatever the coach decided, rendered clearly for the client — **not yet built**
+- Client acknowledgment: a simple confirm-you've-seen-this on meaningful updates — **not yet built**
+- Weekly briefing: a completed check-in culminates in a clear closing ritual — what the coach noticed, what changed, what to focus on, when the next check-in is due — assembled from the same decision data — **not yet built**
 
 Also: keep coach feedback positioned near the relevant evidence, not always trailing at the bottom. Decide whether the 3 existing entry points into CheckInDetail (Check-ins tab, attention queue, global search) stay as-is or get consolidated.
+
+**Slice 1 — Check-in review brief — what shipped**: investigation before
+building found the existing section order in `CheckInDetail` already
+matched the 3-zone framing (weekly averages/metrics grid leading, evidence
+in the middle, override+feedback last) — so this was a labeling/grouping
+pass, not a reorder. New `ZoneHeader` component (mono uppercase label +
+hairline divider, same brand tokens as everywhere else) now groups both
+formats into explicit "What changed / What it means / What's next" zones:
+new-format's weekly-averages tiles, and old-format's body-metrics/
+nutrition/lifestyle grid (which plays the same role, since old-format has
+no daily granularity to separate out), both lead as "What changed";
+daily log/lift tracker/day notes/measurements/vitals/reflection (new-
+format) and client notes (old-format, pulled out of the grid container
+into its own labeled block) sit under "What it means"; override targets
++ coach feedback are grouped last under "What's next" for both. No new
+data, no new fields, every existing conditional preserved as-is.
+
+**Remaining Phase 4 slices, explicitly not built yet**: decision
+templates, coach decision notes, the client-facing "what changed"
+surface, client acknowledgment, and the weekly briefing — each is a
+separate follow-up slice, still to be scoped.
 
 ## Phase 5 — Surface phase-based coaching
 **Risk: low. Mostly a UI job — the data model already exists.**
