@@ -32,10 +32,40 @@ cleaned up, nothing left in production.
 ## Phase 2 — Attention row redesign + urgency coloring (scoped to real data today)
 **Risk: low-medium. New functionality: minor (folding in an existing signal).**
 
+**Status: Done** (commit `d548409`, 2026-08-17)
+
 - Redesign each row to clearly show who/why/next-action, using the `type` + sublabel data `buildAttentionQueue` already outputs
 - Two-color version first: amber = `feedback_needed`, red = `no_checkin`
 - Optional extension: fold `isPastDue` in as a third red-tier condition (already computed elsewhere in this file — wiring, not new logic)
 - Explicitly park: general inactivity beyond check-in timing (login/session staleness) — this data doesn't exist anywhere yet. Full intelligent version lives in Phase 8.
+
+**What shipped**: rows now split into explicit who / why / next-action zones.
+`no_checkin`'s badge moved from neutral gray to the alert (red) pill;
+`feedback_needed` keeps its existing warning (amber) pill. Next-action is
+real navigation only — "Review check-in" opens `CheckInDetail`, "View
+client" reuses the existing `goToClient()` (same jump-to-roster-row
+behavior the sidebar mini-list already has) — nothing aspirational was
+added.
+
+**Scope change**: the `isPastDue` fold-in was investigated and dropped
+for this phase. `isPastDue(profile)` reads the **coach's own** Purema
+subscription payment status (`profile.payment_status`, see `billing.js`)
+— it's account-level, not per-client, so it doesn't fit into a per-client
+queue row without fabricating data that doesn't exist. Confirmed with the
+user; it stays covered by the existing dashboard-wide past-due banner and
+notification bell. A true per-client payment/billing concept doesn't
+exist anywhere in this app's schema.
+
+**Priority ordering**: kept `feedback_needed` above `no_checkin` (now
+documented inline in code) — a client who submitted and is waiting on
+feedback is a concrete, resolvable backlog item, while a quiet client is
+real but doesn't have anything currently pending on the coach's side.
+
+**Verification**: live against `purema.test.coach@gmail.com` on the
+running dev server — both badge states and both next-actions exercised
+(a temporary check-in was added to trigger `feedback_needed`, confirmed
+"Review check-in" opens the right modal, then deleted and confirmed the
+queue reverted). `CI=true` build clean, zero console errors.
 
 ## Phase 3 — Consolidate duplicate stat computation (DONE, bundled into Phase 1)
 
