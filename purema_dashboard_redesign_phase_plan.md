@@ -78,7 +78,7 @@ between `TabDashboard` and `TabOverview`. No longer a separate phase.
 Build one real "decision" concept that a check-in review produces, and let it power multiple surfaces instead of building each separately:
 
 - Check-in review brief: restructure CheckInDetail's existing (already-grouped) data around "what changed → what does it mean → what's next" — **Done, slice 1** (commit `196f5b2`, 2026-08-17)
-- Decision templates: fast, consistent actions for repeated calls (maintain targets, adjust calories, request clarification, change training volume) — pre-filled but always editable — **not yet built**
+- Decision templates: fast, consistent actions for repeated calls (maintain targets, adjust calories, request clarification, change training volume) — pre-filled but always editable — **Done, slice 2** (commit `ab74ec0`, 2026-08-18)
 - Coach decision notes: a short private rationale field attached to the decision, for the coach's own future reference, not client-facing — **not yet built**
 - Client-facing "what changed" surface: whatever the coach decided, rendered clearly for the client — **not yet built**
 - Client acknowledgment: a simple confirm-you've-seen-this on meaningful updates — **not yet built**
@@ -102,10 +102,21 @@ into its own labeled block) sit under "What it means"; override targets
 + coach feedback are grouped last under "What's next" for both. No new
 data, no new fields, every existing conditional preserved as-is.
 
-**Remaining Phase 4 slices, explicitly not built yet**: decision
-templates, coach decision notes, the client-facing "what changed"
-surface, client acknowledgment, and the weekly briefing — each is a
-separate follow-up slice, still to be scoped.
+**Slice 2 — Decision templates — what shipped**: 5 quick-select pill
+buttons (Maintain / Adjust down / Adjust up / Request clarification /
+Change training volume) above the coach-feedback textarea in the
+"What's next" zone. Clicking one populates the textarea's text on
+click — never automatically, never inserted at cursor — and the coach
+can freely edit afterward; nothing is locked. Confirm-gated only when
+overwriting existing unsaved text (`window.confirm()` — declining
+leaves the current text untouched). Templates speed up the feedback
+*text* only — coaches still use the separate override-targets form for
+actual number changes; nothing here recalculates macros or targets.
+
+**Remaining Phase 4 slices, explicitly not built yet**: coach decision
+notes, the client-facing "what changed" surface, client acknowledgment,
+and the weekly briefing — each is a separate follow-up slice, still to
+be scoped.
 
 ## Phase 5 — Surface phase-based coaching
 **Risk: low. Mostly a UI job — the data model already exists.**
