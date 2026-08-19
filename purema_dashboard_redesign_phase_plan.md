@@ -79,7 +79,7 @@ Build one real "decision" concept that a check-in review produces, and let it po
 
 - Check-in review brief: restructure CheckInDetail's existing (already-grouped) data around "what changed → what does it mean → what's next" — **Done, slice 1** (commit `196f5b2`, 2026-08-17)
 - Decision templates: fast, consistent actions for repeated calls (maintain targets, adjust calories, request clarification, change training volume) — pre-filled but always editable — **Done, slice 2** (commit `ab74ec0`, 2026-08-18)
-- Coach decision notes: a short private rationale field attached to the decision, for the coach's own future reference, not client-facing — **not yet built**
+- Coach decision notes: a short private rationale field attached to the decision, for the coach's own future reference, not client-facing — **Done, slice 3** (commit `4b57f10`, 2026-08-19)
 - Client-facing "what changed" surface: whatever the coach decided, rendered clearly for the client — **not yet built**
 - Client acknowledgment: a simple confirm-you've-seen-this on meaningful updates — **not yet built**
 - Weekly briefing: a completed check-in culminates in a clear closing ritual — what the coach noticed, what changed, what to focus on, when the next check-in is due — assembled from the same decision data — **not yet built**
@@ -113,10 +113,32 @@ leaves the current text untouched). Templates speed up the feedback
 *text* only — coaches still use the separate override-targets form for
 actual number changes; nothing here recalculates macros or targets.
 
-**Remaining Phase 4 slices, explicitly not built yet**: coach decision
-notes, the client-facing "what changed" surface, client acknowledgment,
-and the weekly briefing — each is a separate follow-up slice, still to
-be scoped.
+**Slice 3 — Coach decision notes — what shipped**: a private, coach-only
+rationale field attached to a check-in's decision — never client-facing.
+**Schema deviation from the original plan, worth recording**: the plan
+called for a `coach_decision_notes` column on `check_ins`, hidden via
+`REVOKE SELECT (column) ... FROM authenticated, anon`. That revoke
+demonstrably didn't take effect in this environment — verified via
+`has_column_privilege()` returning `true` for both roles immediately
+after the revoke, in the same transaction, across multiple retries.
+Rather than ship privacy that doesn't actually hold, pivoted to a
+separate `check_in_decision_notes` table with row-level RLS instead
+(coach's own rows only, admin read via `is_admin(auth.uid())`, no
+client policy at all) — matching this codebase's own existing pattern
+for coach-only data (`weekly_target_overrides`, `macro_adjustments`)
+rather than fighting a column-privilege mechanism that wasn't behaving
+reliably. UI is a visually distinct "Private note (only visible to
+you)" card (sunken tint + lock icon, no template buttons — free-form
+personal shorthand) placed right after the coach-feedback card, with an
+explicit "Save note" button matching the other two fields in this zone.
+Client-invisibility was verified at the database level, not just UI
+absence — simulated the real client's Postgres session (RLS role
+impersonation) and confirmed zero rows are visible even while the note
+genuinely existed.
+
+**Remaining Phase 4 slices, explicitly not built yet**: the client-facing
+"what changed" surface, client acknowledgment, and the weekly briefing —
+each is a separate follow-up slice, still to be scoped.
 
 ## Phase 5 — Surface phase-based coaching
 **Risk: low. Mostly a UI job — the data model already exists.**
