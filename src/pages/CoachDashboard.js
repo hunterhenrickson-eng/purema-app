@@ -52,6 +52,14 @@ const SearchIcon = () => (
   </svg>
 )
 
+// Marks the private-decision-note field in CheckInDetail as unmistakably
+// not the client-facing feedback field next to it.
+const LockIcon = () => (
+  <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+  </svg>
+)
+
 const HamburgerIcon = () => (
   <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
@@ -431,6 +439,48 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave, coachId }) => {
   const [overrideSaving, setOverrideSaving] = useState(false)
   const [overrideSaved, setOverrideSaved] = useState(false)
   const [overrideError, setOverrideError] = useState(null)
+
+  // Phase 4 slice 3 — private, coach-only rationale. Lives in its own
+  // check_in_decision_notes table (RLS: coach's own rows only, no client
+  // policy at all, admin read via is_admin()) rather than a check_ins
+  // column — see that migration for why a column wasn't viable here.
+  const [decisionNote, setDecisionNote] = useState('')
+  const [decisionNoteLoading, setDecisionNoteLoading] = useState(true)
+  const [decisionNoteSaving, setDecisionNoteSaving] = useState(false)
+  const [decisionNoteSaved, setDecisionNoteSaved] = useState(false)
+  const [decisionNoteError, setDecisionNoteError] = useState(null)
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadDecisionNote() {
+      setDecisionNoteLoading(true)
+      const { data, error: loadErr } = await supabase.from('check_in_decision_notes')
+        .select('note').eq('checkin_id', checkin.id).maybeSingle()
+      if (cancelled) return
+      if (loadErr) setDecisionNoteError("Couldn't load your private note — try refreshing.")
+      else setDecisionNote(data?.note || '')
+      setDecisionNoteLoading(false)
+    }
+    loadDecisionNote()
+    return () => { cancelled = true }
+  }, [checkin.id])
+
+  // Upsert when there's text, delete the row entirely if cleared back to
+  // empty — no point keeping a stray empty row around once a coach
+  // deliberately clears a note.
+  const saveDecisionNote = async () => {
+    setDecisionNoteSaving(true)
+    setDecisionNoteError(null)
+    const trimmed = decisionNote.trim()
+    const { error } = trimmed
+      ? await supabase.from('check_in_decision_notes')
+          .upsert({ checkin_id: checkin.id, coach_id: coachId, note: trimmed, updated_at: new Date().toISOString() }, { onConflict: 'checkin_id' })
+      : await supabase.from('check_in_decision_notes').delete().eq('checkin_id', checkin.id)
+    setDecisionNoteSaving(false)
+    if (error) { setDecisionNoteError(error.message || "Couldn't save your note."); return }
+    setDecisionNoteSaved(true)
+    setTimeout(() => setDecisionNoteSaved(false), 2000)
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -841,6 +891,36 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave, coachId }) => {
                 cursor: 'pointer', fontFamily: font.sans }}>
               {saving ? 'Saving...' : saved ? 'Saved!' : 'Save feedback'}
             </button>
+          </div>
+
+          {/* Private decision note — never client-facing. Deliberately
+              distinct treatment (sunken tint + lock icon, no template
+              buttons) from the coach-feedback card right above it, so the
+              two can't be mistaken for each other at a glance. Stored in
+              check_in_decision_notes (its own table + RLS), not a
+              check_ins column — see that migration's comments for why. */}
+          <div style={{ background: color.surfaceSunken, border: `0.5px solid ${color.borderLight}`, borderRadius: 12, padding: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, color: color.textOnLight.secondary }}>
+              <LockIcon />
+              <div style={{ ...S.label, marginBottom: 0 }}>Private note (only visible to you)</div>
+            </div>
+            {!decisionNoteLoading && (
+              <>
+                <textarea value={decisionNote} onChange={e => setDecisionNote(e.target.value)}
+                  placeholder="Personal shorthand — why you made this call, for your own future reference..." rows={3}
+                  style={{ width: '100%', background: color.surfaceLight, border: `1px solid ${color.borderLight}`, borderRadius: 8,
+                    color: color.textOnLight.primary, padding: '10px 12px', fontSize: type.body, fontFamily: font.sans,
+                    lineHeight: 1.6, resize: 'none', outline: 'none', boxSizing: 'border-box' }} />
+                {decisionNoteError && <div style={{ fontSize: type.body, color: color.alert, marginTop: 8 }}>{decisionNoteError}</div>}
+                <button onClick={saveDecisionNote} disabled={decisionNoteSaving}
+                  style={{ marginTop: 8, padding: '7px 16px', borderRadius: 6,
+                    border: `1px solid ${decisionNoteSaved ? color.forest : color.textOnLight.secondary}`,
+                    background: 'transparent', color: decisionNoteSaved ? color.forest : color.textOnLight.secondary,
+                    fontFamily: font.sans, fontSize: type.label, fontWeight: 500, cursor: decisionNoteSaving ? 'not-allowed' : 'pointer' }}>
+                  {decisionNoteSaving ? 'Saving...' : decisionNoteSaved ? 'Saved ✓' : 'Save note'}
+                </button>
+              </>
+            )}
           </div>
 
         </div>
