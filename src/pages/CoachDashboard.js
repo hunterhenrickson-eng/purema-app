@@ -578,7 +578,7 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave, coachId }) => {
   // it now sits in.
   const ZoneHeader = ({ title }) => (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-      <div style={{ fontSize: type.label, fontWeight: 600, color: color.forest, fontFamily: font.mono,
+      <div style={{ fontSize: type.label, fontWeight: 500, color: color.forest, fontFamily: font.mono,
         letterSpacing: '0.1em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
         {title}
       </div>
