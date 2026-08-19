@@ -409,6 +409,18 @@ const AttentionCard = ({ item, onSelectCheckin, onGoToClient }) => {
 
 // ─── Check-in detail modal ────────────────────────────────────────────────────
 
+// Phase 4 slice 2 — quick starting points for the coach-feedback textarea,
+// not automated anything: clicking one just sets the textarea's text, the
+// coach edits freely before saving. Kept as one flat array so wording is
+// trivial to tweak without hunting through JSX.
+const FEEDBACK_TEMPLATES = [
+  { label: 'Maintain', text: "Targets are staying the same this week — keep doing exactly what you're doing." },
+  { label: 'Adjust down', text: 'Dropping calories slightly this week based on your trend — updated targets are below.' },
+  { label: 'Adjust up', text: 'Bumping calories up this week — updated targets are below.' },
+  { label: 'Request clarification', text: "A couple things I want to check on before finalizing this week's plan — can you clarify [ ]?" },
+  { label: 'Change training volume', text: 'Adjusting training volume this week based on recovery — details below.' },
+]
+
 const CheckInDetail = ({ checkin, onClose, onFeedbackSave, coachId }) => {
   const [feedback, setFeedback] = useState(checkin.coach_feedback || '')
   const [saving, setSaving] = useState(false)
@@ -492,6 +504,15 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave, coachId }) => {
       notify('feedback', checkin.client_id)
       setTimeout(() => setSaved(false), 2000)
     }
+  }
+
+  // Replaces the textarea's content outright (never inserts at cursor) —
+  // only on a real click, never automatically. If there's already
+  // unsaved text, confirm before discarding it rather than silently
+  // clobbering something the coach already typed.
+  const applyTemplate = (text) => {
+    if (feedback.trim() && !window.confirm('Replace your current feedback text with this template?')) return
+    setFeedback(text)
   }
 
   const Row = ({ label, value, unit }) => value ? (
@@ -796,6 +817,19 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave, coachId }) => {
           {/* Coach feedback — always shown */}
           <div style={{ background: color.surfaceLight, border: `0.5px solid ${color.borderLight}`, borderRadius: 12, padding: 16 }}>
             <div style={{ ...S.label, color: color.forest, marginBottom: 8 }}>Coach feedback</div>
+            {/* Quick starting points — text only, never touches targets/macros.
+                Low visual weight on purpose: Save feedback stays the one
+                filled-Forest primary action in this zone. */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+              {FEEDBACK_TEMPLATES.map(t => (
+                <button key={t.label} type="button" onClick={() => applyTemplate(t.text)}
+                  style={{ padding: '5px 12px', borderRadius: 999, border: `1px solid ${color.borderLight}`,
+                    background: 'transparent', color: color.textOnLight.secondary,
+                    fontFamily: font.sans, fontSize: type.label, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                  {t.label}
+                </button>
+              ))}
+            </div>
             <textarea value={feedback} onChange={e => setFeedback(e.target.value)}
               placeholder="Leave feedback for this client..." rows={5}
               style={{ width: '100%', background: color.surfaceLight, border: `1px solid ${color.borderLight}`, borderRadius: 8,
