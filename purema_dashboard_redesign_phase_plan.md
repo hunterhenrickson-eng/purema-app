@@ -80,7 +80,7 @@ Build one real "decision" concept that a check-in review produces, and let it po
 - Check-in review brief: restructure CheckInDetail's existing (already-grouped) data around "what changed → what does it mean → what's next" — **Done, slice 1** (commit `196f5b2`, 2026-08-17)
 - Decision templates: fast, consistent actions for repeated calls (maintain targets, adjust calories, request clarification, change training volume) — pre-filled but always editable — **Done, slice 2** (commit `ab74ec0`, 2026-08-18)
 - Coach decision notes: a short private rationale field attached to the decision, for the coach's own future reference, not client-facing — **Done, slice 3** (commit `4b57f10`, 2026-08-19)
-- Client-facing "what changed" surface: whatever the coach decided, rendered clearly for the client — **not yet built**
+- Client-facing "what changed" surface: whatever the coach decided, rendered clearly for the client — **Done, slice 4** (commit `af282cb`, 2026-08-19)
 - Client acknowledgment: a simple confirm-you've-seen-this on meaningful updates — **not yet built**
 - Weekly briefing: a completed check-in culminates in a clear closing ritual — what the coach noticed, what changed, what to focus on, when the next check-in is due — assembled from the same decision data — **not yet built**
 
@@ -136,9 +136,27 @@ absence — simulated the real client's Postgres session (RLS role
 impersonation) and confirmed zero rows are visible even while the note
 genuinely existed.
 
-**Remaining Phase 4 slices, explicitly not built yet**: the client-facing
-"what changed" surface, client acknowledgment, and the weekly briefing —
-each is a separate follow-up slice, still to be scoped.
+**Slice 4 — Client-facing "what changed" surface — what shipped**: the
+real finding here was that most of this slice already existed. Coach
+feedback was already fully visible client-side — `ClientHome.js`'s Home
+tab already shows a prominent "Coach feedback — Week N" card next to the
+check-in stats, with a "Feedback pending" fallback — so no build was
+needed there. The actual gap: `getEffectiveTargets()` already computed a
+`source: 'override' | 'plan' | 'legacy'` field reflecting whether a
+coach's weekly target override was in effect, but that field was never
+read anywhere — target overrides were silently changing the client's
+macro-bar targets with zero indication why the numbers moved. Fix was a
+single conditional "Your targets changed this week" badge next to the
+nutrition card, shown only when `targets.source === 'override'`, reusing
+the existing `badge('info')` pattern (same one `ImportedTag` and other
+transparency labels already use) — no new component, no new data fetch,
+no schema change. Slice 1's 3-zone framing was deliberately **not**
+applied here — judged as forcing coach-side review structure onto an
+already-legible small 2-card client layout, for no real gain.
+
+**Remaining Phase 4 slices, explicitly not built yet**: client
+acknowledgment (slice 5) and the weekly briefing — each is a separate
+follow-up slice, still to be scoped.
 
 ## Phase 5 — Surface phase-based coaching
 **Risk: low. Mostly a UI job — the data model already exists.**
