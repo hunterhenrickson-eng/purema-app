@@ -1,237 +1,116 @@
-# Coach Dashboard Redesign — Phase Plan
-
-Tracks the coach dashboard redesign across phases. Each phase is scoped,
-built, and verified live before moving to the next — this file is the
-running record of what's shipped and what's still ahead.
-
----
-
-## Phase 1 — Dashboard layout reshuffle + dedupe engagement stat computation
-
-**Status: Done** (commit `6a76c2f`, 2026-08-17)
-
-- `TabDashboard` reordered: greeting + attention-count header → attention
-  queue (primary content) → compact summary line (active athletes /
-  check-ins to review) → time saved line, replacing the old 4-tile KPI
-  grid → time-saved → queue ordering.
-- Extracted `computeEngagementStats(clients, checkins)` — previously
-  duplicated near-identically between `TabDashboard` and `TabOverview` —
-  into one shared function both tabs now call, eliminating the risk of
-  the two drifting apart.
-- No visual/brand system changes, no new functionality — pure layout
-  hierarchy + internal dedup.
-
-**Verification**: live against the real running app (not a mock) as
-`purema.test.coach@gmail.com`, both attention-queue states exercised
-(feedback-needed and no-recent-checkin), Dashboard and Overview confirmed
-showing matching numbers post-dedupe. Test data used for verification
-cleaned up, nothing left in production.
+# Purema Coach Dashboard & Product Redesign — Phase Plan
+**Originally scoped:** August 16/17 session, based on direct investigation of the live `CoachDashboard.js`
+**Reconciled:** August 20, 2026, against an external "Purema Claude Build Brief" (dated Aug 19) written without repository access. That brief independently converged on nearly the same architecture as Phases 1, 2, and 4 below — a good signal the direction is right. This revision strikes what's already shipped, corrects the brief's screenshot-based assumptions against real ground truth, and folds in its genuinely new ideas as new phases.
+**Status:** Phases 1, 2, 4 shipped and live in production. Everything below that is planned, not built.
 
 ---
 
-## Phase 2 — Attention row redesign + urgency coloring (scoped to real data today)
-**Risk: low-medium. New functionality: minor (folding in an existing signal).**
+## The one insight that reshaped Phase 4 (still holds)
 
-**Status: Done** (commit `d548409`, 2026-08-17)
+Several originally-separate-seeming ideas — the check-in review brief, decision templates, the client-facing "what changed" timeline, the weekly briefing, coach decision notes, and client acknowledgment — turned out to be facets of one thing: a structured review → decision → update pipeline. That's what Phase 4 built, in five slices, all shipped.
 
-- Redesign each row to clearly show who/why/next-action, using the `type` + sublabel data `buildAttentionQueue` already outputs
-- Two-color version first: amber = `feedback_needed`, red = `no_checkin`
-- Optional extension: fold `isPastDue` in as a third red-tier condition (already computed elsewhere in this file — wiring, not new logic)
-- Explicitly park: general inactivity beyond check-in timing (login/session staleness) — this data doesn't exist anywhere yet. Full intelligent version lives in Phase 8.
+## What's already true (confirmed, no work needed)
 
-**What shipped**: rows now split into explicit who / why / next-action zones.
-`no_checkin`'s badge moved from neutral gray to the alert (red) pill;
-`feedback_needed` keeps its existing warning (amber) pill. Next-action is
-real navigation only — "Review check-in" opens `CheckInDetail`, "View
-client" reuses the existing `goToClient()` (same jump-to-roster-row
-behavior the sidebar mini-list already has) — nothing aspirational was
-added.
+- Phases 1, 2, and all 5 slices of Phase 4 are live in production. See commit history for exact hashes.
+- The external brief's "Build area 1" (attention queue) and "Build area 2" (check-in review/decision workflow) are, almost line-for-line, what Phases 1/2/4 already built. Its status audit for these areas ("Partial — redesign," "Validate") is stale relative to what's actually shipped — it was written from a screenshot and public pages, not the repo.
+- Direct messaging, the client's Progress/Calendar/Messages/Diary tabs, and the full diet-plan-phase architecture are all confirmed built (see project memory / prior ground-truth sweeps) — the brief's "Validate" marks on these were reasonable given it had no code access, but they're resolved.
 
-**Scope change**: the `isPastDue` fold-in was investigated and dropped
-for this phase. `isPastDue(profile)` reads the **coach's own** Purema
-subscription payment status (`profile.payment_status`, see `billing.js`)
-— it's account-level, not per-client, so it doesn't fit into a per-client
-queue row without fabricating data that doesn't exist. Confirmed with the
-user; it stays covered by the existing dashboard-wide past-due banner and
-notification bell. A true per-client payment/billing concept doesn't
-exist anywhere in this app's schema.
+## What the external brief got right that isn't in the plan yet — genuinely new
+- **WhatsApp has zero code anywhere in this app** — confirmed via full-repo grep earlier this session. The brief's proposed v1 (consented deep links + templated outbound reminders, explicitly *not* promising full bidirectional sync until demand/legal/consent are validated) is a much better-scoped plan than the vague "Twilio integration" that's sat undefined in the roadmap since session one. Adopted below, folded into Phase 9.
+- **Role-aware onboarding doesn't exist as its own decision flow.** Role today comes purely from which invite link someone clicks — there's no explicit "what are you here to do" moment, no coach setup questions (roster size, services offered, cadence). Real, confirmed gap. New Phase 6.
+- **Modular workspace / entitlement separation is a genuinely new architectural idea**, not something already planned. Today's system is flat tier-gating (Free/Starter/Pro/Agency client limits). The brief proposes separating *what a plan entitles* from *what a coach chooses to show in their own workspace* — e.g. a Pro coach who doesn't do competition prep can hide that module without it being a plan restriction. New Phase 7.
+- **AI review brief ("Purema Brief")** — not built, no LLM provider integrated anywhere in this stack today (a new external dependency, same category as Twilio/Nutritionix — needs its own provider/API-key decision before any build). The brief's guardrails are worth keeping intact: coach must approve every output, never auto-changes plans/macros/training, shows sources and uncertainty rather than presenting conclusions as fact, no hidden client-facing risk scores. New Phase 12, sequenced last per the brief's own reasoning — only valuable once the underlying workflow data (which Phase 4 now provides) is reliable.
+- **The Thomas → Nick beta scenario** is a good practice worth adopting outright: a real, named coach/client pair as the concrete end-to-end acceptance test, rather than abstract "definition of done" criteria. Adopted as the closing acceptance bar for the whole plan, not a separate phase.
 
-**Priority ordering**: kept `feedback_needed` above `no_checkin` (now
-documented inline in code) — a client who submitted and is waiting on
-feedback is a concrete, resolvable backlog item, while a quiet client is
-real but doesn't have anything currently pending on the coach's side.
+---
 
-**Verification**: live against `purema.test.coach@gmail.com` on the
-running dev server — both badge states and both next-actions exercised
-(a temporary check-in was added to trigger `feedback_needed`, confirmed
-"Review check-in" opens the right modal, then deleted and confirmed the
-queue reverted). `CI=true` build clean, zero console errors.
+## Phase 1 — Dashboard layout reshuffle ✅ SHIPPED
+Attention queue promoted to primary content, KPI grid demoted to a compact summary line, "time saved" line demoted below the fold, engagement-stat computation deduped between Dashboard/Overview. Commit `6a76c2f`.
 
-## Phase 3 — Consolidate duplicate stat computation (DONE, bundled into Phase 1)
+## Phase 2 — Attention row redesign + urgency coloring ✅ SHIPPED
+Who/why/next-action row structure, amber (`feedback_needed`) / red (`no_checkin`) urgency coloring. `isPastDue` deliberately excluded — confirmed coach-level (Purema subscription status), not a per-client signal; stays covered by the existing billing banner/notification bell. Commit `d548409`.
 
-Completed as part of commit `6a76c2f` — `computeEngagementStats()` now shared
-between `TabDashboard` and `TabOverview`. No longer a separate phase.
+## Phase 3 — folded into Phase 1
+Duplicate `weeklyRate`/`activeClients` computation extracted into shared `computeEngagementStats()`.
 
-## Phase 4 — The decision pipeline (centerpiece phase) — ✅ COMPLETE
-**Risk: medium. This is real, valuable new structure — the core of the redesign, not a side item.**
+## Phase 4 — The decision pipeline ✅ SHIPPED (5 of 5 slices)
+1. Check-in review brief — `CheckInDetail` restructured into What changed / What it means / What's next zones (`ZoneHeader` component). Commit `196f5b2`.
+2. Decision templates — 5 quick-select feedback starters, confirm-gated overwrite. Commit `ab74ec0`.
+3. Coach decision notes — private, coach-only rationale field. Pivoted from a column-based approach to a separate `check_in_decision_notes` table after discovering `REVOKE SELECT` didn't reliably enforce in this environment — verified client-invisible via RLS session impersonation, not just UI absence. Commit (see plan doc history).
+4. Client-facing "what changed" surface — surfaced the previously-computed-but-unread `getEffectiveTargets()` source field as a "Your targets changed this week" badge.
+5. Client acknowledgment — separate `check_in_acknowledgments` table, INSERT-only/immutable, mirroring slice 3's "don't grant unnecessary write access" reasoning.
 
-**Status: all 5 slices shipped** (commits `196f5b2`, `ab74ec0`, `4b57f10`,
-`af282cb`, `9e3f57d`, 2026-08-17 through 2026-08-20). The weekly briefing
-was always framed as the 6th item under this phase's umbrella but never
-scoped as its own slice — see the note at the end of this section for why
-it's treated as a natural follow-on rather than a blocker to calling this
-phase done.
+**Not yet built — the one honest loose end:** the weekly briefing was never scoped as its own slice. See Phase 5 below.
 
-Build one real "decision" concept that a check-in review produces, and let it power multiple surfaces instead of building each separately:
+## Phase 5 — Weekly briefing (small, closes out Phase 4)
+**Risk: low. Should assemble cheaply from data the 5 completed slices already produce.**
 
-- Check-in review brief: restructure CheckInDetail's existing (already-grouped) data around "what changed → what does it mean → what's next" — **Done, slice 1** (commit `196f5b2`, 2026-08-17)
-- Decision templates: fast, consistent actions for repeated calls (maintain targets, adjust calories, request clarification, change training volume) — pre-filled but always editable — **Done, slice 2** (commit `ab74ec0`, 2026-08-18)
-- Coach decision notes: a short private rationale field attached to the decision, for the coach's own future reference, not client-facing — **Done, slice 3** (commit `4b57f10`, 2026-08-19)
-- Client-facing "what changed" surface: whatever the coach decided, rendered clearly for the client — **Done, slice 4** (commit `af282cb`, 2026-08-19)
-- Client acknowledgment: a simple confirm-you've-seen-this on meaningful updates — **Done, slice 5** (commit `9e3f57d`, 2026-08-20)
-- Weekly briefing: a completed check-in culminates in a clear closing ritual — what the coach noticed, what changed, what to focus on, when the next check-in is due — assembled from the same decision data — **not yet built**
+A completed check-in's review should culminate in a clear closing artifact — what the coach noticed, what changed, what to focus on, when the next check-in is due — assembled from coach feedback, decision notes (coach-facing only), the targets-changed badge, and acknowledgment status. Investigate first: confirm whether this should be a persisted record or a computed view assembled fresh each time from existing tables.
 
-Also: keep coach feedback positioned near the relevant evidence, not always trailing at the bottom. Decide whether the 3 existing entry points into CheckInDetail (Check-ins tab, attention queue, global search) stay as-is or get consolidated.
+## Phase 6 — Role-aware onboarding (NEW, from external brief)
+**Risk: medium. Touches signup/invite flow, which is security-sensitive — investigate the current invite/role system thoroughly before changing it.**
 
-**Slice 1 — Check-in review brief — what shipped**: investigation before
-building found the existing section order in `CheckInDetail` already
-matched the 3-zone framing (weekly averages/metrics grid leading, evidence
-in the middle, override+feedback last) — so this was a labeling/grouping
-pass, not a reorder. New `ZoneHeader` component (mono uppercase label +
-hairline divider, same brand tokens as everywhere else) now groups both
-formats into explicit "What changed / What it means / What's next" zones:
-new-format's weekly-averages tiles, and old-format's body-metrics/
-nutrition/lifestyle grid (which plays the same role, since old-format has
-no daily granularity to separate out), both lead as "What changed";
-daily log/lift tracker/day notes/measurements/vitals/reflection (new-
-format) and client notes (old-format, pulled out of the grid container
-into its own labeled block) sit under "What it means"; override targets
-+ coach feedback are grouped last under "What's next" for both. No new
-data, no new fields, every existing conditional preserved as-is.
+- A light, reversible onboarding decision: manage my own training, coach clients, or join my coach
+- Persist an explicit account role and active workspace context — don't infer from a single screen
+- For coaches: collect coaching focus, current roster size, services offered, preferred communication channel, check-in cadence
+- For clients: minimize setup — accept invite, confirm communication preference, see current phase/targets, only required profile fields
+- Show only relevant modules after onboarding; keep a clear Settings path to change later
+- Must not weaken the invite-only signup gate shipped `87f348d` — this is about the *experience* after a valid invite is accepted, not a new signup path
 
-**Slice 2 — Decision templates — what shipped**: 5 quick-select pill
-buttons (Maintain / Adjust down / Adjust up / Request clarification /
-Change training volume) above the coach-feedback textarea in the
-"What's next" zone. Clicking one populates the textarea's text on
-click — never automatically, never inserted at cursor — and the coach
-can freely edit afterward; nothing is locked. Confirm-gated only when
-overwriting existing unsaved text (`window.confirm()` — declining
-leaves the current text untouched). Templates speed up the feedback
-*text* only — coaches still use the separate override-targets form for
-actual number changes; nothing here recalculates macros or targets.
+## Phase 7 — Modular workspace & entitlement separation (NEW, from external brief)
+**Risk: medium-high. Architectural — touches navigation, settings, and the existing tier system broadly.**
 
-**Slice 3 — Coach decision notes — what shipped**: a private, coach-only
-rationale field attached to a check-in's decision — never client-facing.
-**Schema deviation from the original plan, worth recording**: the plan
-called for a `coach_decision_notes` column on `check_ins`, hidden via
-`REVOKE SELECT (column) ... FROM authenticated, anon`. That revoke
-demonstrably didn't take effect in this environment — verified via
-`has_column_privilege()` returning `true` for both roles immediately
-after the revoke, in the same transaction, across multiple retries.
-Rather than ship privacy that doesn't actually hold, pivoted to a
-separate `check_in_decision_notes` table with row-level RLS instead
-(coach's own rows only, admin read via `is_admin(auth.uid())`, no
-client policy at all) — matching this codebase's own existing pattern
-for coach-only data (`weekly_target_overrides`, `macro_adjustments`)
-rather than fighting a column-privilege mechanism that wasn't behaving
-reliably. UI is a visually distinct "Private note (only visible to
-you)" card (sunken tint + lock icon, no template buttons — free-form
-personal shorthand) placed right after the coach-feedback card, with an
-explicit "Save note" button matching the other two fields in this zone.
-Client-invisibility was verified at the database level, not just UI
-absence — simulated the real client's Postgres session (RLS role
-impersonation) and confirmed zero rows are visible even while the note
-genuinely existed.
+- Separate entitlement (what a plan allows) from visibility (what a coach chooses to show in their own workspace)
+- Keep the core coaching loop available at every tier; use limits/advanced tooling to differentiate paid tiers, not module hiding
+- Workspace setup screen with presets (Physique coaching, High-touch coaching, Hybrid coaching, Minimal check-in coaching) plus toggles — investigate whether this maps cleanly onto existing `subscription_tier` logic before building a parallel system
+- Disabling a module hides navigation and preserves data — never delete history or break deep links
+- Map any new modules to the *existing* Stripe tier entitlement checks; do not implement a second, parallel feature-gating system
 
-**Slice 4 — Client-facing "what changed" surface — what shipped**: the
-real finding here was that most of this slice already existed. Coach
-feedback was already fully visible client-side — `ClientHome.js`'s Home
-tab already shows a prominent "Coach feedback — Week N" card next to the
-check-in stats, with a "Feedback pending" fallback — so no build was
-needed there. The actual gap: `getEffectiveTargets()` already computed a
-`source: 'override' | 'plan' | 'legacy'` field reflecting whether a
-coach's weekly target override was in effect, but that field was never
-read anywhere — target overrides were silently changing the client's
-macro-bar targets with zero indication why the numbers moved. Fix was a
-single conditional "Your targets changed this week" badge next to the
-nutrition card, shown only when `targets.source === 'override'`, reusing
-the existing `badge('info')` pattern (same one `ImportedTag` and other
-transparency labels already use) — no new component, no new data fetch,
-no schema change. Slice 1's 3-zone framing was deliberately **not**
-applied here — judged as forcing coach-side review structure onto an
-already-legible small 2-card client layout, for no real gain.
+## Phase 8 — Surface phase-based coaching
+**Risk: low. Mostly a UI job — the data model already exists** (`diet_plan_phases`).
+Show current phase, objective, and next milestone as a first-class visible concept for coach and client.
 
-**Slice 5 — Client acknowledgment — what shipped**: a "Got it" button in
-the coach-feedback card (and the "Feedback pending" fallback card, when a
-target override is in effect even without written feedback yet) that
-swaps to a quiet "✓ Acknowledged {date}" confirmation once clicked —
-mirrors the existing `messages.read_at` → "✓ Read" treatment in
-`MessageThread.jsx`. **Schema reasoning, worth recording**: deliberately
-did *not* reuse `messages.read_at`'s pattern (a column + a column-based
-tampering trigger). That trigger only checks *which* column changed, not
-*who* changed it — fine for `messages` (either party touching `read_at`
-on a message they didn't send is cosmetic), but extending the same shape
-to `check_ins` would mean giving the client raw UPDATE privilege on
-`coach_feedback`/`feedback_at` themselves, not just an ack flag — a real
-integrity risk. Built a separate `check_in_acknowledgments` table instead
-(INSERT-only, no UPDATE/DELETE policy — acknowledgment is one-time and
-immutable, and the primary key on `checkin_id` rejects a duplicate at the
-DB level) — the mirror image of slice 3's reasoning: that was "hide a
-column from a party," this is "don't grant a party unnecessary write
-access to a shared row." Coach-side visibility of acknowledgment status
-was deliberately left unbuilt this slice — the coach gets a SELECT
-policy on the table for a future surface to use, but no coach-facing UI
-was built now, staying scoped to the client-facing mechanism only.
-Verified live on real production data (Alex's real Week 5 feedback),
-including an RLS defense-in-depth check (simulated client session
-attempting to insert an ack spoofing a different client — correctly
-rejected).
-
-**On the weekly briefing**: this is the one piece of Phase 4's original
-6-item list that was never built or scoped as its own slice. Not treated
-as a blocker to calling this phase done — the 5 completed slices now
-produce essentially all the data a weekly briefing would assemble (what
-changed: slice 4's target/feedback surfacing; what it means: slice 1's
-review-brief structure; what's next: the override + feedback data itself;
-confirmation the client saw it: slice 5's acknowledgment). Building the
-briefing itself is mostly a presentation pass over data that already
-exists, whenever it gets scoped — not new plumbing.
-
-## Phase 5 — Surface phase-based coaching
-**Risk: low. Mostly a UI job — the data model already exists.**
-
-Show current phase (maintenance/building/fat loss/contest prep/peak week/recovery), objective, and next milestone as a first-class visible concept, built on the existing diet_plan_phases structure.
-
-## Phase 6 — Supportive re-engagement flow (redesigned from "Send reminder")
+## Phase 9 — Supportive re-engagement flow + WhatsApp handoff (merged, refined)
 **Risk: medium-high. Genuinely new backend infrastructure.**
 
-Coach sends an editable supportive message, client gets a simple way to respond — restart, ask for help, or say they're overwhelmed.
-- Manual (do this first): coach-triggered send via a new API endpoint modeled on api/notify-intake-booking.js's pattern
-- Automatic/scheduled (defer): requires Vercel Cron setup (no vercel.json exists yet) and wiring the currently-inert notify_weekly_reminder/notify_show_day_countdown toggles
+- Manual first: coach-triggered supportive message (editable, not a blunt reminder), client can respond restart/ask-for-help/overwhelmed — modeled on `api/notify-intake-booking.js`'s pattern
+- Fold in the external brief's WhatsApp v1 approach at the same time, since it's the same UI surface: from a check-in review or attention item, a primary "Send in Purema" action and a secondary "Open WhatsApp" deep link (prefilled, editable message, logs that the coach initiated the handoff — never falsely marks it sent/read)
+- Coach-level + client-level communication preference (Purema only / WhatsApp preferred / flexible)
+- Full WhatsApp Business API integration explicitly deferred — only pursue after validating demand, legal/consent posture, and template-approval workflow
+- Automatic/scheduled reminders (Vercel Cron) remain deferred separately — no `vercel.json` exists in this project yet
 
-## Phase 7 — Nav/tab semantic cleanup (low priority, optional)
+## Phase 10 — Nav/tab semantic cleanup (low priority, optional)
+Align Check-ins tab filter labels with Phase 4's framing if mismatched; resolve the 3-entry-points-into-CheckInDetail question.
 
-- Align Check-ins tab's filter labels with whatever framing Phase 4 settles on, if mismatched
-- Resolve the 3-entry-points question from Phase 4, if not already decided there
-
-## Phase 8 — Intelligent attention queue + data-confidence indicator
+## Phase 11 — Intelligent attention queue + data-confidence indicator
 **Risk: medium-high. Needs new signal computation — sequence after the rest.**
+Expand `buildAttentionQueue` beyond its current two conditions: declining adherence, unusual weight trends, upcoming phase transitions (enabled by Phase 8), unread plan changes (enabled by Phase 4), missed coach contact. Private data-confidence indicator, framed as decision confidence — never a client-facing score.
 
-- Expand buildAttentionQueue beyond its current two conditions: declining adherence, unusual weight trends, upcoming phase transitions (enabled by Phase 5), unread plan changes (enabled by Phase 4), missed coach contact, payment issues
-- Private data-confidence indicator for coaches — framed as decision confidence, never a client-facing score
+## Phase 12 — AI review brief / "Purema Brief" assistant (NEW, from external brief)
+**Risk: high. Requires a new external dependency (LLM provider) not yet integrated anywhere in this stack — needs its own provider/cost/privacy decision, same category as evaluating Twilio or Nutritionix originally.**
+
+- Coach-only summarization of submitted check-in data and recent context — never presents medical conclusions as fact
+- Must show sources and uncertainty explicitly ("Adherence fell from 6/7 to 4/7; client noted poor sleep twice"), linking every insight to source inputs
+- Draft-only: can draft a review note, flag missing information, compare trends, suggest which decision template fits — coach must edit/approve before anything sends
+- Hard guardrails, non-negotiable: never auto-changes macros/cardio/training/supplements/competition protocols; never generates a hidden client-facing risk score
+- Needs data permissions, audit logging, eval cases, and an opt-out before wider rollout
+- Sequenced last deliberately — only valuable once the workflow data Phase 4 produces is reliable, per the external brief's own reasoning
 
 ---
 
-## Parked — good ideas, lower urgency
-
+## Parked — good ideas, lower urgency, unchanged from original plan
 - Contextual "Ask your coach" entry points
 - Progress-photo comparison designed for decisions
-- Full coaching timeline aggregation per client (more valuable once Phase 4 exists)
+- Full coaching timeline aggregation per client
 - Coach-defined weekly non-negotiables
 - "Coaching loop" as an overarching product narrative
 
 ---
 
 ## Suggested sequencing
+**5 → 6 → 7 → 8 → 10 → 9 → 11 → 12**
 
-1 → 2 → 4 → 5 → 7 → 6 → 8 (Phase 3 already done, folded into Phase 1)
+Phase 5 closes the one loose end from the already-shipped core loop. Phases 6-7 are foundational/structural (role and workspace clarity) and worth doing before adding more feature surface on top of an unclear foundation. The rest follows the original plan's logic — cheap wins before expensive ones, intelligence and AI last since both depend on reliable data the earlier phases produce.
+
+## Definition of done — the Thomas → Nick beta test (adopted from the external brief)
+Before calling any phase past Phase 5 genuinely done, run it end-to-end against a real named scenario: a specific coach (e.g. Thomas) and a specific client (e.g. Nick), not abstract test accounts. Check-in submitted → coach reviews → decision recorded → client sees clear next action → client acknowledges → nothing requires the coach to remember, screenshot, or search a long chat thread. If that flow doesn't hold up cleanly for one real relationship, it's not ready for a wider roster.
