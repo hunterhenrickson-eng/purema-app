@@ -72,8 +72,15 @@ queue reverted). `CI=true` build clean, zero console errors.
 Completed as part of commit `6a76c2f` — `computeEngagementStats()` now shared
 between `TabDashboard` and `TabOverview`. No longer a separate phase.
 
-## Phase 4 — The decision pipeline (centerpiece phase)
+## Phase 4 — The decision pipeline (centerpiece phase) — ✅ COMPLETE
 **Risk: medium. This is real, valuable new structure — the core of the redesign, not a side item.**
+
+**Status: all 5 slices shipped** (commits `196f5b2`, `ab74ec0`, `4b57f10`,
+`af282cb`, `9e3f57d`, 2026-08-17 through 2026-08-20). The weekly briefing
+was always framed as the 6th item under this phase's umbrella but never
+scoped as its own slice — see the note at the end of this section for why
+it's treated as a natural follow-on rather than a blocker to calling this
+phase done.
 
 Build one real "decision" concept that a check-in review produces, and let it power multiple surfaces instead of building each separately:
 
@@ -81,7 +88,7 @@ Build one real "decision" concept that a check-in review produces, and let it po
 - Decision templates: fast, consistent actions for repeated calls (maintain targets, adjust calories, request clarification, change training volume) — pre-filled but always editable — **Done, slice 2** (commit `ab74ec0`, 2026-08-18)
 - Coach decision notes: a short private rationale field attached to the decision, for the coach's own future reference, not client-facing — **Done, slice 3** (commit `4b57f10`, 2026-08-19)
 - Client-facing "what changed" surface: whatever the coach decided, rendered clearly for the client — **Done, slice 4** (commit `af282cb`, 2026-08-19)
-- Client acknowledgment: a simple confirm-you've-seen-this on meaningful updates — **not yet built**
+- Client acknowledgment: a simple confirm-you've-seen-this on meaningful updates — **Done, slice 5** (commit `9e3f57d`, 2026-08-20)
 - Weekly briefing: a completed check-in culminates in a clear closing ritual — what the coach noticed, what changed, what to focus on, when the next check-in is due — assembled from the same decision data — **not yet built**
 
 Also: keep coach feedback positioned near the relevant evidence, not always trailing at the bottom. Decide whether the 3 existing entry points into CheckInDetail (Check-ins tab, attention queue, global search) stay as-is or get consolidated.
@@ -154,9 +161,41 @@ no schema change. Slice 1's 3-zone framing was deliberately **not**
 applied here — judged as forcing coach-side review structure onto an
 already-legible small 2-card client layout, for no real gain.
 
-**Remaining Phase 4 slices, explicitly not built yet**: client
-acknowledgment (slice 5) and the weekly briefing — each is a separate
-follow-up slice, still to be scoped.
+**Slice 5 — Client acknowledgment — what shipped**: a "Got it" button in
+the coach-feedback card (and the "Feedback pending" fallback card, when a
+target override is in effect even without written feedback yet) that
+swaps to a quiet "✓ Acknowledged {date}" confirmation once clicked —
+mirrors the existing `messages.read_at` → "✓ Read" treatment in
+`MessageThread.jsx`. **Schema reasoning, worth recording**: deliberately
+did *not* reuse `messages.read_at`'s pattern (a column + a column-based
+tampering trigger). That trigger only checks *which* column changed, not
+*who* changed it — fine for `messages` (either party touching `read_at`
+on a message they didn't send is cosmetic), but extending the same shape
+to `check_ins` would mean giving the client raw UPDATE privilege on
+`coach_feedback`/`feedback_at` themselves, not just an ack flag — a real
+integrity risk. Built a separate `check_in_acknowledgments` table instead
+(INSERT-only, no UPDATE/DELETE policy — acknowledgment is one-time and
+immutable, and the primary key on `checkin_id` rejects a duplicate at the
+DB level) — the mirror image of slice 3's reasoning: that was "hide a
+column from a party," this is "don't grant a party unnecessary write
+access to a shared row." Coach-side visibility of acknowledgment status
+was deliberately left unbuilt this slice — the coach gets a SELECT
+policy on the table for a future surface to use, but no coach-facing UI
+was built now, staying scoped to the client-facing mechanism only.
+Verified live on real production data (Alex's real Week 5 feedback),
+including an RLS defense-in-depth check (simulated client session
+attempting to insert an ack spoofing a different client — correctly
+rejected).
+
+**On the weekly briefing**: this is the one piece of Phase 4's original
+6-item list that was never built or scoped as its own slice. Not treated
+as a blocker to calling this phase done — the 5 completed slices now
+produce essentially all the data a weekly briefing would assemble (what
+changed: slice 4's target/feedback surfacing; what it means: slice 1's
+review-brief structure; what's next: the override + feedback data itself;
+confirmation the client saw it: slice 5's acknowledgment). Building the
+briefing itself is mostly a presentation pass over data that already
+exists, whenever it gets scoped — not new plumbing.
 
 ## Phase 5 — Surface phase-based coaching
 **Risk: low. Mostly a UI job — the data model already exists.**
