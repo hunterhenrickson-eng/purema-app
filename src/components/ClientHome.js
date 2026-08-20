@@ -230,7 +230,18 @@ const TabHome = ({ profile, checkins, dietPhases, targetOverrides, mealPlan, onG
             </div>
             {(latest.calories || latest.protein || latest.carbs || latest.fats) && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <div style={{ ...S.label, marginBottom: 2 }}>Nutrition this week</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                  <div style={S.label}>Nutrition this week</div>
+                  {/* Phase 4 slice 4 — targets.source is already computed by
+                      getEffectiveTargets above; this just surfaces it. A
+                      weekly override silently changed what the macro bars
+                      below measure against, with no prior indication that
+                      happened — this makes that visible without requiring
+                      the client to notice a number changed on their own. */}
+                  {targets?.source === 'override' && (
+                    <span style={{ ...badge('info'), whiteSpace: 'nowrap' }}>Your targets changed this week</span>
+                  )}
+                </div>
                 <MacroBar label="KCAL" value={latest.calories} unit="" color={color.forest} target={targets?.calories} />
                 <MacroBar label="PRO" value={latest.protein} unit="g" color={color.forest} target={targets?.protein} />
                 <MacroBar label="CARB" value={latest.carbs} unit="g" color={color.gold} target={targets?.carbs} />
