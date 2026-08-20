@@ -155,9 +155,41 @@ const MacroBar = ({ label, value, unit, color: barColor, target }) => {
   )
 }
 
+// ─── Acknowledge control ───────────────────────────────────────────────────────
+// Phase 4 slice 5 — a simple confirm-you've-seen-this action for coach
+// feedback and/or a target change. Explicit button (not a checkbox — this
+// is a one-time, deliberate confirmation, not a settings toggle) matching
+// the outline-button pattern used for every other secondary "Save X"
+// action in this app. Swaps to a quiet, permanent confirmation once
+// acknowledged — mirrors messages.read_at's "✓ Read" treatment in
+// MessageThread.jsx. Never un-acknowledges; nothing to undo here.
+
+const AcknowledgeControl = ({ checkinId, ack, onAcknowledge }) => {
+  const [saving, setSaving] = useState(false)
+
+  if (ack) {
+    return (
+      <div style={{ fontSize: type.label, color: color.forest, fontWeight: 500, marginTop: 12 }}>
+        ✓ Acknowledged {formatDate(ack.acknowledged_at)}
+      </div>
+    )
+  }
+
+  return (
+    <button
+      onClick={async () => { setSaving(true); await onAcknowledge(checkinId); setSaving(false) }}
+      disabled={saving}
+      style={{ marginTop: 12, padding: '7px 16px', borderRadius: 6, border: `1px solid ${color.textOnLight.secondary}`,
+        background: 'transparent', color: color.textOnLight.secondary, fontFamily: font.sans, fontSize: type.label,
+        fontWeight: 500, cursor: saving ? 'not-allowed' : 'pointer' }}>
+      {saving ? 'Saving...' : 'Got it'}
+    </button>
+  )
+}
+
 // ─── Home tab ─────────────────────────────────────────────────────────────────
 
-const TabHome = ({ profile, checkins, dietPhases, targetOverrides, mealPlan, onGoToCheckin }) => {
+const TabHome = ({ profile, checkins, dietPhases, targetOverrides, acknowledgments, onAcknowledge, mealPlan, onGoToCheckin }) => {
   const [mealPlanExpanded, setMealPlanExpanded] = useState(false)
   const units = profile?.units
   const displayCheckins = withDisplayUnits(checkins, units)
@@ -168,6 +200,11 @@ const TabHome = ({ profile, checkins, dietPhases, targetOverrides, mealPlan, onG
   const displayTargetWeight = profile?.target_weight ? displayWeight(profile.target_weight, units).value : null
   const nextWeek = latest ? latest.week_number + 1 : 1
   const targets = latest ? getEffectiveTargets(dietPhases, targetOverrides, latest.week_number, profile, new Date(latest.submitted_at)) : null
+  // Phase 4 slice 5 — "meaningful" mirrors exactly what slice 4 already
+  // surfaces: real coach feedback, or a target override in effect this
+  // week. Nothing to acknowledge if neither happened yet.
+  const hasMeaningfulUpdate = !!(latest && (latest.coach_feedback || targets?.source === 'override'))
+  const latestAck = latest ? acknowledgments?.find(a => a.checkin_id === latest.id) : null
   const hasCheckedInThisWeek = latest &&
     (new Date() - new Date(latest.submitted_at)) / (1000 * 60 * 60 * 24) < 7
   const activePhase = getActivePhase(dietPhases)
@@ -260,18 +297,24 @@ const TabHome = ({ profile, checkins, dietPhases, targetOverrides, mealPlan, onG
             <div style={{ fontSize: type.body, color: color.textOnLight.primary, lineHeight: 1.8 }}>
               {latest.coach_feedback}
             </div>
+            <AcknowledgeControl checkinId={latest.id} ack={latestAck} onAcknowledge={onAcknowledge} />
           </div>
         ) : latest && (
-          <div style={{ ...S.card, display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div style={{ width: 8, height: 8, borderRadius: '50%', background: color.gold, flexShrink: 0 }} />
-            <div>
-              <div style={{ fontSize: type.body, fontWeight: 500, color: color.textOnLight.primary }}>
-                Feedback pending
-              </div>
-              <div style={{ fontSize: type.label, color: color.textOnLight.secondary, marginTop: 2 }}>
-                Your coach hasn't reviewed Week {latest.week_number} yet.
+          <div style={S.card}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: color.gold, flexShrink: 0 }} />
+              <div>
+                <div style={{ fontSize: type.body, fontWeight: 500, color: color.textOnLight.primary }}>
+                  Feedback pending
+                </div>
+                <div style={{ fontSize: type.label, color: color.textOnLight.secondary, marginTop: 2 }}>
+                  Your coach hasn't reviewed Week {latest.week_number} yet.
+                </div>
               </div>
             </div>
+            {/* No written feedback yet, but a target override already went
+                into effect this week — still something worth confirming. */}
+            {hasMeaningfulUpdate && <AcknowledgeControl checkinId={latest.id} ack={latestAck} onAcknowledge={onAcknowledge} />}
           </div>
         )}
       </div>
@@ -1121,6 +1164,7 @@ export default function ClientHome() {
   const [checkins, setCheckins] = useState([])
   const [dietPhases, setDietPhases] = useState([])
   const [targetOverrides, setTargetOverrides] = useState([])
+  const [acknowledgments, setAcknowledgments] = useState([])
   const [mealPlan, setMealPlan] = useState([])
   const [messages, setMessages] = useState([])
   const [coachName, setCoachName] = useState(null)
@@ -1133,12 +1177,13 @@ export default function ClientHome() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      const [profileRes, checkinsRes, phasesRes, overridesRes, messagesRes, mealsRes] = await Promise.all([
+      const [profileRes, checkinsRes, phasesRes, overridesRes, acksRes, messagesRes, mealsRes] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', user.id).single(),
         supabase.from('check_ins').select('*').eq('client_id', user.id)
           .order('submitted_at', { ascending: false }),
         supabase.from('diet_plan_phases').select('*').eq('client_id', user.id),
         supabase.from('weekly_target_overrides').select('*').eq('client_id', user.id),
+        supabase.from('check_in_acknowledgments').select('*').eq('client_id', user.id),
         supabase.from('messages').select('*').eq('client_id', user.id).order('created_at', { ascending: true }),
         supabase.from('diet_plan_meals').select('*, diet_plan_meal_items(*)').eq('client_id', user.id).order('sort_order', { ascending: true }),
       ])
@@ -1158,6 +1203,11 @@ export default function ClientHome() {
       if (!checkinsRes.error) setCheckins(checkinsRes.data || [])
       if (!phasesRes.error) setDietPhases(phasesRes.data || [])
       if (!overridesRes.error) setTargetOverrides(overridesRes.data || [])
+      // Not folded into secondaryFailed/dataLoadError — same treatment as
+      // mealsRes below: a supplementary enhancement, not core data. Worst
+      // case on failure, the acknowledgment control just doesn't know
+      // prior state and re-shows "Got it" — harmless, not worth a banner.
+      if (!acksRes.error) setAcknowledgments(acksRes.data || [])
       if (!messagesRes.error) setMessages(messagesRes.data || [])
       if (!mealsRes.error) setMealPlan(mealsRes.data || [])
 
@@ -1203,6 +1253,19 @@ export default function ClientHome() {
         if (data?.length) setMessages(prev => prev.map(m => data.find(d => d.id === m.id) || m))
       })
   }, [activeTab, messages, profile?.id, profile?.coach_id])
+
+  // Phase 4 slice 5 — client confirms they've seen a meaningful update
+  // (coach feedback and/or a target change) on a check-in. One row per
+  // check-in, immutable once inserted (see check_in_acknowledgments'
+  // primary key) — this never un-acknowledges or re-confirms.
+  const handleAcknowledge = async (checkinId) => {
+    if (!profile?.id) return
+    const { data, error } = await supabase.from('check_in_acknowledgments')
+      .insert({ checkin_id: checkinId, client_id: profile.id })
+      .select().single()
+    if (error || !data) return
+    setAcknowledgments(prev => [...prev, data])
+  }
 
   const handleSendMessage = async (body) => {
     if (!profile?.coach_id) return { ok: false, message: 'No coach assigned yet.' }
@@ -1350,6 +1413,8 @@ export default function ClientHome() {
               checkins={checkins}
               dietPhases={dietPhases}
               targetOverrides={targetOverrides}
+              acknowledgments={acknowledgments}
+              onAcknowledge={handleAcknowledge}
               mealPlan={mealPlan}
               onGoToCheckin={() => setActiveTab('checkin')}
             />
