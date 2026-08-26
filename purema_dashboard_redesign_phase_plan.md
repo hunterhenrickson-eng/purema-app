@@ -1,7 +1,7 @@
 # Purema Coach Dashboard & Product Redesign — Phase Plan
 **Originally scoped:** August 16/17 session, based on direct investigation of the live `CoachDashboard.js`
 **Reconciled:** August 20, 2026, against an external "Purema Claude Build Brief" (dated Aug 19) written without repository access. That brief independently converged on nearly the same architecture as Phases 1, 2, and 4 below — a good signal the direction is right. This revision strikes what's already shipped, corrects the brief's screenshot-based assumptions against real ground truth, and folds in its genuinely new ideas as new phases.
-**Status:** Phases 1, 2, 4 shipped and live in production. Everything below that is planned, not built.
+**Status:** Phases 1, 2, 4, 5 shipped and live in production. Everything below that is planned, not built.
 
 ---
 
@@ -42,10 +42,16 @@ Duplicate `weeklyRate`/`activeClients` computation extracted into shared `comput
 
 **Not yet built — the one honest loose end:** the weekly briefing was never scoped as its own slice. See Phase 5 below.
 
-## Phase 5 — Weekly briefing (small, closes out Phase 4)
-**Risk: low. Should assemble cheaply from data the 5 completed slices already produce.**
+## Phase 5 — Weekly briefing ✅ SHIPPED
+**Risk: low. Assembled cheaply from data the 5 completed slices already produce — no new tables.**
 
-A completed check-in's review should culminate in a clear closing artifact — what the coach noticed, what changed, what to focus on, when the next check-in is due — assembled from coach feedback, decision notes (coach-facing only), the targets-changed badge, and acknowledgment status. Investigate first: confirm whether this should be a persisted record or a computed view assembled fresh each time from existing tables.
+A "Weekly briefing" summary — targets changed / feedback sent / acknowledgment status — now sits at the top of `CheckInDetail`'s "What's next" zone for the coach, and above the main grid in `ClientHome.js` as "This week's summary" for the client. Confirmed computed fresh from existing tables rather than persisted — same anti-drift reasoning as the `weeklyRate` dedup in Phase 1: every input (coach feedback, `weekly_target_overrides`, `check_in_acknowledgments`) already lives in its own table and would drift if snapshotted.
+
+The genuinely new piece wasn't the summarization — it was **coach-side acknowledgment visibility**. Before this, nothing in the coach UI ever read `check_in_acknowledgments`; the table's coach-facing SELECT policy was built during slice 5 explicitly "for future use, no UI built." This is that use.
+
+Investigated "next check-in due" as part of this phase and confirmed it does not exist as a field anywhere (checked `profiles`, `check_ins`, `diet_plan_phases`) — the only related thing in the codebase is an implicit weekly-cadence assumption baked into unrelated logic (`computeEngagementStats`'s 8-day window). Deliberately left out of the briefing rather than invented. Flagged as a natural addition to Phase 15 (accountability rhythm) instead, which already needs a real cadence concept.
+
+A real bug was caught during live verification, not before: the coach-side "Feedback sent" pill initially piggybacked on `saved`, a state deliberately transient (resets after 2s to drive the "Saved!" button flash) — meaning the pill would incorrectly revert to "not yet sent" two seconds after a genuinely successful save. Fixed with a separate, non-expiring `feedbackSentLocally` state that only ever flips true.
 
 ## Phase 6 — Role-aware onboarding (NEW, from external brief)
 **Risk: medium. Touches signup/invite flow, which is security-sensitive — investigate the current invite/role system thoroughly before changing it.**
@@ -169,6 +175,7 @@ Brief 02 recommends a **two-column check-in review layout** (client evidence/tre
 - A single named client-facing status, computed from existing data (don't duplicate signals `buildAttentionQueue` already tracks — reuse or mirror that logic): Ready for check-in / Awaiting review / Updated this week / On track / Let's get back on track.
 - Let a coach set desired accountability level per client (some clients want reminders, others want fewer notifications and more autonomy) — this is a coach preference, not automated.
 - Never reduce a client to a single visible score — supportive states only, no public numeric compliance rating.
+- Natural home for the cadence concept Phase 5 deliberately left out: "next check-in due" was investigated there and confirmed not to exist as a field anywhere. This phase already needs a real cadence/rhythm concept to compute "Ready for check-in" vs. "On track" — solve both here rather than inventing cadence twice.
 
 ## Phase 16 — Relationship memory & client lifecycle (NEW, from Brief 02 Build area 12)
 **Risk: medium. Touches client identity/status model — investigate current status transitions thoroughly first.**
