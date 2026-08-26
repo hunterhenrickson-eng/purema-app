@@ -251,6 +251,31 @@ const TabHome = ({ profile, checkins, dietPhases, targetOverrides, acknowledgmen
         )}
       </div>
 
+      {/* This week's summary — Phase 5's weekly briefing. Only the same
+          three signals already shown separately below (targets-changed
+          badge, coach feedback card, acknowledgment control), assembled
+          into one short closing statement rather than left scattered.
+          Nothing here is new or exposes anything beyond what's already
+          client-facing — no decision notes, no coach-only data. Gated on
+          hasMeaningfulUpdate, same condition slice 5 already uses to decide
+          whether there's anything worth acknowledging. */}
+      {hasMeaningfulUpdate && (
+        <div style={S.card}>
+          <div style={{ ...S.label, marginBottom: 10 }}>This week's summary</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <span style={badge(targets?.source === 'override' ? 'info' : 'neutral')}>
+              {targets?.source === 'override' ? 'Targets changed this week' : 'Targets unchanged'}
+            </span>
+            <span style={badge(latest?.coach_feedback ? 'success' : 'warning')}>
+              {latest?.coach_feedback ? 'Feedback delivered' : 'Feedback pending'}
+            </span>
+            <span style={badge(latestAck ? 'success' : 'neutral')}>
+              {latestAck ? `Acknowledged ${formatDate(latestAck.acknowledged_at)}` : 'Awaiting your "Got it"'}
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Main content grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16 }}>
 

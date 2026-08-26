@@ -433,6 +433,14 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave, coachId }) => {
   const [feedback, setFeedback] = useState(checkin.coach_feedback || '')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  // Phase 5 — separate from `saved`, which is deliberately transient (flips
+  // back after 2s to drive the "Saved!" button flash). The weekly briefing
+  // needs a persistent signal instead: `checkin` itself is a snapshot prop
+  // that never refreshes while this modal stays open (onFeedbackSave only
+  // updates the parent's checkins list, not this instance's prop — see
+  // handleFeedbackSave), so without this the briefing would incorrectly
+  // revert to "not yet sent" 2 seconds after a real, successful save.
+  const [feedbackSentLocally, setFeedbackSentLocally] = useState(!!checkin.coach_feedback)
   const [override, setOverride] = useState(null)
   const [overrideForm, setOverrideForm] = useState({ calories: '', protein: '', carbs: '', fats: '', note: '' })
   const [overrideLoading, setOverrideLoading] = useState(true)
@@ -449,6 +457,28 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave, coachId }) => {
   const [decisionNoteSaving, setDecisionNoteSaving] = useState(false)
   const [decisionNoteSaved, setDecisionNoteSaved] = useState(false)
   const [decisionNoteError, setDecisionNoteError] = useState(null)
+
+  // Phase 5 — weekly briefing. check_in_acknowledgments already has a
+  // coach-facing SELECT policy from slice 5 ("for future use, no UI
+  // built") — this is that use. Read-only, fetched once; acknowledgments
+  // are insert-only/immutable so there's nothing to keep in sync with
+  // while the modal is open.
+  const [ack, setAck] = useState(null)
+  const [ackLoading, setAckLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadAck() {
+      setAckLoading(true)
+      const { data } = await supabase.from('check_in_acknowledgments')
+        .select('acknowledged_at').eq('checkin_id', checkin.id).maybeSingle()
+      if (cancelled) return
+      setAck(data || null)
+      setAckLoading(false)
+    }
+    loadAck()
+    return () => { cancelled = true }
+  }, [checkin.id])
 
   useEffect(() => {
     let cancelled = false
@@ -550,6 +580,7 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave, coachId }) => {
     setSaving(false)
     if (!error) {
       setSaved(true)
+      setFeedbackSentLocally(true)
       onFeedbackSave(checkin.id, feedback, feedbackAt)
       notify('feedback', checkin.client_id)
       setTimeout(() => setSaved(false), 2000)
@@ -585,6 +616,18 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave, coachId }) => {
       <div style={{ flex: 1, height: 1, background: color.borderLight }} />
     </div>
   )
+
+  const formatDate = ts => new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+
+  // Phase 5 — weekly briefing. Deliberately computed from state this
+  // component (or its siblings) already fetches — override, feedback,
+  // ack — rather than a new persisted row, so it can never drift out of
+  // sync with the data it's summarizing. targetsChanged reads `override`
+  // directly (this week's actual weekly_target_overrides row) rather than
+  // re-deriving via getEffectiveTargets, since override IS the thing
+  // getEffectiveTargets would check first for this exact week.
+  const targetsChanged = !!override
+  const feedbackSent = feedbackSentLocally
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
@@ -838,6 +881,29 @@ const CheckInDetail = ({ checkin, onClose, onFeedbackSave, coachId }) => {
           )}
 
           <ZoneHeader title="What's next" />
+
+          {/* Weekly briefing — the closing summary Phase 4 built toward but
+              never assembled. Three lines, read-only: whether targets moved,
+              whether feedback went out, whether the client has seen it.
+              Nothing here is new data — it's the same signals already
+              tracked by check_ins/weekly_target_overrides/
+              check_in_acknowledgments, just surfaced together in one place
+              instead of only existing as separate editable sections below. */}
+          <div style={{ background: color.surfaceLight, border: `0.5px solid ${color.borderLight}`, borderRadius: 12, padding: 16 }}>
+            <div style={{ ...S.label, marginBottom: 10 }}>Weekly briefing</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              <span style={badge(overrideLoading ? 'neutral' : targetsChanged ? 'info' : 'neutral')}>
+                {overrideLoading ? 'Checking targets…' : targetsChanged ? 'Targets changed this week' : 'Targets unchanged'}
+              </span>
+              <span style={badge(feedbackSent ? 'success' : 'warning')}>
+                {feedbackSent ? 'Feedback sent' : 'Feedback not yet sent'}
+              </span>
+              <span style={badge(ackLoading ? 'neutral' : ack ? 'success' : 'neutral')}>
+                {ackLoading ? 'Checking acknowledgment…' : ack ? `Acknowledged ${formatDate(ack.acknowledged_at)}` : 'Not yet acknowledged'}
+              </span>
+            </div>
+          </div>
+
           {/* Override this week's targets — doesn't touch the underlying
               diet plan, just this one check-in's week */}
           <div style={{ background: color.surfaceLight, borderRadius: 12, border: `0.5px solid ${color.borderLight}`, padding: 16 }}>
