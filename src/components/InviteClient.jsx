@@ -21,7 +21,16 @@ export async function createInvite(coachId, email, role, adminRoleId = null) {
 export default function InviteClient({ atLimit = false, onUpgradeClick } = {}) {
   const { color } = useAppearance();
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState('client');
+  // Was a role toggle (client/coach) — regular coaches can no longer
+  // generate coach invites at all (invites RLS requires
+  // admin.manage_employees for role='coach', tightened in 87f348d), so
+  // that option was removed from the UI rather than left visible and
+  // erroring with a 42501 on submit. The only path to inviting a coach
+  // now is AdminDashboard.js's admin-only "Invite a coach" panel. `role`
+  // stays a plain constant (not state) since there's no longer anything
+  // to toggle it to — createInvite() itself is untouched and still
+  // accepts any role a future caller might pass.
+  const role = 'client';
   const [link, setLink] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -71,20 +80,6 @@ export default function InviteClient({ atLimit = false, onUpgradeClick } = {}) {
     <div>
       <div style={{ ...labelStyleAppearance(), marginBottom: 14 }}>
         Invite someone
-      </div>
-
-      {/* Role toggle */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
-        {['client', 'coach'].map(r => (
-          <button key={r} onClick={() => setRole(r)}
-            style={{ padding: '6px 14px', borderRadius: 6, border: 'none', cursor: 'pointer',
-              fontFamily: font.sans, fontSize: type.label, fontWeight: 500,
-              background: role === r ? color.void : color.surfaceSunken,
-              color: role === r ? color.textOnDark.primary : color.textOnLight.secondary,
-              transition: 'all 0.15s ease' }}>
-            {r === 'client' ? 'As a client' : 'As a coach'}
-          </button>
-        ))}
       </div>
 
       {blocked ? (
