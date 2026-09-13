@@ -2014,6 +2014,69 @@ const TabCheckIns = ({ checkins, onSelectCheckin }) => {
 
 // ─── Tab: Requests ────────────────────────────────────────────────────────────
 
+// Field labels per intake questionnaire section — mirrors PublicApply.jsx's
+// step grouping exactly (Goals/Training/Nutrition/Logistics), so a coach
+// reading a submitted application sees the same structure the applicant
+// filled out. Each group is a nullable jsonb blob (see the
+// add_intake_questionnaire_fields_to_client_applications migration) —
+// PublicApply.jsx stores null rather than {} when a whole section was left
+// blank, so a group with no data is skipped entirely rather than rendering
+// an empty header.
+const APPLICATION_GOALS_FIELDS = [
+  ['primary_goal', 'Primary goal'],
+  ['target_show_date', 'Target show date'],
+  ['competition_history', 'Competition history'],
+]
+const APPLICATION_TRAINING_FIELDS = [
+  ['experience_level', 'Experience level'],
+  ['current_split', 'Current split'],
+  ['injuries_limitations', 'Injuries / limitations'],
+]
+const APPLICATION_NUTRITION_FIELDS = [
+  ['tracking_experience', 'Tracking experience'],
+  ['dietary_restrictions', 'Dietary restrictions'],
+]
+const APPLICATION_LOGISTICS_FIELDS = [
+  ['budget_tier_interest', 'Budget / tier interest'],
+  ['checkin_availability', 'Check-in availability'],
+]
+
+// target_show_date is a plain YYYY-MM-DD string (from an <input type="date">),
+// not a timestamptz — new Date('2027-04-10') parses that as UTC midnight, so
+// formatDate() (built for real timestamps like submitted_at) rolls it back a
+// day in any timezone behind UTC. Same class of bug this codebase already
+// works around for start_date/show_date/selectedDay elsewhere: force
+// local-midnight parsing with a T00:00:00 suffix instead of reusing
+// formatDate() directly. Caught live during verification (showed "Apr 9" for
+// a stored "2027-04-10"), not assumed.
+function formatDateOnly(dateStr) {
+  return new Date(`${dateStr}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+const ApplicationFieldGroup = ({ title, data, fields }) => {
+  if (!data) return null
+  const entries = fields.filter(([key]) => data[key])
+  if (!entries.length) return null
+  return (
+    <div>
+      <div style={{ fontFamily: font.mono, fontSize: type.label, color: color.textOnLight.faint,
+        letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>
+        {title}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {entries.map(([key, label]) => (
+          <div key={key} style={{ fontSize: type.body, lineHeight: 1.5 }}>
+            <span style={{ color: color.textOnLight.faint }}>{label}: </span>
+            <span style={{ color: color.textOnLight.primary }}>
+              {key === 'target_show_date' ? formatDateOnly(data[key]) : data[key]}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // A row stays visible after Approve (even though its status flips away from
 // 'pending') so the just-generated invite link doesn't vanish out from under
 // the coach — it only drops off once the tab is left and applications are
@@ -2075,6 +2138,16 @@ const TabRequests = ({ applications, onApprove, onDecline }) => {
           {application.notes && (
             <div style={{ fontSize: type.body, color: color.textOnLight.secondary, lineHeight: 1.5 }}>
               {application.notes}
+            </div>
+          )}
+
+          {(application.goals || application.training || application.nutrition || application.logistics) && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12,
+              paddingTop: 10, borderTop: `0.5px solid ${color.borderLight}` }}>
+              <ApplicationFieldGroup title="Goals" data={application.goals} fields={APPLICATION_GOALS_FIELDS} />
+              <ApplicationFieldGroup title="Training" data={application.training} fields={APPLICATION_TRAINING_FIELDS} />
+              <ApplicationFieldGroup title="Nutrition" data={application.nutrition} fields={APPLICATION_NUTRITION_FIELDS} />
+              <ApplicationFieldGroup title="Logistics" data={application.logistics} fields={APPLICATION_LOGISTICS_FIELDS} />
             </div>
           )}
 

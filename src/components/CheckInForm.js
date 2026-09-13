@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { font, type, labelStyleAppearance as themeLabelStyle } from '../lib/theme'
 import { useAppearance } from '../lib/AppearanceContext'
 import { weightUnitLabel, measurementUnitLabel, toCanonicalWeight, toCanonicalMeasurement } from '../lib/units'
+import { SectionHeader, StepProgress, StepNav } from './StepFlow'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -105,23 +106,8 @@ const buildCardStyle = (color) => ({
   marginBottom: 16,
 })
 
-const SectionHeader = ({ number, title, subtitle }) => {
-  const { color } = useAppearance()
-  return (
-    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 24,
-      paddingBottom: 16, borderBottom: `0.5px solid ${color.borderSubtle}` }}>
-      <div style={{ width: 32, height: 32, borderRadius: '50%', background: color.forest,
-        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-        fontFamily: font.mono, fontSize: type.label, fontWeight: 500, color: color.sage }}>
-        {number}
-      </div>
-      <div>
-        <div style={{ fontSize: 17, fontWeight: 500, color: color.textOnLight.primary }}>{title}</div>
-        {subtitle && <div style={{ fontSize: type.label, color: color.textOnLight.faint, marginTop: 2 }}>{subtitle}</div>}
-      </div>
-    </div>
-  )
-}
+// SectionHeader lives in ./StepFlow now, shared with PublicApply.jsx's
+// intake questionnaire — see that file's top-of-file comment.
 
 // ─── Weekly average strip ──────────────────────────────────────────────────────
 // Live, in-progress preview of the same averages handleSubmit calculates —
@@ -568,24 +554,7 @@ export default function CheckInForm({ onSuccess }) {
         )}
       </div>
 
-      {/* Progress bar */}
-      <div style={{ marginBottom: 24 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-          <span style={{ fontFamily: font.mono, fontSize: type.label, color: color.textOnLight.faint, letterSpacing: '0.1em' }}>
-            STEP {adjustedStep + 1} OF {progressSteps}
-          </span>
-          <div style={{ display: 'flex', gap: 4 }}>
-            {Array.from({ length: progressSteps }).map((_, i) => (
-              <div key={i} style={{ width: 28, height: 3, borderRadius: 2,
-                background: i <= adjustedStep ? color.forest : color.borderLight, transition: 'background 0.3s' }} />
-            ))}
-          </div>
-        </div>
-        <div style={{ height: 2, background: color.borderLight, borderRadius: 999 }}>
-          <div style={{ height: '100%', width: `${((adjustedStep + 1) / progressSteps) * 100}%`,
-            background: color.forest, borderRadius: 999, transition: 'width 0.4s ease' }} />
-        </div>
-      </div>
+      <StepProgress currentStep={adjustedStep} totalSteps={progressSteps} />
 
       {/* ── Step 0: Week confirmation ─────────────────────────────────────── */}
       {step === 0 && (
@@ -733,31 +702,15 @@ export default function CheckInForm({ onSuccess }) {
       )}
 
       {/* ── Navigation ────────────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
-        {step > 0 && (
-          <button onClick={() => setStep(s => s - 1)} type="button"
-            style={{ flex: 1, height: 48, background: color.bone, border: `1px solid ${color.borderLight}`,
-              borderRadius: 10, fontSize: type.body, fontWeight: 500, color: color.textOnLight.secondary, cursor: 'pointer',
-              fontFamily: font.sans }}>
-            Back
-          </button>
-        )}
-        {step < (showMeasurements ? 4 : 3) ? (
-          <button onClick={() => setStep(s => s + 1)} type="button"
-            style={{ flex: 3, height: 48, background: color.forest, border: 'none',
-              borderRadius: 10, fontSize: type.body, fontWeight: 500, color: color.sage,
-              cursor: 'pointer', fontFamily: font.sans }}>
-            Continue
-          </button>
-        ) : (
-          <button onClick={handleSubmit} disabled={loading} type="button"
-            style={{ flex: 3, height: 48, background: loading ? color.textOnLight.faint : color.forest, border: 'none',
-              borderRadius: 10, fontSize: type.body, fontWeight: 500, color: color.sage,
-              cursor: loading ? 'not-allowed' : 'pointer', fontFamily: font.sans }}>
-            {loading ? 'Submitting...' : 'Submit check-in'}
-          </button>
-        )}
-      </div>
+      <StepNav
+        currentStep={step}
+        isLastStep={step >= (showMeasurements ? 4 : 3)}
+        onBack={() => setStep(s => s - 1)}
+        onNext={() => setStep(s => s + 1)}
+        onSubmit={handleSubmit}
+        submitLabel="Submit check-in"
+        submitting={loading}
+      />
     </div>
   )
 }
