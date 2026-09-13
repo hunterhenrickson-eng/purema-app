@@ -2077,11 +2077,89 @@ const ApplicationFieldGroup = ({ title, data, fields }) => {
   )
 }
 
+// booked_date/booked_start_time are separate date/time columns (not one
+// timestamptz), already in the coach's own local time (book_intake_call
+// converts via the coach's profile.timezone at write time) — same shape as
+// target_show_date above, just with a time component too. Same T00:00:00-
+// style local-parsing convention as formatDateOnly, and the exact
+// date+time construction BookIntakeCall.jsx itself already uses for this
+// identical pair — not a new date-handling approach, just applied here.
+function formatBookingDateTime(bookedDate, bookedStartTime) {
+  return new Date(`${bookedDate}T${bookedStartTime}`).toLocaleString('en-US', {
+    weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+  })
+}
+
+// Read-only visibility into intake_call_bookings — no booking/cancel/edit
+// actions here, that all still happens through BookIntakeCall.jsx's own
+// token-based flow. RLS already scopes this to the coach's own rows
+// ("Coaches view own bookings", coach_id = auth.uid()), confirmed via
+// pg_policies, not assumed — no new policy needed.
+//
+// Joins to client_applications for the applicant's name per spec, even
+// though intake_call_bookings also carries a denormalized prospect_name
+// snapshot — kept the join as asked. A coach_id mismatch between the two
+// tables isn't actually reachable: book_intake_call always inserts both
+// coach_id values from the same client_applications row it just looked up,
+// so the two can't diverge; the operative security boundary is still the
+// top-level .eq('coach_id', coachId) filter, RLS-backed regardless.
+const UpcomingIntakeCalls = ({ coachId }) => {
+  const [bookings, setBookings] = useState(null)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    if (!coachId) return
+    let cancelled = false
+    async function load() {
+      const today = new Date()
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+      const { data, error: loadError } = await supabase
+        .from('intake_call_bookings')
+        .select('id, booked_date, booked_start_time, client_applications(name)')
+        .eq('coach_id', coachId)
+        .neq('status', 'canceled')
+        .gte('booked_date', todayStr)
+        .order('booked_date', { ascending: true })
+        .order('booked_start_time', { ascending: true })
+      if (cancelled) return
+      if (loadError) setError("Couldn't load upcoming intake calls.")
+      else setBookings(data || [])
+    }
+    load()
+    return () => { cancelled = true }
+  }, [coachId])
+
+  if (error) {
+    return <div style={{ fontSize: type.label, color: color.alert }}>{error}</div>
+  }
+  // Loading, or nothing upcoming — stay out of the way rather than showing
+  // an empty-state card for a feature most coaches won't touch daily.
+  if (!bookings || bookings.length === 0) return null
+
+  return (
+    <div>
+      <div style={S.sectionTitle}>Upcoming intake calls</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
+        {bookings.map(b => (
+          <div key={b.id} style={{ ...S.card, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <span style={{ fontSize: type.body, fontWeight: 500, color: color.textOnLight.primary }}>
+              {b.client_applications?.name || 'Unknown applicant'}
+            </span>
+            <span style={{ fontSize: type.label, color: color.textOnLight.secondary, fontFamily: font.mono, whiteSpace: 'nowrap' }}>
+              {formatBookingDateTime(b.booked_date, b.booked_start_time)}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // A row stays visible after Approve (even though its status flips away from
 // 'pending') so the just-generated invite link doesn't vanish out from under
 // the coach — it only drops off once the tab is left and applications are
 // refetched. Decline has no such need and disappears immediately.
-const TabRequests = ({ applications, onApprove, onDecline }) => {
+const TabRequests = ({ applications, onApprove, onDecline, coachId }) => {
   const [busyId, setBusyId] = useState(null)
   const [linkById, setLinkById] = useState({})
   const [errorById, setErrorById] = useState({})
@@ -2113,14 +2191,19 @@ const TabRequests = ({ applications, onApprove, onDecline }) => {
 
   if (visible.length === 0) {
     return (
-      <div style={{ ...S.card, textAlign: 'center', padding: '40px 20px', color: color.textOnLight.secondary, fontSize: type.body }}>
-        No pending applications.
+      <div>
+        <UpcomingIntakeCalls coachId={coachId} />
+        <div style={{ ...S.card, textAlign: 'center', padding: '40px 20px', color: color.textOnLight.secondary, fontSize: type.body }}>
+          No pending applications.
+        </div>
       </div>
     )
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+    <div>
+      <UpcomingIntakeCalls coachId={coachId} />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {visible.map(application => (
         <div key={application.id} style={{ ...S.card, display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
@@ -2194,6 +2277,7 @@ const TabRequests = ({ applications, onApprove, onDecline }) => {
           )}
         </div>
       ))}
+      </div>
     </div>
   )
 }
@@ -4121,7 +4205,7 @@ export default function CoachDashboard() {
               )}
               {activeTab === 'dashboard' && <TabDashboard checkins={checkins} clients={clients} onSelectCheckin={setSelected} onGoToClient={goToClient} profile={profile} />}
               {activeTab === 'clients' && <TabClients clients={clients} checkins={checkins} profile={profile} onStatusChange={handleStatusChange} onTargetsSave={handleTargetsSave} onImportCheckins={handleImportCheckins} onGoToBilling={() => setActiveTab('billing')} focusClientId={focusClientId} onFocusHandled={() => setFocusClientId(null)} />}
-              {activeTab === 'requests' && <TabRequests applications={applications} onApprove={handleApproveApplication} onDecline={handleDeclineApplication} />}
+              {activeTab === 'requests' && <TabRequests applications={applications} onApprove={handleApproveApplication} onDecline={handleDeclineApplication} coachId={profile?.id} />}
               {activeTab === 'checkins' && <TabCheckIns checkins={checkins} onSelectCheckin={setSelected} />}
               {activeTab === 'calendar' && <TabCalendar clients={clients} checkins={checkins} profile={profile} onToggleNotify={handleToggleNotify} />}
               {activeTab === 'messages' && <TabMessages clients={clients} messages={messages} coachId={profile?.id} onSendMessage={handleSendMessage} onMarkRead={handleMarkMessagesRead} />}
